@@ -35,6 +35,8 @@ class ResultsWidget(QWidget):
         self.main_plot_frame = self.findChild(QGridLayout, "layoutMainPlot")
         self.tab_name_label = self.findChild(QLabel, "labelCalcName")
 
+        self.tab_name = tab_name
+
         # display tab name
         self.tab_name_label.setText(tab_name)
 

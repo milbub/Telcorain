@@ -102,7 +102,7 @@ class MainWindow(QMainWindow):
         self.influx_signals = influx.InfluxSignals()
         self.influx_signals.ping_signal.connect(self.check_influx_status)
         self.calc_signals = calc.CalcSignals()
-        self.calc_signals.plot_signal.connect(self.calc_plot_data)
+        self.calc_signals.plot_signal.connect(self.show_results)
 
         # init influxDB connection and status checker
         self.influx_status: int = 0  # 0 = unknown, 1 = ok, -1 = not available
@@ -190,10 +190,9 @@ class MainWindow(QMainWindow):
             else:
                 results_tab_name = self.results_name.text()
 
-            # create results widget instance and insert it to the tab list
+            # create results widget instance
             self.results_tabs[self.result_id] = ResultsWidget(results_tab_name)
-            self.tabs.addTab(self.results_tabs[self.result_id],
-                             self.results_icon, f"Results: {results_tab_name}")
+
             self.results_name.clear()
 
             # RUN calculation on worker thread from threadpool
@@ -202,10 +201,15 @@ class MainWindow(QMainWindow):
 
             self.statusBar().showMessage("Processing...")
 
-    # plot data from calculation, called from signal
-    def calc_plot_data(self, calc_data: dict):
+    # show results from calculation, called from signal
+    def show_results(self, calc_data: dict):
+        # plot data in results tab
         self.results_tabs[calc_data["id"]].update_main_plot(calc_data["interpolator"], calc_data["rain_grid"],
                                                             calc_data["cmls_rain_1h"])
+
+        # insert results tab to tab list
+        self.tabs.addTab(self.results_tabs[calc_data["id"]], self.results_icon,
+                         f"Results: {self.results_tabs[calc_data['id']].tab_name}")
 
     # destructor
     def __del__(self):
