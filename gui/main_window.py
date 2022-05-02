@@ -102,7 +102,8 @@ class MainWindow(QMainWindow):
         self.influx_signals = influx.InfluxSignals()
         self.influx_signals.ping_signal.connect(self.check_influx_status)
         self.calc_signals = calc.CalcSignals()
-        self.calc_signals.plot_signal.connect(self.show_results)
+        self.calc_signals.done_signal.connect(self.show_results)
+        self.calc_signals.error_signal.connect(self.calculation_error)
 
         # init influxDB connection and status checker
         self.influx_status: int = 0  # 0 = unknown, 1 = ok, -1 = not available
@@ -202,14 +203,21 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage("Processing...")
 
     # show results from calculation, called from signal
-    def show_results(self, calc_data: dict):
+    def show_results(self, meta_data: dict):
         # plot data in results tab
-        self.results_tabs[calc_data["id"]].update_main_plot(calc_data["interpolator"], calc_data["rain_grid"],
-                                                            calc_data["cmls_rain_1h"])
+        self.results_tabs[meta_data["id"]].update_main_plot(meta_data["interpolator"],
+                                                            meta_data["rain_grid"],
+                                                            meta_data["cmls_rain_1h"])
 
         # insert results tab to tab list
-        self.tabs.addTab(self.results_tabs[calc_data["id"]], self.results_icon,
-                         f"Results: {self.results_tabs[calc_data['id']].tab_name}")
+        self.tabs.addTab(self.results_tabs[meta_data["id"]], self.results_icon,
+                         f"Results: {self.results_tabs[meta_data['id']].tab_name}")
+
+        self.statusBar().showMessage(f"Calculation \"{self.results_tabs[meta_data['id']].tab_name}\" is complete.")
+
+    def calculation_error(self, meta_data: dict):
+        self.statusBar().showMessage(f"Error occurred in calculation \"{self.results_tabs[meta_data['id']].tab_name}\"."
+                                     f" See system log for more info.")
 
     # destructor
     def __del__(self):
