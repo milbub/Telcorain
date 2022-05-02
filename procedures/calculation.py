@@ -9,7 +9,7 @@ import input.influx_manager as influx
 class CalcSignals(QObject):
     done_signal = pyqtSignal(dict)
     error_signal = pyqtSignal(dict)
-    pass
+    progress_signal = pyqtSignal(dict)
 
 
 def _channel_dataset(curr_link, flux_data, tx_ip, rx_ip, channel_id, freq, tx_zeros: bool) -> xr.Dataset:
@@ -83,11 +83,17 @@ class Calculation(QRunnable):
                         ips.append(self.links[link].ip_a)
                         ips.append(self.links[link].ip_b)
 
+            self.sig.progress_signal.emit({'prg_val': 5})
             print(f"[CALC ID: {self.results_id}] Querying InfluxDB for selected microwave links data...", flush=True)
+
             influx_data = man.query_signal_mean(ips, self.start, self.end, self.interval)
+
             diff = len(ips) - len(influx_data)
+
+            self.sig.progress_signal.emit({'prg_val': 15})
             print(f"[CALC ID: {self.results_id}] Querying done. Got data of {len(influx_data)} units,"
                   f" of total {len(ips)} selected units.")
+
             missing_links = []
             if diff > 0:
                 print(f"[CALC ID: {self.results_id}] {diff} units are not available in selected time window:")
@@ -103,6 +109,8 @@ class Calculation(QRunnable):
                                       f"SIDE B: {self.links[link].name_b}; IP: {self.links[link].ip_b}")
                                 missing_links.append(link)
 
+            self.sig.progress_signal.emit({'prg_val': 18})
+
         except BaseException as error:
             self.sig.error_signal.emit({"id": self.results_id})
             print(f"[CALC ID: {self.results_id}] An unexpected error occurred during InfluxDB query: {type(error)}.")
@@ -114,6 +122,9 @@ class Calculation(QRunnable):
         calc_data = []
 
         try:
+
+            link_count = len(self.selection)
+            curr_link = 0
 
             for link in self.selection:
                 if self.selection[link] == 0:
@@ -189,6 +200,9 @@ class Calculation(QRunnable):
 
                 calc_data.append(xr.concat(link_channels, dim="channel_id"))
 
+                self.sig.progress_signal.emit({'prg_val': round((curr_link / link_count) * 17) + 18})
+                curr_link += 1
+
         except BaseException as error:
             self.sig.error_signal.emit({"id": self.results_id})
             print(f"[CALC ID: {self.results_id}] An unexpected error occurred during data processing: {type(error)}.")
@@ -200,6 +214,10 @@ class Calculation(QRunnable):
         try:
 
             # interpolate gaps in input data, filter out nonsenses out of limits
+            print(f"[CALC ID: {self.results_id}] Smoothing signal data...")
+            link_count = len(calc_data)
+            curr_link = 0
+
             for cml in calc_data:
                 cml['tsl'] = cml.tsl.astype(float).interpolate_na(dim='time', method='linear', max_gap='5min')
                 # TODO: load bottom rx power from options (here it's -80 dBm)
@@ -207,7 +225,13 @@ class Calculation(QRunnable):
                 cml['rsl'] = cml.rsl.astype(float).interpolate_na(dim='time', method='linear', max_gap='5min')
                 cml['trsl'] = cml.tsl - cml.rsl
 
+                self.sig.progress_signal.emit({'prg_val': round((curr_link / link_count) * 15) + 35})
+                curr_link += 1
+
             # process each link:
+            print(f"[CALC ID: {self.results_id}] Computing rain values...")
+            curr_link = 0
+
             for cml in calc_data:
                 # determine wet periods
                 cml['wet'] = cml.trsl.rolling(time=30, center=True).std(skipna=False) > 0.8
@@ -231,8 +255,17 @@ class Calculation(QRunnable):
                 cml['R'] = pycml.processing.k_R_relation.calc_R_from_A(A=cml.A, L_km=float(cml.length),
                                                                        f_GHz=cml.frequency, pol=cml.polarization)
 
+                self.sig.progress_signal.emit({'prg_val': round((curr_link / link_count) * 40) + 50})
+                curr_link += 1
+
+            print(f"[CALC ID: {self.results_id}] Resampling rain values for rainfall total...")
+
             cmls_rain_1h = xr.concat(objs=[cml.R.resample(time='1h', label='right').mean() for cml in calc_data],
                                      dim='cml_id').to_dataset()
+
+            self.sig.progress_signal.emit({'prg_val': 93})
+
+            print(f"[CALC ID: {self.results_id}] Interpolating spatial data...")
 
             cmls_rain_1h['lat_center'] = (cmls_rain_1h.site_a_latitude + cmls_rain_1h.site_b_latitude) / 2
             cmls_rain_1h['lon_center'] = (cmls_rain_1h.site_a_longitude + cmls_rain_1h.site_b_longitude) / 2
@@ -242,6 +275,8 @@ class Calculation(QRunnable):
 
             rain_grid = interpolator(x=cmls_rain_1h.lon_center, y=cmls_rain_1h.lat_center,
                                      z=cmls_rain_1h.R.mean(dim='channel_id').sum(dim='time'), resolution=0.001)
+
+            self.sig.progress_signal.emit({'prg_val': 99})
 
         except BaseException as error:
             self.sig.error_signal.emit({"id": self.results_id})

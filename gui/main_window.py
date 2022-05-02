@@ -53,6 +53,8 @@ class MainWindow(QMainWindow):
         self.status_prg_bar = QProgressBar()
         self.status_prg_bar.setFixedWidth(200)
         self.status_prg_bar.setTextVisible(False)
+        self.status_prg_bar.setMinimum(0)
+        self.status_prg_bar.setMaximum(99)
         self.status_prg_layout.addWidget(self.status_prg_bar)
         self.statusBar().addPermanentWidget(self.status_prg)
         self.statusBar().setContentsMargins(14, 0, 14, 0)
@@ -100,10 +102,13 @@ class MainWindow(QMainWindow):
 
         # init signaling
         self.influx_signals = influx.InfluxSignals()
-        self.influx_signals.ping_signal.connect(self.check_influx_status)
         self.calc_signals = calc.CalcSignals()
+
+        self.influx_signals.ping_signal.connect(self.check_influx_status)
+
         self.calc_signals.done_signal.connect(self.show_results)
         self.calc_signals.error_signal.connect(self.calculation_error)
+        self.calc_signals.progress_signal.connect(self.progress_update)
 
         # init influxDB connection and status checker
         self.influx_status: int = 0  # 0 = unknown, 1 = ok, -1 = not available
@@ -156,6 +161,34 @@ class MainWindow(QMainWindow):
             print("InfluxDB connection has been reestablished.", flush=True)
             self.influx_status = 1
 
+    # show results from calculation, called from signal
+    def show_results(self, meta_data: dict):
+        # plot data in results tab
+        self.results_tabs[meta_data["id"]].update_main_plot(meta_data["interpolator"],
+                                                            meta_data["rain_grid"],
+                                                            meta_data["cmls_rain_1h"])
+
+        # insert results tab to tab list
+        self.tabs.addTab(self.results_tabs[meta_data["id"]], self.results_icon,
+                         f"Results: {self.results_tabs[meta_data['id']].tab_name}")
+
+        self.statusBar().showMessage(f"Calculation \"{self.results_tabs[meta_data['id']].tab_name}\" is complete.")
+
+        # return progress bar to default state
+        self.status_prg_bar.setValue(0)
+
+    # show info about error in calculation, called from signal
+    def calculation_error(self, meta_data: dict):
+        self.statusBar().showMessage(f"Error occurred in calculation \"{self.results_tabs[meta_data['id']].tab_name}\"."
+                                     f" See system log for more info.")
+
+        # return progress bar to default state
+        self.status_prg_bar.setValue(0)
+
+    # update progress bar with calculation status, called from signal
+    def progress_update(self, meta_data: dict):
+        self.status_prg_bar.setValue(meta_data['prg_val'])
+
     # calculation button fired
     def calculation_start(self):
         # check if InfluxDB connection is available
@@ -207,23 +240,6 @@ class MainWindow(QMainWindow):
             # calculation.run()  # TEMP: run directly on gui thread for debugging reasons
 
             self.statusBar().showMessage("Processing...")
-
-    # show results from calculation, called from signal
-    def show_results(self, meta_data: dict):
-        # plot data in results tab
-        self.results_tabs[meta_data["id"]].update_main_plot(meta_data["interpolator"],
-                                                            meta_data["rain_grid"],
-                                                            meta_data["cmls_rain_1h"])
-
-        # insert results tab to tab list
-        self.tabs.addTab(self.results_tabs[meta_data["id"]], self.results_icon,
-                         f"Results: {self.results_tabs[meta_data['id']].tab_name}")
-
-        self.statusBar().showMessage(f"Calculation \"{self.results_tabs[meta_data['id']].tab_name}\" is complete.")
-
-    def calculation_error(self, meta_data: dict):
-        self.statusBar().showMessage(f"Error occurred in calculation \"{self.results_tabs[meta_data['id']].tab_name}\"."
-                                     f" See system log for more info.")
 
     # destructor
     def __del__(self):
