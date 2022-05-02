@@ -158,6 +158,12 @@ class MainWindow(QMainWindow):
 
     # calculation button fired
     def calculation_start(self):
+        # check if InfluxDB connection is available
+        if self.influx_status != 1:
+            print("[WARNING] Cannot start calculation, InfluxDB connection is not available.")
+            self.statusBar().showMessage("Cannot start calculation, InfluxDB connection is not available.")
+            return
+
         start = self.datetime_start.dateTime()
         end = self.datetime_stop.dateTime()
         step = self.spin_timestep.value()
@@ -165,7 +171,7 @@ class MainWindow(QMainWindow):
         if start >= end:
             print("[WARNING] Bad input! Entered bigger (or same) start date than end date!")
             self.statusBar().showMessage("Bad input! Entered bigger (or same) start date than end date!")
-            # TODO: show warning dialog + all the checks
+            # TODO: all the checks
         else:
             self.result_id += 1
             # link channel selection flag: 0=none, 1=A, 2=B, 3=both
