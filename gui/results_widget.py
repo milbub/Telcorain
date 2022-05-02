@@ -2,6 +2,7 @@ import matplotlib
 from PyQt6 import uic
 from PyQt6.QtWidgets import QWidget, QLabel, QGridLayout
 from matplotlib import pyplot as plt
+from matplotlib import cm
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
 
@@ -43,12 +44,18 @@ class ResultsWidget(QWidget):
     def update_main_plot(self, interpolator, rain_grid, cmls_rain_1h):
         main_canvas = MatplotCanvas(self, dpi=75)
 
+        # setup colormap
+        rain_cmap = cm.get_cmap('turbo', 15)
+        rain_cmap.set_under('k', alpha=0)
+
         # render rainfall total
         pc = main_canvas.ax.pcolormesh(interpolator.xgrid, interpolator.ygrid, rain_grid, shading='nearest',
-                                       cmap=plt.get_cmap('turbo', 15))
-        _plot_mwlink_lines(cmls_rain_1h, ax=main_canvas.ax)
+                                       cmap=rain_cmap, vmin=0.5, vmax=50)
         cbar = main_canvas.fig.colorbar(pc, label='Rainfall Total [mm]')
-        pc.set_clim(vmin=0.1, vmax=50)
         cbar.draw_all()
 
+        # plot link path lines
+        _plot_mwlink_lines(cmls_rain_1h, ax=main_canvas.ax)
+
+        # show in canvas frame
         self.main_plot_frame.addWidget(main_canvas)
