@@ -4,7 +4,7 @@ from PyQt6 import uic, QtGui, QtCore
 from PyQt6.QtCore import QTimer
 from PyQt6.QtGui import QPixmap
 from PyQt6.QtWidgets import QMainWindow, QLabel, QProgressBar, QHBoxLayout, QWidget, QTextEdit, QListWidget, \
-    QDateTimeEdit, QPushButton, QSpinBox, QTabWidget, QLineEdit
+    QDateTimeEdit, QPushButton, QSpinBox, QTabWidget, QLineEdit, QDoubleSpinBox
 from gui.results_widget import ResultsWidget
 
 import input.influx_manager as influx
@@ -68,6 +68,7 @@ class MainWindow(QMainWindow):
         self.butt_start = self.findChild(QPushButton, "buttStart")
         self.tabs = self.findChild(QTabWidget, "tabWidget")
         self.results_name = self.findChild(QLineEdit, "resultsNameEdit")
+        self.spin_roll_window = self.findChild(QDoubleSpinBox, "spinRollWindow")
 
         # declare dictionary for created tabs with calculation results
         # <key: int = result ID, value: ResultsWidget>
@@ -84,7 +85,7 @@ class MainWindow(QMainWindow):
         self.lists.addItem("<ALL>")
 
         # connect buttons
-        self.butt_start.clicked.connect(self.calculation_start)
+        self.butt_start.clicked.connect(self.calculation_fired)
 
         # show window
         self.show()
@@ -190,21 +191,43 @@ class MainWindow(QMainWindow):
         self.status_prg_bar.setValue(meta_data['prg_val'])
 
     # calculation button fired
-    def calculation_start(self):
+    def calculation_fired(self):
         # check if InfluxDB connection is available
         if self.influx_status != 1:
-            print("[WARNING] Cannot start calculation, InfluxDB connection is not available.")
-            self.statusBar().showMessage("Cannot start calculation, InfluxDB connection is not available.")
+            msg = "Cannot start calculation, InfluxDB connection is not available."
+            print(f"[WARNING] {msg}")
+            self.statusBar().showMessage(msg)
             return
 
         start = self.datetime_start.dateTime()
         end = self.datetime_stop.dateTime()
         step = self.spin_timestep.value()
+        time_diff = start.msecsTo(end)
+        rolling_hours = self.spin_roll_window.value()
+        rolling_values = int((rolling_hours * 60) / step)
 
-        if start >= end:
-            print("[WARNING] Bad input! Entered bigger (or same) start date than end date!")
-            self.statusBar().showMessage("Bad input! Entered bigger (or same) start date than end date!")
-            # TODO: all the checks
+        if time_diff < 0:   # if timediff is less than 1 hour (in msecs)
+            msg = "Bad input! Entered bigger (or same) start date than end date!"
+            print(f"[WARNING] {msg}")
+            self.statusBar().showMessage(msg)
+        elif time_diff < 3600000:
+            msg = "Bad input! Time difference between start and end times must be at least 1 hour."
+            print(f"[WARNING] {msg}")
+            self.statusBar().showMessage(msg)
+        elif (time_diff / (step * 60000)) < 12:
+            # TODO: load magic constant 12 from options
+            msg = "Bad input! Data resolution must be at least 12 times lower than input time interval length."
+            print(f"[WARNING] {msg}")
+            self.statusBar().showMessage(msg)
+        elif rolling_values < 6:
+            # TODO: load magic constant 6 from options
+            msg = f"Rolling time window length must be, for these times, at least {(step * 6) / 60} hours."
+            print(f"[WARNING] {msg}")
+            self.statusBar().showMessage(msg)
+        elif (rolling_hours * 3600000) > time_diff:
+            msg = f"Rolling time window length cannot be longer than set time interval."
+            print(f"[WARNING] {msg}")
+            self.statusBar().showMessage(msg)
         else:
             self.result_id += 1
             # link channel selection flag: 0=none, 1=A, 2=B, 3=both
@@ -223,7 +246,8 @@ class MainWindow(QMainWindow):
                          52346: 3}
 
             # create calculation instance
-            calculation = calc.Calculation(self.calc_signals, self.result_id, self.links, selection, start, end, step)
+            calculation = calc.Calculation(self.calc_signals, self.result_id, self.links, selection, start, end, step,
+                                           rolling_values)
 
             if self.results_name.text() == "":
                 results_tab_name = "<no name>"

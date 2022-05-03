@@ -45,7 +45,7 @@ def _channel_dataset(curr_link, flux_data, tx_ip, rx_ip, channel_id, freq, tx_ze
 
 class Calculation(QRunnable):
     def __init__(self, signals: CalcSignals, results_id: int, links: dict, selection: dict, start: QDateTime,
-                 end: QDateTime, interval: int):
+                 end: QDateTime, interval: int, rolling_vals: int):
         QRunnable.__init__(self)
         self.sig = signals
         self.results_id = results_id
@@ -54,6 +54,7 @@ class Calculation(QRunnable):
         self.start = start
         self.end = end
         self.interval = interval
+        self.rolling_vals = rolling_vals
 
     def run(self):
         print(f"[CALC ID: {self.results_id}] Rainfall calculation procedure started.", flush=True)
@@ -244,7 +245,7 @@ class Calculation(QRunnable):
             for cml in calc_data:
 
                 # determine wet periods
-                cml['wet'] = cml.trsl.rolling(time=6, center=True).std(skipna=False) > 0.8
+                cml['wet'] = cml.trsl.rolling(time=self.rolling_vals, center=True).std(skipna=False) > 0.8
 
                 # calculate ratio of wet periods
                 cml['wet_fraction'] = (cml.wet == 1).sum() / (cml.wet == 0).sum()
