@@ -101,20 +101,23 @@ class Calculation(QRunnable):
                     if ip not in influx_data:
                         for link in self.links:
                             if self.links[link].ip_a == ip:
-                                print(f"Link: {self.links[link].link_id}; Tech: {self.links[link].tech}; "
-                                      f"SIDE A: {self.links[link].name_a}; IP: {self.links[link].ip_a}")
+                                print(f"[CALC ID: {self.results_id}] Link: {self.links[link].link_id}; "
+                                      f"Tech: {self.links[link].tech}; SIDE A: {self.links[link].name_a}; "
+                                      f"IP: {self.links[link].ip_a}")
                                 missing_links.append(link)
                             elif self.links[link].ip_b == ip:
-                                print(f"Link: {self.links[link].link_id}; Tech: {self.links[link].tech}; "
-                                      f"SIDE B: {self.links[link].name_b}; IP: {self.links[link].ip_b}")
+                                print(f"[CALC ID: {self.results_id}] Link: {self.links[link].link_id}; "
+                                      f"Tech: {self.links[link].tech}; SIDE B: {self.links[link].name_b}; "
+                                      f"IP: {self.links[link].ip_b}")
                                 missing_links.append(link)
 
             self.sig.progress_signal.emit({'prg_val': 18})
 
         except BaseException as error:
             self.sig.error_signal.emit({"id": self.results_id})
-            print(f"[CALC ID: {self.results_id}] An unexpected error occurred during InfluxDB query: {type(error)}.")
-            print(f"[CALC ID: {self.results_id}] Calculation thread terminated.")
+            print(f"[CALC ID: {self.results_id}] ERROR: An unexpected error occurred during InfluxDB query: "
+                  f"{type(error)}.")
+            print(f"[CALC ID: {self.results_id}] ERROR: Calculation thread terminated.")
             return
 
         # ////// PARSE INTO XARRAY, RESOLVE TX POWER ASSIGNMENT TO CORRECT CHANNEL \\\\\\
@@ -142,7 +145,7 @@ class Calculation(QRunnable):
                 else:
                     if (self.links[link].ip_a not in influx_data) or (self.links[link].ip_b not in influx_data):
                         if link not in missing_links:
-                            print(f"[CALC ID: {self.results_id}] WARNING: Skipping link ID: {link}. "
+                            print(f"[CALC ID: {self.results_id}] INFO: Skipping link ID: {link}. "
                                   f"No unit data available.", flush=True)
                         continue
                     elif ("tx_power" not in influx_data[self.links[link].ip_a]) or \
@@ -161,7 +164,7 @@ class Calculation(QRunnable):
                             if "tx_power" not in influx_data[self.links[link].ip_a]:
                                 tx_zeros_a = True
                         else:
-                            print(f"[CALC ID: {self.results_id}] WARNING: Skipping link ID: {link}. "
+                            print(f"[CALC ID: {self.results_id}] INFO: Skipping link ID: {link}. "
                                   f"No Tx Power data available.", flush=True)
                             continue
 
@@ -205,8 +208,9 @@ class Calculation(QRunnable):
 
         except BaseException as error:
             self.sig.error_signal.emit({"id": self.results_id})
-            print(f"[CALC ID: {self.results_id}] An unexpected error occurred during data processing: {type(error)}.")
-            print(f"[CALC ID: {self.results_id}] Calculation thread terminated.")
+            print(f"[CALC ID: {self.results_id}] ERROR: An unexpected error occurred during data processing: "
+                  f"{type(error)}.")
+            print(f"[CALC ID: {self.results_id}] ERROR: Calculation thread terminated.")
             return
 
         # ////// RAINFALL CALCULATION \\\\\\
@@ -219,11 +223,16 @@ class Calculation(QRunnable):
             curr_link = 0
 
             for cml in calc_data:
+                # TODO: load upper tx power from options (here it's 99 dBm)
+                cml['tsl'] = cml.tsl.astype(float).where(cml.tsl < 99.0)
                 cml['tsl'] = cml.tsl.astype(float).interpolate_na(dim='time', method='linear', max_gap='5min')
                 # TODO: load bottom rx power from options (here it's -80 dBm)
                 cml['rsl'] = cml.rsl.astype(float).where(cml.rsl != 0.0).where(cml.rsl > -80.0)
                 cml['rsl'] = cml.rsl.astype(float).interpolate_na(dim='time', method='linear', max_gap='5min')
+
                 cml['trsl'] = cml.tsl - cml.rsl
+                cml['trsl'] = cml.trsl.astype(float).interpolate_na(dim='time', method='nearest', max_gap='5min')
+                cml['trsl'] = cml.trsl.astype(float).fillna(0.0)
 
                 self.sig.progress_signal.emit({'prg_val': round((curr_link / link_count) * 15) + 35})
                 curr_link += 1
@@ -233,8 +242,9 @@ class Calculation(QRunnable):
             curr_link = 0
 
             for cml in calc_data:
+
                 # determine wet periods
-                cml['wet'] = cml.trsl.rolling(time=30, center=True).std(skipna=False) > 0.8
+                cml['wet'] = cml.trsl.rolling(time=6, center=True).std(skipna=False) > 0.8
 
                 # calculate ratio of wet periods
                 cml['wet_fraction'] = (cml.wet == 1).sum() / (cml.wet == 0).sum()
@@ -280,8 +290,10 @@ class Calculation(QRunnable):
 
         except BaseException as error:
             self.sig.error_signal.emit({"id": self.results_id})
-            print(f"[CALC ID: {self.results_id}] An unexpected error occurred during rain calculation: {type(error)}.")
-            print(f"[CALC ID: {self.results_id}] Calculation thread terminated.")
+            print(f"[CALC ID: {self.results_id}] ERROR: An unexpected error occurred during rain calculation: "
+                  f"{type(error)}.")
+            print(f"[CALC ID: {self.results_id}] ERROR: Last processed microwave link dataset: {calc_data[curr_link]}")
+            print(f"[CALC ID: {self.results_id}] ERROR: Calculation thread terminated.")
             return
 
         # ////// EMIT OUTPUT \\\\\\

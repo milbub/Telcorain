@@ -1,12 +1,11 @@
 import matplotlib
 from PyQt6 import uic
 from PyQt6.QtWidgets import QWidget, QLabel, QGridLayout
-from matplotlib import pyplot as plt
 from matplotlib import cm
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
+from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
 
-matplotlib.use('Qt5Agg')
+matplotlib.use('QtAgg')
 
 
 class MatplotCanvas(FigureCanvasQTAgg):
