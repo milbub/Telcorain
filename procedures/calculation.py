@@ -349,5 +349,4 @@ class Calculation(QRunnable):
             "cmls_rain_1h": cmls_rain_1h
         })
 
-    def __del__(self):
         print(f"[CALC ID: {self.results_id}] Rainfall calculation procedure ended.", flush=True)
