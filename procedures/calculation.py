@@ -12,11 +12,20 @@ class CalcSignals(QObject):
     progress_signal = pyqtSignal(dict)
 
 
-def _channel_dataset(curr_link, flux_data, tx_ip, rx_ip, channel_id, freq, tx_zeros: bool) -> xr.Dataset:
+def _fill_channel_dataset(curr_link, flux_data, tx_ip, rx_ip, channel_id, freq,
+                          tx_zeros: bool = False, rx_zeros: bool = False) -> xr.Dataset:
+    # get times from the Rx power array, since these data should be always available
     times = []
     for time in flux_data[rx_ip]["rx_power"].keys():
         times.append(np.datetime64(time).astype("datetime64[ns]"))
 
+    # if creating empty channel dataset, fill Rx vars with zeros
+    if rx_zeros:
+        rsl = np.zeros((len(flux_data[rx_ip]["rx_power"]),), dtype=float)
+    else:
+        rsl = [*flux_data[rx_ip]["rx_power"].values()]
+
+    # in case of Tx power zeros, get array length from Rx array since it should be always available
     if tx_zeros:
         tsl = np.zeros((len(flux_data[rx_ip]["rx_power"]),), dtype=float)
     else:
@@ -25,7 +34,7 @@ def _channel_dataset(curr_link, flux_data, tx_ip, rx_ip, channel_id, freq, tx_ze
     channel = xr.Dataset(
         data_vars={
             "tsl": ("time", tsl),
-            "rsl": ("time", [*flux_data[rx_ip]["rx_power"].values()]),
+            "rsl": ("time", rsl),
         },
         coords={
             "time": times,
@@ -140,37 +149,53 @@ class Calculation(QRunnable):
                 tx_zeros_b = False
                 tx_zeros_a = False
 
-                if (self.links[link].ip_a not in influx_data) or (self.links[link].ip_b not in influx_data):
-                    if link not in missing_links:
-                        print(f"[CALC ID: {self.results_id}] INFO: Skipping link ID: {link}. "
-                              f"No unit data available.", flush=True)
-                    continue
-                else:
-                    # TODO: add dynamic exception list of constant Tx power devices
-                    # skip links with missing Tx power data on the one of the units (unable to do Tx power correction)
-                    # Orcaves 1S10 and IP10Gs have constant Tx power, so it doesn't matter
-                    if self.links[link].tech in ("1s10", "ip20G"):
-                        tx_zeros_b = True
-                        tx_zeros_a = True
-                    elif ("tx_power" not in influx_data[self.links[link].ip_a]) or \
-                         ("tx_power" not in influx_data[self.links[link].ip_b]):
-                        # TODO: add dynamic exception list of bugged techs with missing Tx zeros in InfluxDB
-                        # sadly, some devices of certain techs are badly exported from original source and they are
-                        # missing Tx zero values in InfluxDB, so this hack needs to be done
-                        # (for other techs, there is no certainty, if original Tx value was zero in fact or it's a NMS
-                        # error and these values are missing, so it's better to skip that links)
-                        if self.links[link].tech == "ip10":
-                            print(f"[CALC ID: {self.results_id}] INFO: Link ID: {link}. "
-                                  f"No Tx Power data available. Link technology \"{self.links[link].tech}\" is on "
-                                  f"exception list -> filling Tx data with zeros.", flush=True)
-                            if "tx_power" not in influx_data[self.links[link].ip_b]:
-                                tx_zeros_b = True
-                            if "tx_power" not in influx_data[self.links[link].ip_a]:
-                                tx_zeros_a = True
-                        else:
+                is_a_in = self.links[link].ip_a in influx_data
+                is_b_in = self.links[link].ip_b in influx_data
+
+                # TODO: load from options list of constant Tx power devices
+                is_constant_tx_power = self.links[link].tech in ("1s10", "ip20G", )
+                # TODO: load from options list of bugged techs with missing Tx zeros in InfluxDB
+                is_tx_power_bugged = self.links[link].tech in ("ip10", )
+
+                # skip links, where data of one unit (or both) are not available
+                # but constant Tx power devices are exceptions
+                if not (is_a_in and is_b_in):
+                    if not ((is_a_in != is_b_in) and is_constant_tx_power):
+                        if link not in missing_links:
                             print(f"[CALC ID: {self.results_id}] INFO: Skipping link ID: {link}. "
-                                  f"No Tx Power data available.", flush=True)
-                            continue
+                                  f"No unit data available.", flush=True)
+                        # skip link
+                        continue
+
+                # skip links with missing Tx power data on the one of the units (unable to do Tx power correction)
+                # Orcaves 1S10 and IP10Gs have constant Tx power, so it doesn't matter
+                if is_constant_tx_power:
+                    tx_zeros_b = True
+                    tx_zeros_a = True
+                elif ("tx_power" not in influx_data[self.links[link].ip_a]) or \
+                     ("tx_power" not in influx_data[self.links[link].ip_b]):
+                    # sadly, some devices of certain techs are badly exported from original source, and they are
+                    # missing Tx zero values in InfluxDB, so this hack needs to be done
+                    # (for other techs, there is no certainty, if original Tx value was zero in fact, or it's a NMS
+                    # error and these values are missing, so it's better to skip that links)
+                    if is_tx_power_bugged:
+                        print(f"[CALC ID: {self.results_id}] INFO: Link ID: {link}. "
+                              f"No Tx Power data available. Link technology \"{self.links[link].tech}\" is on "
+                              f"exception list -> filling Tx data with zeros.", flush=True)
+                        if "tx_power" not in influx_data[self.links[link].ip_b]:
+                            tx_zeros_b = True
+                        if "tx_power" not in influx_data[self.links[link].ip_a]:
+                            tx_zeros_a = True
+                    else:
+                        print(f"[CALC ID: {self.results_id}] INFO: Skipping link ID: {link}. "
+                              f"No Tx Power data available.", flush=True)
+                        # skip link
+                        continue
+
+                # hack: since one dimensional freq var in xarray is crashing pycomlink, change one freq negligibly to
+                # preserve an array of two frequencies (channel A, channel B)
+                if self.links[link].freq_a == self.links[link].freq_b:
+                    self.links[link].freq_a += 1
 
                 link_channels = []
 
@@ -182,10 +207,19 @@ class Calculation(QRunnable):
                             print(f"[CALC ID: {self.results_id}] WARNING: Skipping link ID: {link}. "
                                   f"Non-coherent Rx/Tx data on channel A(rx)_B(tx).", flush=True)
                             continue
-                    channel_a = _channel_dataset(self.links[link], influx_data, self.links[link].ip_b,
-                                                 self.links[link].ip_a, 'A(rx)_B(tx)', self.links[link].freq_b,
-                                                 tx_zeros_b)
+
+                    channel_a = _fill_channel_dataset(self.links[link], influx_data, self.links[link].ip_b,
+                                                      self.links[link].ip_a, 'A(rx)_B(tx)', self.links[link].freq_b,
+                                                      tx_zeros_b)
                     link_channels.append(channel_a)
+
+                    # if including only this channel, create empty second channel and fill it with zeros (pycomlink
+                    # functions require both channels included -> with this hack it's valid, but zeros have no effect)
+                    if self.selection[link] == 1:
+                        channel_b = _fill_channel_dataset(self.links[link], influx_data, self.links[link].ip_a,
+                                                          self.links[link].ip_a, 'B(rx)_A(tx)', self.links[link].freq_a,
+                                                          tx_zeros_b, rx_zeros=True)
+                        link_channels.append(channel_b)
 
                 # Side/unit B (channel A to B)
                 if (self.selection[link] in (2, 3)) and (self.links[link].ip_b in influx_data):
@@ -196,14 +230,18 @@ class Calculation(QRunnable):
                                   f"Non-coherent Rx/Tx data on channel B(rx)_A(tx).", flush=True)
                             continue
 
-                    # hack: since one dimensional freq data in xarray are crashing pycomlink, change one freq negligibly
-                    if self.links[link].freq_a == self.links[link].freq_b:
-                        self.links[link].freq_a += 1
-
-                    channel_b = _channel_dataset(self.links[link], influx_data, self.links[link].ip_a,
-                                                 self.links[link].ip_b, 'B(rx)_A(tx)', self.links[link].freq_a,
-                                                 tx_zeros_a)
+                    channel_b = _fill_channel_dataset(self.links[link], influx_data, self.links[link].ip_a,
+                                                      self.links[link].ip_b, 'B(rx)_A(tx)', self.links[link].freq_a,
+                                                      tx_zeros_a)
                     link_channels.append(channel_b)
+
+                    # if including only this channel, create empty second channel and fill it with zeros (pycomlink
+                    # functions require both channels included -> with this hack it's valid, but zeros have no effect)
+                    if self.selection[link] == 2:
+                        channel_a = _fill_channel_dataset(self.links[link], influx_data, self.links[link].ip_b,
+                                                          self.links[link].ip_b, 'A(rx)_B(tx)', self.links[link].freq_b,
+                                                          tx_zeros_b, rx_zeros=True)
+                        link_channels.append(channel_a)
 
                 calc_data.append(xr.concat(link_channels, dim="channel_id"))
 
