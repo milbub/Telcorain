@@ -106,11 +106,13 @@ class Calculation(QRunnable):
                                       f"Tech: {self.links[link].tech}; SIDE A: {self.links[link].name_a}; "
                                       f"IP: {self.links[link].ip_a}")
                                 missing_links.append(link)
+                                break
                             elif self.links[link].ip_b == ip:
                                 print(f"[CALC ID: {self.results_id}] Link: {self.links[link].link_id}; "
                                       f"Tech: {self.links[link].tech}; SIDE B: {self.links[link].name_b}; "
                                       f"IP: {self.links[link].ip_b}")
                                 missing_links.append(link)
+                                break
 
             self.sig.progress_signal.emit({'prg_val': 18})
 
@@ -124,6 +126,7 @@ class Calculation(QRunnable):
         # ////// PARSE INTO XARRAY, RESOLVE TX POWER ASSIGNMENT TO CORRECT CHANNEL \\\\\\
 
         calc_data = []
+        link = 0
 
         try:
 
@@ -137,18 +140,18 @@ class Calculation(QRunnable):
                 tx_zeros_b = False
                 tx_zeros_a = False
 
-                # TODO: add dynamic exception list of constant Tx power devices
-                # skip links with missing Tx power data on the one of the units (unable to do Tx power correction)
-                # Orcaves 1S10 and IP10Gs have constant Tx power, so it doesn't matter
-                if self.links[link].tech in ("1s10", "ip20G"):
-                    tx_zeros_b = True
-                    tx_zeros_a = True
+                if (self.links[link].ip_a not in influx_data) or (self.links[link].ip_b not in influx_data):
+                    if link not in missing_links:
+                        print(f"[CALC ID: {self.results_id}] INFO: Skipping link ID: {link}. "
+                              f"No unit data available.", flush=True)
+                    continue
                 else:
-                    if (self.links[link].ip_a not in influx_data) or (self.links[link].ip_b not in influx_data):
-                        if link not in missing_links:
-                            print(f"[CALC ID: {self.results_id}] INFO: Skipping link ID: {link}. "
-                                  f"No unit data available.", flush=True)
-                        continue
+                    # TODO: add dynamic exception list of constant Tx power devices
+                    # skip links with missing Tx power data on the one of the units (unable to do Tx power correction)
+                    # Orcaves 1S10 and IP10Gs have constant Tx power, so it doesn't matter
+                    if self.links[link].tech in ("1s10", "ip20G"):
+                        tx_zeros_b = True
+                        tx_zeros_a = True
                     elif ("tx_power" not in influx_data[self.links[link].ip_a]) or \
                          ("tx_power" not in influx_data[self.links[link].ip_b]):
                         # TODO: add dynamic exception list of bugged techs with missing Tx zeros in InfluxDB
@@ -210,7 +213,8 @@ class Calculation(QRunnable):
         except BaseException as error:
             self.sig.error_signal.emit({"id": self.results_id})
             print(f"[CALC ID: {self.results_id}] ERROR: An unexpected error occurred during data processing: "
-                  f"{type(error)}.")
+                  f"{type(error)} {error}.")
+            print(f"[CALC ID: {self.results_id}] ERROR: Last processed microwave link ID: {link}")
             print(f"[CALC ID: {self.results_id}] ERROR: Calculation thread terminated.")
             return
 
@@ -292,7 +296,7 @@ class Calculation(QRunnable):
         except BaseException as error:
             self.sig.error_signal.emit({"id": self.results_id})
             print(f"[CALC ID: {self.results_id}] ERROR: An unexpected error occurred during rain calculation: "
-                  f"{type(error)}.")
+                  f"{type(error)} {error}.")
             print(f"[CALC ID: {self.results_id}] ERROR: Last processed microwave link dataset: {calc_data[curr_link]}")
             print(f"[CALC ID: {self.results_id}] ERROR: Calculation thread terminated.")
             return
