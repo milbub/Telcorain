@@ -196,7 +196,7 @@
            </property>
            <property name="dateTime">
             <datetime>
-             <hour>8</hour>
+             <hour>7</hour>
              <minute>0</minute>
              <second>0</second>
              <year>2022</year>
@@ -206,21 +206,21 @@
            </property>
            <property name="time">
             <time>
-             <hour>8</hour>
+             <hour>7</hour>
              <minute>0</minute>
              <second>0</second>
             </time>
            </property>
            <property name="maximumTime">
             <time>
-             <hour>15</hour>
+             <hour>14</hour>
              <minute>59</minute>
              <second>59</second>
             </time>
            </property>
            <property name="minimumTime">
             <time>
-             <hour>16</hour>
+             <hour>15</hour>
              <minute>0</minute>
              <second>0</second>
             </time>
@@ -246,7 +246,7 @@
            </property>
            <property name="dateTime">
             <datetime>
-             <hour>8</hour>
+             <hour>7</hour>
              <minute>0</minute>
              <second>0</second>
              <year>2022</year>
@@ -256,21 +256,21 @@
            </property>
            <property name="time">
             <time>
-             <hour>8</hour>
+             <hour>7</hour>
              <minute>0</minute>
              <second>0</second>
             </time>
            </property>
            <property name="maximumTime">
             <time>
-             <hour>15</hour>
+             <hour>14</hour>
              <minute>59</minute>
              <second>59</second>
             </time>
            </property>
            <property name="minimumTime">
             <time>
-             <hour>16</hour>
+             <hour>15</hour>
              <minute>0</minute>
              <second>0</second>
             </time>
@@ -869,7 +869,7 @@
                <double>720.000000000000000</double>
               </property>
               <property name="value">
-               <double>2.000000000000000</double>
+               <double>6.000000000000000</double>
               </property>
              </widget>
             </widget>
@@ -1209,7 +1209,7 @@
               <property name="geometry">
                <rect>
                 <x>150</x>
-                <y>70</y>
+                <y>60</y>
                 <width>161</width>
                 <height>20</height>
                </rect>
@@ -1222,7 +1222,7 @@
               <property name="geometry">
                <rect>
                 <x>20</x>
-                <y>70</y>
+                <y>60</y>
                 <width>81</width>
                 <height>20</height>
                </rect>
@@ -1238,7 +1238,7 @@
               <property name="geometry">
                <rect>
                 <x>20</x>
-                <y>115</y>
+                <y>95</y>
                 <width>111</width>
                 <height>21</height>
                </rect>
@@ -1251,7 +1251,7 @@
               <property name="geometry">
                <rect>
                 <x>130</x>
-                <y>115</y>
+                <y>95</y>
                 <width>91</width>
                 <height>22</height>
                </rect>
@@ -1291,7 +1291,7 @@
                </rect>
               </property>
               <property name="text">
-               <string>Output directory:</string>
+               <string>Saves directory:</string>
               </property>
              </widget>
              <widget class="QLineEdit" name="lineEdit">
@@ -1337,6 +1337,48 @@
               </property>
               <property name="text">
                <string>Calculate only overall total rainfall</string>
+              </property>
+             </widget>
+             <widget class="QLabel" name="label_27">
+              <property name="geometry">
+               <rect>
+                <x>20</x>
+                <y>130</y>
+                <width>81</width>
+                <height>16</height>
+               </rect>
+              </property>
+              <property name="text">
+               <string>Image format:</string>
+              </property>
+             </widget>
+             <widget class="QCheckBox" name="checkFilePNG">
+              <property name="geometry">
+               <rect>
+                <x>180</x>
+                <y>130</y>
+                <width>51</width>
+                <height>20</height>
+               </rect>
+              </property>
+              <property name="text">
+               <string>PNG</string>
+              </property>
+             </widget>
+             <widget class="QCheckBox" name="checkFilePDF">
+              <property name="geometry">
+               <rect>
+                <x>130</x>
+                <y>130</y>
+                <width>51</width>
+                <height>20</height>
+               </rect>
+              </property>
+              <property name="text">
+               <string>PDF</string>
+              </property>
+              <property name="checked">
+               <bool>true</bool>
               </property>
              </widget>
             </widget>
@@ -1768,6 +1810,18 @@
        <attribute name="title">
         <string>Link Inspector</string>
        </attribute>
+       <layout class="QGridLayout" name="gridLayout_2">
+        <item row="0" column="0">
+         <widget class="QLabel" name="label_26">
+          <property name="text">
+           <string>UNDER CONSTRUCTION</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignCenter</set>
+          </property>
+         </widget>
+        </item>
+       </layout>
       </widget>
       <widget class="QWidget" name="tabLog">
        <attribute name="icon">

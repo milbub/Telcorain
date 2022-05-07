@@ -90,6 +90,9 @@ class MainWindow(QMainWindow):
         # connect buttons
         self.butt_start.clicked.connect(self.calculation_fired)
 
+        # connect other signals
+        self.spin_timestep.valueChanged.connect(self.adjust_window)
+
         # show window
         self.show()
 
@@ -102,7 +105,7 @@ class MainWindow(QMainWindow):
         # init threadpool
         self.threadpool = QtCore.QThreadPool()
 
-        # init signaling
+        # init app logic signaling
         self.influx_signals = influx.InfluxSignals()
         self.calc_signals = calc.CalcSignals()
 
@@ -292,6 +295,10 @@ class MainWindow(QMainWindow):
             msg = "Processing..."
 
         self.statusBar().showMessage(msg)
+
+    # adjust wet/dry rolling window length when query timestep is changed, to default multiple of 36 (good results)
+    def adjust_window(self, step: int):
+        self.spin_roll_window.setValue(step * 36 / 60)
 
     # destructor
     def __del__(self):
