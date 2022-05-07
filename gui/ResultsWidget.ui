@@ -976,13 +976,13 @@
                  </property>
                  <property name="minimumSize">
                   <size>
-                   <width>393</width>
+                   <width>399</width>
                    <height>344</height>
                   </size>
                  </property>
                  <property name="maximumSize">
                   <size>
-                   <width>393</width>
+                   <width>399</width>
                    <height>344</height>
                   </size>
                  </property>
@@ -1033,18 +1033,24 @@
                  </property>
                  <property name="minimumSize">
                   <size>
-                   <width>70</width>
+                   <width>56</width>
                    <height>69</height>
                   </size>
                  </property>
                  <property name="maximumSize">
                   <size>
-                   <width>70</width>
+                   <width>56</width>
                    <height>69</height>
                   </size>
                  </property>
                  <layout class="QVBoxLayout" name="verticalLayout_8">
+                  <property name="leftMargin">
+                   <number>0</number>
+                  </property>
                   <property name="topMargin">
+                   <number>0</number>
+                  </property>
+                  <property name="rightMargin">
                    <number>0</number>
                   </property>
                   <property name="bottomMargin">
@@ -1226,6 +1232,18 @@
             <attribute name="title">
              <string>Point Plot</string>
             </attribute>
+            <layout class="QGridLayout" name="gridLayout_7">
+             <item row="0" column="0">
+              <widget class="QLabel" name="label">
+               <property name="text">
+                <string>UNDER CONSTRUCTION</string>
+               </property>
+               <property name="alignment">
+                <set>Qt::AlignCenter</set>
+               </property>
+              </widget>
+             </item>
+            </layout>
            </widget>
           </widget>
          </item>

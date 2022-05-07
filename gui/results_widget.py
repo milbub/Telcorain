@@ -2,7 +2,7 @@ import matplotlib
 from PyQt6 import uic
 from PyQt6.QtCore import QDateTime, QTimer
 from PyQt6.QtWidgets import QWidget, QLabel, QGridLayout, QSlider, QPushButton
-from matplotlib import cm
+from matplotlib import cm, colors
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
 
@@ -187,12 +187,11 @@ class ResultsWidget(QWidget):
             canvas.pc.remove()
             del canvas.pc
 
-        # TODO: adjust vmax value for maximal value in rain_grid
-        canvas.pc = canvas.ax.pcolormesh(x_grid, y_grid, rain_grid, shading='nearest', cmap=self.rain_cmap,
-                                         vmin=1, vmax=50)
+        canvas.pc = canvas.ax.pcolormesh(x_grid, y_grid, rain_grid, norm=colors.LogNorm(vmin=0.1, vmax=100),
+                                         shading='nearest', cmap=self.rain_cmap)
         if is_total:
-            canvas.cbar = canvas.fig.colorbar(canvas.pc, label='Rainfall Total (mm)')
+            canvas.cbar = canvas.fig.colorbar(canvas.pc, format='%d', label='Rainfall Total (mm)')
         else:
-            canvas.cbar = canvas.fig.colorbar(canvas.pc, label='Rainfall Intensity (mm/h)')
+            canvas.cbar = canvas.fig.colorbar(canvas.pc, format='%d', label='Rainfall Intensity (mm/h)')
 
         canvas.cbar.draw_all()
