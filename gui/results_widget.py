@@ -10,7 +10,7 @@ matplotlib.use('QtAgg')
 
 
 class Canvas(FigureCanvasQTAgg):
-    def __init__(self, parent=None, dpi=96, left=0, bottom=0.03, right=1, top=0.97):
+    def __init__(self, dpi=96, left=0, bottom=0.03, right=1, top=0.97):
         # setup single plot positioning
         self.fig = Figure(dpi=dpi)
         self.fig.tight_layout()

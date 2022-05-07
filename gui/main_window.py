@@ -66,6 +66,7 @@ class MainWindow(QMainWindow):
         self.datetime_stop = self.findChild(QDateTimeEdit, "dateTimeStop")
         self.spin_timestep = self.findChild(QSpinBox, "spinTimestep")
         self.butt_start = self.findChild(QPushButton, "buttStart")
+        self.butt_abort = self.findChild(QPushButton, "buttAbort")
         self.tabs = self.findChild(QTabWidget, "tabWidget")
         self.results_name = self.findChild(QLineEdit, "resultsNameEdit")
         self.spin_roll_window = self.findChild(QDoubleSpinBox, "spinRollWindow")
@@ -89,6 +90,7 @@ class MainWindow(QMainWindow):
 
         # connect buttons
         self.butt_start.clicked.connect(self.calculation_fired)
+        self.butt_abort.clicked.connect(self.calculation_cancel_fired)
 
         # connect other signals
         self.spin_timestep.valueChanged.connect(self.adjust_window)
@@ -181,6 +183,10 @@ class MainWindow(QMainWindow):
 
         if meta_data["is_it_all"]:
             self.statusBar().showMessage(f"Calculation \"{self.results_tabs[meta_data['id']].tab_name}\" is complete.")
+
+            # restore buttons
+            self.butt_abort.setEnabled(False)
+            self.butt_start.setEnabled(True)
         else:
             self.statusBar().showMessage(f"Overall plot in calculation \"{self.results_tabs[meta_data['id']].tab_name}"
                                          f"\" is complete. Animation figures are now interpolated...")
@@ -202,6 +208,10 @@ class MainWindow(QMainWindow):
         # return progress bar to default state
         self.status_prg_bar.setValue(0)
 
+        # restore buttons
+        self.butt_abort.setEnabled(False)
+        self.butt_start.setEnabled(True)
+
     # show info about error in calculation, called from signal
     def calculation_error(self, meta_data: dict):
         self.statusBar().showMessage(f"Error occurred in calculation \"{self.results_tabs[meta_data['id']].tab_name}\"."
@@ -209,6 +219,10 @@ class MainWindow(QMainWindow):
 
         # return progress bar to default state
         self.status_prg_bar.setValue(0)
+
+        # restore buttons
+        self.butt_abort.setEnabled(False)
+        self.butt_start.setEnabled(True)
 
     # update progress bar with calculation status, called from signal
     def progress_update(self, meta_data: dict):
@@ -287,6 +301,8 @@ class MainWindow(QMainWindow):
                                                               is_output_total)
 
             self.results_name.clear()
+            self.butt_abort.setEnabled(True)
+            self.butt_start.setEnabled(False)
 
             # RUN calculation on worker thread from threadpool
             self.threadpool.start(calculation)
@@ -295,6 +311,9 @@ class MainWindow(QMainWindow):
             msg = "Processing..."
 
         self.statusBar().showMessage(msg)
+
+    def calculation_cancel_fired(self):
+        pass
 
     # adjust wet/dry rolling window length when query timestep is changed, to default multiple of 36 (good results)
     def adjust_window(self, step: int):
