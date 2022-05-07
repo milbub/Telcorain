@@ -333,6 +333,9 @@
                 <height>16777215</height>
                </size>
               </property>
+              <property name="pageStep">
+               <number>1</number>
+              </property>
               <property name="tracking">
                <bool>true</bool>
               </property>
@@ -543,13 +546,13 @@
            <property name="minimumSize">
             <size>
              <width>580</width>
-             <height>499</height>
+             <height>479</height>
             </size>
            </property>
            <property name="maximumSize">
             <size>
              <width>580</width>
-             <height>580</height>
+             <height>479</height>
             </size>
            </property>
            <layout class="QGridLayout" name="layoutMainPlot">
@@ -1184,7 +1187,7 @@
                 <number>150</number>
                </attribute>
                <attribute name="horizontalHeaderDefaultSectionSize">
-                <number>259</number>
+                <number>261</number>
                </attribute>
                <attribute name="verticalHeaderDefaultSectionSize">
                 <number>24</number>

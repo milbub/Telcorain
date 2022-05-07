@@ -31,6 +31,9 @@ def _plot_link_lines(links_data, ax):
 
 
 class ResultsWidget(QWidget):
+    # animation speed constant, later speed control can be implemented
+    ANIMATION_SPEED = 1000
+
     def __init__(self, tab_name: str, start: QDateTime, end: QDateTime, output_step: int, are_results_totals: bool):
         super(QWidget, self).__init__()
         self.tab_name = tab_name
@@ -62,7 +65,7 @@ class ResultsWidget(QWidget):
         self.button_start.clicked.connect(self.first_animation_fig)
         self.button_end.clicked.connect(self.last_animation_fig)
 
-        # display tab name
+        # display info
         self.tab_name_label.setText(tab_name)
 
         # setup colormap for plots
@@ -81,6 +84,12 @@ class ResultsWidget(QWidget):
         # init animation counter
         self.animation_counter = 0
         self.current_anim_time = start
+
+        # init animation slider
+        self.slider_return_to_anim = False
+        self.slider.sliderPressed.connect(self._slider_pressed)
+        self.slider.sliderMoved.connect(self._slider_moved)
+        self.slider.sliderReleased.connect(self._slider_released)
 
         # init animation timer
         self.animation_timer = QTimer()  # create timer for next checks
@@ -126,6 +135,9 @@ class ResultsWidget(QWidget):
         # update time
         self._update_animation_time()
 
+        # init slider
+        self.slider.setMaximum(len(rain_grids) - 1)
+
         # unlock animation controls
         self.button_play_pause.setEnabled(True)
         self.button_prev.setEnabled(True)
@@ -138,15 +150,17 @@ class ResultsWidget(QWidget):
         if self.animation_timer.isActive():
             self.button_play_pause.setText('⏵')
             self.animation_timer.stop()
+            self.slider.setEnabled(True)
         else:
+            self.slider.setEnabled(False)
             self.button_play_pause.setText('⏸')
-            # TODO: add speed control
-            self.animation_timer.start(1000)
+            self.animation_timer.start(self.ANIMATION_SPEED)
 
     def next_animation_fig(self):
         self.animation_counter += 1
         if self.animation_counter < len(self.animation_grids):
             self._update_animation_time()
+            self.slider.setValue(self.animation_counter)
             self._update_animation_fig()
         else:
             self.first_animation_fig()
@@ -155,6 +169,7 @@ class ResultsWidget(QWidget):
         self.animation_counter -= 1
         if self.animation_counter > -1:
             self._update_animation_time()
+            self.slider.setValue(self.animation_counter)
             self._update_animation_fig()
         else:
             self.last_animation_fig()
@@ -162,11 +177,13 @@ class ResultsWidget(QWidget):
     def first_animation_fig(self):
         self.animation_counter = 0
         self._update_animation_time()
+        self.slider.setValue(self.animation_counter)
         self._update_animation_fig()
 
     def last_animation_fig(self):
         self.animation_counter = len(self.animation_grids) - 1
         self._update_animation_time()
+        self.slider.setValue(self.animation_counter)
         self._update_animation_fig()
 
     def _update_animation_time(self):
@@ -195,3 +212,21 @@ class ResultsWidget(QWidget):
             canvas.cbar = canvas.fig.colorbar(canvas.pc, format='%d', label='Rainfall Intensity (mm/h)')
 
         canvas.cbar.draw_all()
+
+    def _slider_pressed(self):
+        if self.animation_timer.isActive():
+            self.animation_timer.stop()
+            self.slider_return_to_anim = True
+            self.button_play_pause.setText('⏵')
+
+    def _slider_moved(self, pos: int):
+        self.animation_counter = pos
+        self._update_animation_time()
+
+    def _slider_released(self):
+        self._update_animation_fig()
+
+        if self.slider_return_to_anim:
+            self.button_play_pause.setText('⏸')
+            self.slider_return_to_anim = False
+            self.animation_timer.start(self.ANIMATION_SPEED)
