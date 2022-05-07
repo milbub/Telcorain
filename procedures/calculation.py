@@ -1,3 +1,5 @@
+import copy
+
 import numpy as np
 import pycomlink as pycml
 import xarray as xr
@@ -7,7 +9,8 @@ import input.influx_manager as influx
 
 
 class CalcSignals(QObject):
-    done_signal = pyqtSignal(dict)
+    overall_done_signal = pyqtSignal(dict)
+    plots_done_signal = pyqtSignal(dict)
     error_signal = pyqtSignal(dict)
     progress_signal = pyqtSignal(dict)
 
@@ -54,7 +57,8 @@ def _fill_channel_dataset(curr_link, flux_data, tx_ip, rx_ip, channel_id, freq,
 
 class Calculation(QRunnable):
     def __init__(self, signals: CalcSignals, results_id: int, links: dict, selection: dict, start: QDateTime,
-                 end: QDateTime, interval: int, rolling_vals: int):
+                 end: QDateTime, interval: int, rolling_vals: int, output_step: int, is_only_overall: bool,
+                 is_output_total: bool):
         QRunnable.__init__(self)
         self.sig = signals
         self.results_id = results_id
@@ -64,6 +68,9 @@ class Calculation(QRunnable):
         self.end = end
         self.interval = interval
         self.rolling_vals = rolling_vals
+        self.output_step = output_step
+        self.is_only_overall = is_only_overall
+        self.is_output_total = is_output_total
 
     def run(self):
         print(f"[CALC ID: {self.results_id}] Rainfall calculation procedure started.", flush=True)
@@ -260,76 +267,56 @@ class Calculation(QRunnable):
 
         try:
 
-            # interpolate gaps in input data, filter out nonsenses out of limits
             print(f"[CALC ID: {self.results_id}] Smoothing signal data...")
             link_count = len(calc_data)
             curr_link = 0
 
-            for cml in calc_data:
+            # interpolate NaNs in input data and filter out nonsenses out of limits
+            for link in calc_data:
                 # TODO: load upper tx power from options (here it's 99 dBm)
-                cml['tsl'] = cml.tsl.astype(float).where(cml.tsl < 99.0)
-                cml['tsl'] = cml.tsl.astype(float).interpolate_na(dim='time', method='linear', max_gap='5min')
+                link['tsl'] = link.tsl.astype(float).where(link.tsl < 99.0)
+                link['tsl'] = link.tsl.astype(float).interpolate_na(dim='time', method='linear', max_gap='5min')
                 # TODO: load bottom rx power from options (here it's -80 dBm)
-                cml['rsl'] = cml.rsl.astype(float).where(cml.rsl != 0.0).where(cml.rsl > -80.0)
-                cml['rsl'] = cml.rsl.astype(float).interpolate_na(dim='time', method='linear', max_gap='5min')
+                link['rsl'] = link.rsl.astype(float).where(link.rsl != 0.0).where(link.rsl > -80.0)
+                link['rsl'] = link.rsl.astype(float).interpolate_na(dim='time', method='linear', max_gap='5min')
 
-                cml['trsl'] = cml.tsl - cml.rsl
-                cml['trsl'] = cml.trsl.astype(float).interpolate_na(dim='time', method='nearest', max_gap='5min')
-                cml['trsl'] = cml.trsl.astype(float).fillna(0.0)
+                link['trsl'] = link.tsl - link.rsl
+                link['trsl'] = link.trsl.astype(float).interpolate_na(dim='time', method='nearest', max_gap='5min')
+                link['trsl'] = link.trsl.astype(float).fillna(0.0)
 
                 self.sig.progress_signal.emit({'prg_val': round((curr_link / link_count) * 15) + 35})
                 curr_link += 1
 
-            # process each link:
+            # process each link -> get intensity R value for each link:
             print(f"[CALC ID: {self.results_id}] Computing rain values...")
             curr_link = 0
 
-            for cml in calc_data:
+            for link in calc_data:
 
                 # determine wet periods
-                cml['wet'] = cml.trsl.rolling(time=self.rolling_vals, center=True).std(skipna=False) > 0.8
+                link['wet'] = link.trsl.rolling(time=self.rolling_vals, center=True).std(skipna=False) > 0.8
 
                 # calculate ratio of wet periods
-                cml['wet_fraction'] = (cml.wet == 1).sum() / (cml.wet == 0).sum()
+                link['wet_fraction'] = (link.wet == 1).sum() / (link.wet == 0).sum()
 
                 # determine signal baseline
-                cml['baseline'] = pycml.processing.baseline.baseline_constant(trsl=cml.trsl, wet=cml.wet,
-                                                                              n_average_last_dry=5)
+                link['baseline'] = pycml.processing.baseline.baseline_constant(trsl=link.trsl, wet=link.wet,
+                                                                               n_average_last_dry=5)
 
                 # calculate wet antenna attenuation
-                cml['waa'] = pycml.processing.wet_antenna.waa_schleiss_2013(rsl=cml.trsl, baseline=cml.baseline,
-                                                                            wet=cml.wet, waa_max=1.55, delta_t=1,
-                                                                            tau=15)
+                link['waa'] = pycml.processing.wet_antenna.waa_schleiss_2013(rsl=link.trsl, baseline=link.baseline,
+                                                                             wet=link.wet, waa_max=1.55, delta_t=1,
+                                                                             tau=15)
 
                 # calculate final rain attenuation
-                cml['A'] = cml.trsl - cml.baseline - cml.waa
+                link['A'] = link.trsl - link.baseline - link.waa
 
                 # calculate rain intensity
-                cml['R'] = pycml.processing.k_R_relation.calc_R_from_A(A=cml.A, L_km=float(cml.length),
-                                                                       f_GHz=cml.frequency, pol=cml.polarization)
+                link['R'] = pycml.processing.k_R_relation.calc_R_from_A(A=link.A, L_km=float(link.length),
+                                                                        f_GHz=link.frequency, pol=link.polarization)
 
                 self.sig.progress_signal.emit({'prg_val': round((curr_link / link_count) * 40) + 50})
                 curr_link += 1
-
-            print(f"[CALC ID: {self.results_id}] Resampling rain values for rainfall total...")
-
-            cmls_rain_1h = xr.concat(objs=[cml.R.resample(time='1h', label='right').mean() for cml in calc_data],
-                                     dim='cml_id').to_dataset()
-
-            self.sig.progress_signal.emit({'prg_val': 93})
-
-            print(f"[CALC ID: {self.results_id}] Interpolating spatial data...")
-
-            cmls_rain_1h['lat_center'] = (cmls_rain_1h.site_a_latitude + cmls_rain_1h.site_b_latitude) / 2
-            cmls_rain_1h['lon_center'] = (cmls_rain_1h.site_a_longitude + cmls_rain_1h.site_b_longitude) / 2
-
-            interpolator = pycml.spatial.interpolator.IdwKdtreeInterpolator(nnear=50, p=1, exclude_nan=False,
-                                                                            max_distance=1)
-
-            rain_grid = interpolator(x=cmls_rain_1h.lon_center, y=cmls_rain_1h.lat_center,
-                                     z=cmls_rain_1h.R.mean(dim='channel_id').sum(dim='time'), resolution=0.001)
-
-            self.sig.progress_signal.emit({'prg_val': 99})
 
         except BaseException as error:
             self.sig.error_signal.emit({"id": self.results_id})
@@ -339,14 +326,108 @@ class Calculation(QRunnable):
             print(f"[CALC ID: {self.results_id}] ERROR: Calculation thread terminated.")
             return
 
-        # ////// EMIT OUTPUT \\\\\\
+        # ////// RESAMPLE AND SPATIAL INTERPOLATION \\\\\\
 
-        self.sig.done_signal.emit({
-            "id": self.results_id,
-            "data": calc_data,
-            "interpolator": interpolator,
-            "rain_grid": rain_grid,
-            "cmls_rain_1h": cmls_rain_1h
-        })
+        try:
+
+            # ***** FIRST PART: Calculate overall rainfall total map ******
+            print(f"[CALC ID: {self.results_id}] Resampling rain values for rainfall overall map...")
+
+            # resample values to 1h means
+            calc_data_1h = xr.concat(objs=[cml.R.resample(time='1h', label='right').mean() for cml in calc_data],
+                                     dim='cml_id').to_dataset()
+
+            self.sig.progress_signal.emit({'prg_val': 93})
+
+            print(f"[CALC ID: {self.results_id}] Interpolating spatial data for rainfall overall map...")
+
+            # central points of the links are considered in interpolation algorithms
+            calc_data_1h['lat_center'] = (calc_data_1h.site_a_latitude + calc_data_1h.site_b_latitude) / 2
+            calc_data_1h['lon_center'] = (calc_data_1h.site_a_longitude + calc_data_1h.site_b_longitude) / 2
+
+            interpolator = pycml.spatial.interpolator.IdwKdtreeInterpolator(nnear=50, p=1, exclude_nan=False,
+                                                                            max_distance=1)
+
+            rain_grid = interpolator(x=calc_data_1h.lon_center, y=calc_data_1h.lat_center,
+                                     z=calc_data_1h.R.mean(dim='channel_id').sum(dim='time'), resolution=0.001)
+
+            self.sig.progress_signal.emit({'prg_val': 99})
+
+            # emit output
+            self.sig.overall_done_signal.emit({
+                "id": self.results_id,
+                "link_data": calc_data_1h,
+                "x_grid": interpolator.xgrid,
+                "y_grid": interpolator.ygrid,
+                "rain_grid": rain_grid,
+                "is_it_all": self.is_only_overall,
+            })
+
+            # ***** SECOND PART: Calculate individual maps for animation ******
+
+            # continue only if is it desired, else end
+            if not self.is_only_overall:
+
+                print(f"[CALC ID: {self.results_id}] Resampling data for rainfall animation maps...")
+
+                # resample data to desired resolution, if needed
+                if self.output_step == 60:   # if case of one hour steps, use already existing resamples
+                    calc_data_steps = calc_data_1h
+                elif self.output_step > self.interval:
+                    calc_data_steps = xr.concat(
+                        objs=[cml.R.resample(time=f'{self.output_step}m', label='right').mean() for cml in calc_data],
+                        dim='cml_id').to_dataset()
+                elif self.output_step == self.interval:   # in case of same intervals, no resample needed
+                    calc_data_steps = xr.concat(calc_data, dim='cml_id')
+                else:
+                    raise ValueError("Invalid value of output_steps")
+
+                # progress bar goes from 0 in second part
+                self.sig.progress_signal.emit({'prg_val': 5})
+
+                # calculate totals instead of intensities, if desired
+                if self.is_output_total:
+                    # get calc ratio
+                    time_ratio = 60 / self.output_step   # 60 = 1 hour, since rain intensity is measured in mm/hour
+                    # overwrite values with totals per output step interval
+                    calc_data_steps['R'] = calc_data_steps.R / time_ratio
+
+                self.sig.progress_signal.emit({'prg_val': 10})
+
+                print(f"[CALC ID: {self.results_id}] Interpolating spatial data for rainfall animation maps...")
+
+                # if output step is 60, it's already done
+                if self.output_step != 60:
+                    # central points of the links are considered in interpolation algorithms
+                    calc_data_steps['lat_center'] = \
+                        (calc_data_steps.site_a_latitude + calc_data_steps.site_b_latitude) / 2
+                    calc_data_steps['lon_center'] = \
+                        (calc_data_steps.site_a_longitude + calc_data_steps.site_b_longitude) / 2
+
+                animation_rain_grids = []
+
+                # interpolate each frame
+                for x in range(calc_data_steps.time.size):
+                    grid = interpolator(x=calc_data_steps.lon_center, y=calc_data_steps.lat_center,
+                                        z=calc_data_steps.R.mean(dim='channel_id').isel(time=x), resolution=0.001)
+                    animation_rain_grids.append(grid)
+
+                    self.sig.progress_signal.emit({'prg_val': round((x / calc_data_steps.time.size) * 89) + 10})
+
+                # emit output
+                self.sig.plots_done_signal.emit({
+                    "id": self.results_id,
+                    "link_data": calc_data_steps,
+                    "x_grid": interpolator.xgrid,
+                    "y_grid": interpolator.ygrid,
+                    "rain_grids": animation_rain_grids,
+                })
+
+        except BaseException as error:
+            self.sig.error_signal.emit({"id": self.results_id})
+            print(f"[CALC ID: {self.results_id}] ERROR: An unexpected error occurred during spatial interpolation: "
+                  f"{type(error)} {error}.")
+            print(f"[CALC ID: {self.results_id}] ERROR: Calculation thread terminated.")
+            return
 
         print(f"[CALC ID: {self.results_id}] Rainfall calculation procedure ended.", flush=True)

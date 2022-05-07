@@ -196,7 +196,7 @@
            </property>
            <property name="dateTime">
             <datetime>
-             <hour>10</hour>
+             <hour>8</hour>
              <minute>0</minute>
              <second>0</second>
              <year>2022</year>
@@ -206,21 +206,21 @@
            </property>
            <property name="time">
             <time>
-             <hour>10</hour>
+             <hour>8</hour>
              <minute>0</minute>
              <second>0</second>
             </time>
            </property>
            <property name="maximumTime">
             <time>
-             <hour>17</hour>
+             <hour>15</hour>
              <minute>59</minute>
              <second>59</second>
             </time>
            </property>
            <property name="minimumTime">
             <time>
-             <hour>18</hour>
+             <hour>16</hour>
              <minute>0</minute>
              <second>0</second>
             </time>
@@ -246,7 +246,7 @@
            </property>
            <property name="dateTime">
             <datetime>
-             <hour>10</hour>
+             <hour>8</hour>
              <minute>0</minute>
              <second>0</second>
              <year>2022</year>
@@ -256,21 +256,21 @@
            </property>
            <property name="time">
             <time>
-             <hour>10</hour>
+             <hour>8</hour>
              <minute>0</minute>
              <second>0</second>
             </time>
            </property>
            <property name="maximumTime">
             <time>
-             <hour>17</hour>
+             <hour>15</hour>
              <minute>59</minute>
              <second>59</second>
             </time>
            </property>
            <property name="minimumTime">
             <time>
-             <hour>18</hour>
+             <hour>16</hour>
              <minute>0</minute>
              <second>0</second>
             </time>
@@ -290,7 +290,7 @@
             <rect>
              <x>460</x>
              <y>20</y>
-             <width>61</width>
+             <width>31</width>
              <height>41</height>
             </rect>
            </property>
@@ -303,7 +303,7 @@
             <rect>
              <x>650</x>
              <y>20</y>
-             <width>61</width>
+             <width>31</width>
              <height>41</height>
             </rect>
            </property>
@@ -650,6 +650,9 @@
               <bool>false</bool>
              </property>
              <widget class="QRadioButton" name="radioButton_3">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
               <property name="geometry">
                <rect>
                 <x>150</x>
@@ -1199,14 +1202,14 @@
                <string>Rainfall output type:</string>
               </property>
              </widget>
-             <widget class="QRadioButton" name="radioButton_5">
+             <widget class="QRadioButton" name="radioOutputIntensity">
               <property name="enabled">
-               <bool>false</bool>
+               <bool>true</bool>
               </property>
               <property name="geometry">
                <rect>
-                <x>130</x>
-                <y>65</y>
+                <x>150</x>
+                <y>70</y>
                 <width>161</width>
                 <height>20</height>
                </rect>
@@ -1215,11 +1218,11 @@
                <string>Intensity R mean (mm/h)</string>
               </property>
              </widget>
-             <widget class="QRadioButton" name="radioButton_6">
+             <widget class="QRadioButton" name="radioOutputTotal">
               <property name="geometry">
                <rect>
                 <x>20</x>
-                <y>65</y>
+                <y>70</y>
                 <width>81</width>
                 <height>20</height>
                </rect>
@@ -1235,7 +1238,7 @@
               <property name="geometry">
                <rect>
                 <x>20</x>
-                <y>110</y>
+                <y>115</y>
                 <width>111</width>
                 <height>21</height>
                </rect>
@@ -1244,11 +1247,11 @@
                <string>Frame interval:</string>
               </property>
              </widget>
-             <widget class="QSpinBox" name="spinTimestep_3">
+             <widget class="QSpinBox" name="spinOutputStep">
               <property name="geometry">
                <rect>
                 <x>130</x>
-                <y>110</y>
+                <y>115</y>
                 <width>91</width>
                 <height>22</height>
                </rect>
@@ -1282,7 +1285,7 @@
               <property name="geometry">
                <rect>
                 <x>20</x>
-                <y>151</y>
+                <y>160</y>
                 <width>101</width>
                 <height>21</height>
                </rect>
@@ -1298,7 +1301,7 @@
               <property name="geometry">
                <rect>
                 <x>130</x>
-                <y>151</y>
+                <y>160</y>
                 <width>141</width>
                 <height>22</height>
                </rect>
@@ -1314,13 +1317,26 @@
               <property name="geometry">
                <rect>
                 <x>271</x>
-                <y>150</y>
+                <y>160</y>
                 <width>20</width>
                 <height>24</height>
                </rect>
               </property>
               <property name="text">
                <string>...</string>
+              </property>
+             </widget>
+             <widget class="QCheckBox" name="checkOnlyOverall">
+              <property name="geometry">
+               <rect>
+                <x>150</x>
+                <y>30</y>
+                <width>241</width>
+                <height>20</height>
+               </rect>
+              </property>
+              <property name="text">
+               <string>Calculate only overall total rainfall</string>
               </property>
              </widget>
             </widget>
@@ -1905,6 +1921,38 @@
     <hint type="destinationlabel">
      <x>745</x>
      <y>104</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>checkOnlyOverall</sender>
+   <signal>clicked(bool)</signal>
+   <receiver>radioOutputTotal</receiver>
+   <slot>setDisabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>1107</x>
+     <y>362</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>897</x>
+     <y>402</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>checkOnlyOverall</sender>
+   <signal>clicked(bool)</signal>
+   <receiver>radioOutputIntensity</receiver>
+   <slot>setDisabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>1107</x>
+     <y>362</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>1067</x>
+     <y>402</y>
     </hint>
    </hints>
   </connection>

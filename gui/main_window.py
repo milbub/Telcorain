@@ -4,7 +4,7 @@ from PyQt6 import uic, QtGui, QtCore
 from PyQt6.QtCore import QTimer
 from PyQt6.QtGui import QPixmap
 from PyQt6.QtWidgets import QMainWindow, QLabel, QProgressBar, QHBoxLayout, QWidget, QTextEdit, QListWidget, \
-    QDateTimeEdit, QPushButton, QSpinBox, QTabWidget, QLineEdit, QDoubleSpinBox
+    QDateTimeEdit, QPushButton, QSpinBox, QTabWidget, QLineEdit, QDoubleSpinBox, QRadioButton, QCheckBox
 from gui.results_widget import ResultsWidget
 
 import input.influx_manager as influx
@@ -19,7 +19,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super(MainWindow, self).__init__()
 
-        # ////// START GUI CONSTRUCTOR \\\\\\
+        # ////// GUI CONSTRUCTOR \\\\\\
 
         # set up window icon
         self.app_icon = QtGui.QIcon()
@@ -69,6 +69,9 @@ class MainWindow(QMainWindow):
         self.tabs = self.findChild(QTabWidget, "tabWidget")
         self.results_name = self.findChild(QLineEdit, "resultsNameEdit")
         self.spin_roll_window = self.findChild(QDoubleSpinBox, "spinRollWindow")
+        self.spin_output_step = self.findChild(QSpinBox, "spinOutputStep")
+        self.radio_output_total = self.findChild(QRadioButton, "radioOutputTotal")
+        self.box_only_overall = self.findChild(QCheckBox, "checkOnlyOverall")
 
         # declare dictionary for created tabs with calculation results
         # <key: int = result ID, value: ResultsWidget>
@@ -90,9 +93,7 @@ class MainWindow(QMainWindow):
         # show window
         self.show()
 
-        # \\\\\\ END GUI CONSTRUCTOR //////
-
-        # ////// START APP LOGIC CONSTRUCTOR \\\\\\
+        # ////// APP LOGIC CONSTRUCTOR \\\\\\
 
         # redirect stdout to log handler
         sys.stdout = logger.Logger(self.text_log)
@@ -105,9 +106,12 @@ class MainWindow(QMainWindow):
         self.influx_signals = influx.InfluxSignals()
         self.calc_signals = calc.CalcSignals()
 
+        # influxDB status signal
         self.influx_signals.ping_signal.connect(self.check_influx_status)
 
-        self.calc_signals.done_signal.connect(self.show_results)
+        # rainfall calculation signals
+        self.calc_signals.overall_done_signal.connect(self.show_overall_results)
+        self.calc_signals.plots_done_signal.connect(self.show_animation_results)
         self.calc_signals.error_signal.connect(self.calculation_error)
         self.calc_signals.progress_signal.connect(self.progress_update)
 
@@ -124,8 +128,6 @@ class MainWindow(QMainWindow):
         self.sqlite_man = sqlite.SqliteManager()
         self.links = self.sqlite_man.load_all()
         print(f"SQLite link database file connected: {len(self.links)} microwave link's definitions loaded.")
-
-        # \\\\\\ END APP LOGIC CONSTRUCTOR //////
 
     # influxDB's status changed GUI method
     def _db_status_changed(self, status: bool):
@@ -162,16 +164,35 @@ class MainWindow(QMainWindow):
             print("InfluxDB connection has been reestablished.", flush=True)
             self.influx_status = 1
 
-    # show results from calculation, called from signal
-    def show_results(self, meta_data: dict):
+    # show overall results from calculation, called from signal
+    def show_overall_results(self, meta_data: dict):
         # plot data in results tab
-        self.results_tabs[meta_data["id"]].update_main_plot(meta_data["interpolator"],
-                                                            meta_data["rain_grid"],
-                                                            meta_data["cmls_rain_1h"])
+        self.results_tabs[meta_data["id"]].render_overall_fig(meta_data["x_grid"],
+                                                              meta_data["y_grid"],
+                                                              meta_data["rain_grid"],
+                                                              meta_data["link_data"])
 
         # insert results tab to tab list
         self.tabs.addTab(self.results_tabs[meta_data["id"]], self.results_icon,
                          f"Results: {self.results_tabs[meta_data['id']].tab_name}")
+
+        if meta_data["is_it_all"]:
+            self.statusBar().showMessage(f"Calculation \"{self.results_tabs[meta_data['id']].tab_name}\" is complete.")
+        else:
+            self.statusBar().showMessage(f"Overall plot in calculation \"{self.results_tabs[meta_data['id']].tab_name}"
+                                         f"\" is complete. Animation figures are now interpolated...")
+            self.results_tabs[meta_data["id"]].change_no_anim_notification(still_interpolating=True)
+
+        # return progress bar to default state
+        self.status_prg_bar.setValue(0)
+
+    # show animation results from calculation, called from signal
+    def show_animation_results(self, meta_data: dict):
+        # show animation data in results tab
+        self.results_tabs[meta_data["id"]].render_first_animation_fig(meta_data["x_grid"],
+                                                                      meta_data["y_grid"],
+                                                                      meta_data["rain_grids"],
+                                                                      meta_data["link_data"])
 
         self.statusBar().showMessage(f"Calculation \"{self.results_tabs[meta_data['id']].tab_name}\" is complete.")
 
@@ -205,29 +226,31 @@ class MainWindow(QMainWindow):
         time_diff = start.msecsTo(end)
         rolling_hours = self.spin_roll_window.value()
         rolling_values = int((rolling_hours * 60) / step)
+        output_step = self.spin_output_step.value()
+        is_only_overall = self.box_only_overall.isChecked()
+        is_output_total = self.radio_output_total.isChecked()
 
+        # INPUT CHECKS:
         if time_diff < 0:   # if timediff is less than 1 hour (in msecs)
             msg = "Bad input! Entered bigger (or same) start date than end date!"
             print(f"[WARNING] {msg}")
-            self.statusBar().showMessage(msg)
         elif time_diff < 3600000:
             msg = "Bad input! Time difference between start and end times must be at least 1 hour."
             print(f"[WARNING] {msg}")
-            self.statusBar().showMessage(msg)
         elif (time_diff / (step * 60000)) < 12:
             # TODO: load magic constant 12 from options
             msg = "Bad input! Data resolution must be at least 12 times lower than input time interval length."
             print(f"[WARNING] {msg}")
-            self.statusBar().showMessage(msg)
         elif rolling_values < 6:
             # TODO: load magic constant 6 from options
             msg = f"Rolling time window length must be, for these times, at least {(step * 6) / 60} hours."
             print(f"[WARNING] {msg}")
-            self.statusBar().showMessage(msg)
         elif (rolling_hours * 3600000) > time_diff:
             msg = f"Rolling time window length cannot be longer than set time interval."
             print(f"[WARNING] {msg}")
-            self.statusBar().showMessage(msg)
+        elif output_step < step:
+            msg = f"Output frame interval cannot be shorter than initial data resolution."
+            print(f"[WARNING] {msg}")
         else:
             self.result_id += 1
             # link channel selection flag: 0=none, 1=A, 2=B, 3=both
@@ -243,11 +266,13 @@ class MainWindow(QMainWindow):
                          52994: 3, 50845: 3, 50988: 3, 51018: 3, 51022: 3, 51200: 3, 51231: 3, 51274: 3, 51340: 3,
                          51499: 3, 51657: 3, 51680: 3, 51746: 3, 51794: 3, 51821: 3, 52024: 3, 52040: 3, 52189: 3,
                          52191: 3, 52308: 3, 52412: 3, 52526: 3, 52566: 3, 52708: 3, 52748: 3, 52901: 3, 51188: 3,
-                         52346: 3}
+                         52346: 3, 50962: 1, 50989: 1, 51990: 1, 52119: 1, 52460: 1, 52753: 1, 52871: 1, 51320: 1,
+                         51729: 1, 50995: 2, 51284: 2, 51294: 2, 51998: 2, 52120: 2, 52127: 2, 52152: 2, 52835: 2,
+                         52852: 2, 52413: 2}
 
             # create calculation instance
             calculation = calc.Calculation(self.calc_signals, self.result_id, self.links, selection, start, end, step,
-                                           rolling_values)
+                                           rolling_values, output_step, is_only_overall, is_output_total)
 
             if self.results_name.text() == "":
                 results_tab_name = "<no name>"
@@ -255,7 +280,8 @@ class MainWindow(QMainWindow):
                 results_tab_name = self.results_name.text()
 
             # create results widget instance
-            self.results_tabs[self.result_id] = ResultsWidget(results_tab_name)
+            self.results_tabs[self.result_id] = ResultsWidget(results_tab_name, start, end, output_step,
+                                                              is_output_total)
 
             self.results_name.clear()
 
@@ -263,7 +289,9 @@ class MainWindow(QMainWindow):
             self.threadpool.start(calculation)
             # calculation.run()  # TEMP: run directly on gui thread for debugging reasons
 
-            self.statusBar().showMessage("Processing...")
+            msg = "Processing..."
+
+        self.statusBar().showMessage(msg)
 
     # destructor
     def __del__(self):

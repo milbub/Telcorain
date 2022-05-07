@@ -264,7 +264,6 @@
            </property>
            <property name="font">
             <font>
-             <family>Segoe UI</family>
              <pointsize>11</pointsize>
              <italic>false</italic>
              <bold>false</bold>
@@ -288,7 +287,7 @@
              <number>0</number>
             </property>
             <item>
-             <widget class="QLabel" name="label">
+             <widget class="QLabel" name="labelCurrentFig">
               <property name="sizePolicy">
                <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
                 <horstretch>0</horstretch>
@@ -297,7 +296,6 @@
               </property>
               <property name="font">
                <font>
-                <family>Segoe UI</family>
                 <pointsize>11</pointsize>
                 <italic>false</italic>
                 <bold>false</bold>
@@ -315,7 +313,7 @@
             <item>
              <widget class="QSlider" name="sliderFrames">
               <property name="enabled">
-               <bool>true</bool>
+               <bool>false</bool>
               </property>
               <property name="sizePolicy">
                <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
@@ -369,6 +367,9 @@
                </property>
                <item>
                 <widget class="QPushButton" name="buttPlayPause">
+                 <property name="enabled">
+                  <bool>false</bool>
+                 </property>
                  <property name="minimumSize">
                   <size>
                    <width>32</width>
@@ -380,6 +381,15 @@
                    <width>32</width>
                    <height>32</height>
                   </size>
+                 </property>
+                 <property name="font">
+                  <font>
+                   <family>Segoe UI</family>
+                   <pointsize>15</pointsize>
+                   <italic>false</italic>
+                   <bold>false</bold>
+                   <underline>false</underline>
+                  </font>
                  </property>
                  <property name="text">
                   <string>⏵</string>
@@ -387,7 +397,10 @@
                 </widget>
                </item>
                <item>
-                <widget class="QPushButton" name="buttPrev">
+                <widget class="QPushButton" name="buttStart">
+                 <property name="enabled">
+                  <bool>false</bool>
+                 </property>
                  <property name="minimumSize">
                   <size>
                    <width>32</width>
@@ -399,6 +412,46 @@
                    <width>32</width>
                    <height>32</height>
                   </size>
+                 </property>
+                 <property name="font">
+                  <font>
+                   <family>Segoe UI</family>
+                   <pointsize>15</pointsize>
+                   <italic>false</italic>
+                   <bold>false</bold>
+                   <underline>false</underline>
+                  </font>
+                 </property>
+                 <property name="text">
+                  <string>⏮</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QPushButton" name="buttPrev">
+                 <property name="enabled">
+                  <bool>false</bool>
+                 </property>
+                 <property name="minimumSize">
+                  <size>
+                   <width>32</width>
+                   <height>32</height>
+                  </size>
+                 </property>
+                 <property name="maximumSize">
+                  <size>
+                   <width>32</width>
+                   <height>32</height>
+                  </size>
+                 </property>
+                 <property name="font">
+                  <font>
+                   <family>Segoe UI</family>
+                   <pointsize>15</pointsize>
+                   <italic>false</italic>
+                   <bold>false</bold>
+                   <underline>false</underline>
+                  </font>
                  </property>
                  <property name="text">
                   <string>⏪</string>
@@ -407,6 +460,9 @@
                </item>
                <item>
                 <widget class="QPushButton" name="buttNext">
+                 <property name="enabled">
+                  <bool>false</bool>
+                 </property>
                  <property name="minimumSize">
                   <size>
                    <width>32</width>
@@ -418,6 +474,15 @@
                    <width>32</width>
                    <height>32</height>
                   </size>
+                 </property>
+                 <property name="font">
+                  <font>
+                   <family>Segoe UI</family>
+                   <pointsize>15</pointsize>
+                   <italic>false</italic>
+                   <bold>false</bold>
+                   <underline>false</underline>
+                  </font>
                  </property>
                  <property name="text">
                   <string>⏩</string>
@@ -425,26 +490,10 @@
                 </widget>
                </item>
                <item>
-                <widget class="QPushButton" name="buttStart">
-                 <property name="minimumSize">
-                  <size>
-                   <width>32</width>
-                   <height>32</height>
-                  </size>
+                <widget class="QPushButton" name="buttEnd">
+                 <property name="enabled">
+                  <bool>false</bool>
                  </property>
-                 <property name="maximumSize">
-                  <size>
-                   <width>32</width>
-                   <height>32</height>
-                  </size>
-                 </property>
-                 <property name="text">
-                  <string>⏮</string>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <widget class="QPushButton" name="buttStop">
                  <property name="sizePolicy">
                   <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
                    <horstretch>0</horstretch>
@@ -462,6 +511,15 @@
                    <width>32</width>
                    <height>32</height>
                   </size>
+                 </property>
+                 <property name="font">
+                  <font>
+                   <family>Segoe UI</family>
+                   <pointsize>15</pointsize>
+                   <italic>false</italic>
+                   <bold>false</bold>
+                   <underline>false</underline>
+                  </font>
                  </property>
                  <property name="text">
                   <string>⏭</string>
@@ -510,6 +568,16 @@
             <property name="spacing">
              <number>0</number>
             </property>
+            <item row="0" column="0">
+             <widget class="QLabel" name="labelNoAnim">
+              <property name="text">
+               <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;You have selected only overall plot.&lt;/p&gt;&lt;p&gt;For animation plots, run new calculation and uncheck &amp;quot;Calculate only overall total rainfall&amp;quot;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignCenter</set>
+              </property>
+             </widget>
+            </item>
            </layout>
           </widget>
          </item>
@@ -847,42 +915,7 @@
           <number>0</number>
          </property>
          <item>
-          <widget class="QLabel" name="label_12">
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
-           </property>
-           <property name="text">
-            <string>Rain time plot for selected point: Center</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QGraphicsView" name="framePointPlot">
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Fixed" vsizetype="Expanding">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
-           </property>
-           <property name="minimumSize">
-            <size>
-             <width>600</width>
-             <height>180</height>
-            </size>
-           </property>
-           <property name="maximumSize">
-            <size>
-             <width>600</width>
-             <height>180</height>
-            </size>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QWidget" name="widgetMainRightCenter" native="true">
+          <widget class="QWidget" name="widgetMainRightTop" native="true">
            <layout class="QHBoxLayout" name="horizontalLayout_8">
             <property name="leftMargin">
              <number>0</number>
@@ -911,109 +944,10 @@
                <property name="bottomMargin">
                 <number>0</number>
                </property>
+               <property name="verticalSpacing">
+                <number>0</number>
+               </property>
                <item row="0" column="0">
-                <widget class="QTabWidget" name="tabWidget">
-                 <property name="sizePolicy">
-                  <sizepolicy hsizetype="Fixed" vsizetype="Expanding">
-                   <horstretch>0</horstretch>
-                   <verstretch>0</verstretch>
-                  </sizepolicy>
-                 </property>
-                 <property name="currentIndex">
-                  <number>0</number>
-                 </property>
-                 <widget class="QWidget" name="tab">
-                  <attribute name="title">
-                   <string>Parameters Summary</string>
-                  </attribute>
-                  <layout class="QGridLayout" name="gridLayout_3">
-                   <item row="0" column="0">
-                    <widget class="QTableWidget" name="tableWidget">
-                     <property name="rowCount">
-                      <number>15</number>
-                     </property>
-                     <property name="columnCount">
-                      <number>2</number>
-                     </property>
-                     <attribute name="horizontalHeaderDefaultSectionSize">
-                      <number>107</number>
-                     </attribute>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <column>
-                      <property name="text">
-                       <string>Parameter</string>
-                      </property>
-                     </column>
-                     <column>
-                      <property name="text">
-                       <string>Value</string>
-                      </property>
-                     </column>
-                    </widget>
-                   </item>
-                  </layout>
-                 </widget>
-                 <widget class="QWidget" name="tab_2">
-                  <attribute name="title">
-                   <string>Included Links</string>
-                  </attribute>
-                  <layout class="QGridLayout" name="gridLayout_4">
-                   <item row="0" column="0">
-                    <widget class="QListWidget" name="listWidget"/>
-                   </item>
-                  </layout>
-                 </widget>
-                </widget>
-               </item>
-              </layout>
-             </widget>
-            </item>
-            <item>
-             <spacer name="horizontalSpacer_8">
-              <property name="orientation">
-               <enum>Qt::Horizontal</enum>
-              </property>
-              <property name="sizeHint" stdset="0">
-               <size>
-                <width>40</width>
-                <height>20</height>
-               </size>
-              </property>
-             </spacer>
-            </item>
-            <item>
-             <widget class="QWidget" name="widgetMainRightCenterRight" native="true">
-              <layout class="QVBoxLayout" name="verticalLayout_6">
-               <property name="spacing">
-                <number>0</number>
-               </property>
-               <property name="leftMargin">
-                <number>0</number>
-               </property>
-               <property name="topMargin">
-                <number>0</number>
-               </property>
-               <property name="rightMargin">
-                <number>0</number>
-               </property>
-               <property name="bottomMargin">
-                <number>0</number>
-               </property>
-               <item>
                 <widget class="QLabel" name="label_13">
                  <property name="sizePolicy">
                   <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
@@ -1021,33 +955,38 @@
                    <verstretch>0</verstretch>
                   </sizepolicy>
                  </property>
+                 <property name="minimumSize">
+                  <size>
+                   <width>0</width>
+                   <height>0</height>
+                  </size>
+                 </property>
                  <property name="text">
                   <string>Rainfall total for whole calculation period:</string>
                  </property>
                 </widget>
                </item>
-               <item>
-                <widget class="QGraphicsView" name="frameTotal">
+               <item row="1" column="0">
+                <widget class="QWidget" name="widgetTotalFrame" native="true">
+                 <property name="sizePolicy">
+                  <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                   <horstretch>0</horstretch>
+                   <verstretch>0</verstretch>
+                  </sizepolicy>
+                 </property>
                  <property name="minimumSize">
                   <size>
-                   <width>288</width>
-                   <height>288</height>
+                   <width>393</width>
+                   <height>344</height>
                   </size>
                  </property>
                  <property name="maximumSize">
                   <size>
-                   <width>288</width>
-                   <height>288</height>
+                   <width>393</width>
+                   <height>344</height>
                   </size>
                  </property>
-                </widget>
-               </item>
-               <item>
-                <widget class="QWidget" name="widget" native="true">
-                 <layout class="QHBoxLayout" name="horizontalLayout_9">
-                  <property name="spacing">
-                   <number>0</number>
-                  </property>
+                 <layout class="QGridLayout" name="layoutOverallPlot">
                   <property name="leftMargin">
                    <number>0</number>
                   </property>
@@ -1060,132 +999,140 @@
                   <property name="bottomMargin">
                    <number>0</number>
                   </property>
+                  <property name="spacing">
+                   <number>0</number>
+                  </property>
+                 </layout>
+                </widget>
+               </item>
+              </layout>
+             </widget>
+            </item>
+            <item>
+             <widget class="QWidget" name="widgetMainRightCenterRight" native="true">
+              <layout class="QGridLayout" name="gridLayout_6">
+               <property name="leftMargin">
+                <number>0</number>
+               </property>
+               <property name="topMargin">
+                <number>0</number>
+               </property>
+               <property name="rightMargin">
+                <number>0</number>
+               </property>
+               <property name="bottomMargin">
+                <number>0</number>
+               </property>
+               <item row="0" column="1">
+                <widget class="QWidget" name="widgetMouseValuesRight_2" native="true">
+                 <property name="sizePolicy">
+                  <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                   <horstretch>0</horstretch>
+                   <verstretch>0</verstretch>
+                  </sizepolicy>
+                 </property>
+                 <property name="minimumSize">
+                  <size>
+                   <width>70</width>
+                   <height>69</height>
+                  </size>
+                 </property>
+                 <property name="maximumSize">
+                  <size>
+                   <width>70</width>
+                   <height>69</height>
+                  </size>
+                 </property>
+                 <layout class="QVBoxLayout" name="verticalLayout_8">
+                  <property name="topMargin">
+                   <number>0</number>
+                  </property>
+                  <property name="bottomMargin">
+                   <number>0</number>
+                  </property>
                   <item>
-                   <spacer name="horizontalSpacer_7">
-                    <property name="orientation">
-                     <enum>Qt::Horizontal</enum>
+                   <widget class="QLabel" name="labelPosX_Total">
+                    <property name="text">
+                     <string>0.000000</string>
                     </property>
-                    <property name="sizeHint" stdset="0">
-                     <size>
-                      <width>40</width>
-                      <height>20</height>
-                     </size>
-                    </property>
-                   </spacer>
-                  </item>
-                  <item>
-                   <widget class="QWidget" name="widgetMouseValuesLeft_2" native="true">
-                    <property name="sizePolicy">
-                     <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-                      <horstretch>0</horstretch>
-                      <verstretch>0</verstretch>
-                     </sizepolicy>
-                    </property>
-                    <property name="minimumSize">
-                     <size>
-                      <width>115</width>
-                      <height>69</height>
-                     </size>
-                    </property>
-                    <property name="maximumSize">
-                     <size>
-                      <width>115</width>
-                      <height>69</height>
-                     </size>
-                    </property>
-                    <layout class="QVBoxLayout" name="verticalLayout_7">
-                     <property name="leftMargin">
-                      <number>9</number>
-                     </property>
-                     <property name="topMargin">
-                      <number>0</number>
-                     </property>
-                     <property name="bottomMargin">
-                      <number>0</number>
-                     </property>
-                     <item>
-                      <widget class="QLabel" name="label_14">
-                       <property name="text">
-                        <string>Cursor X position:</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QLabel" name="label_15">
-                       <property name="text">
-                        <string>Cursor Y position:</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QLabel" name="label_16">
-                       <property name="font">
-                        <font>
-                         <bold>true</bold>
-                        </font>
-                       </property>
-                       <property name="text">
-                        <string>Cursor rain value:</string>
-                       </property>
-                      </widget>
-                     </item>
-                    </layout>
                    </widget>
                   </item>
                   <item>
-                   <widget class="QWidget" name="widgetMouseValuesRight_2" native="true">
-                    <property name="sizePolicy">
-                     <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-                      <horstretch>0</horstretch>
-                      <verstretch>0</verstretch>
-                     </sizepolicy>
+                   <widget class="QLabel" name="labelPosY_Total">
+                    <property name="text">
+                     <string>0.000000</string>
                     </property>
-                    <property name="minimumSize">
-                     <size>
-                      <width>70</width>
-                      <height>69</height>
-                     </size>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QLabel" name="labelPosVal_Total">
+                    <property name="font">
+                     <font>
+                      <bold>true</bold>
+                     </font>
                     </property>
-                    <property name="maximumSize">
-                     <size>
-                      <width>70</width>
-                      <height>69</height>
-                     </size>
+                    <property name="text">
+                     <string>0.00</string>
                     </property>
-                    <layout class="QVBoxLayout" name="verticalLayout_8">
-                     <property name="topMargin">
-                      <number>0</number>
-                     </property>
-                     <property name="bottomMargin">
-                      <number>0</number>
-                     </property>
-                     <item>
-                      <widget class="QLabel" name="labelPosX_Total">
-                       <property name="text">
-                        <string>0.000000</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QLabel" name="labelPosY_Total">
-                       <property name="text">
-                        <string>0.000000</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QLabel" name="labelPosVal_Total">
-                       <property name="font">
-                        <font>
-                         <bold>true</bold>
-                        </font>
-                       </property>
-                       <property name="text">
-                        <string>0.00</string>
-                       </property>
-                      </widget>
-                     </item>
-                    </layout>
+                   </widget>
+                  </item>
+                 </layout>
+                </widget>
+               </item>
+               <item row="0" column="0">
+                <widget class="QWidget" name="widgetMouseValuesLeft_2" native="true">
+                 <property name="sizePolicy">
+                  <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                   <horstretch>0</horstretch>
+                   <verstretch>0</verstretch>
+                  </sizepolicy>
+                 </property>
+                 <property name="minimumSize">
+                  <size>
+                   <width>115</width>
+                   <height>69</height>
+                  </size>
+                 </property>
+                 <property name="maximumSize">
+                  <size>
+                   <width>115</width>
+                   <height>69</height>
+                  </size>
+                 </property>
+                 <layout class="QVBoxLayout" name="verticalLayout_7">
+                  <property name="leftMargin">
+                   <number>9</number>
+                  </property>
+                  <property name="topMargin">
+                   <number>0</number>
+                  </property>
+                  <property name="bottomMargin">
+                   <number>0</number>
+                  </property>
+                  <item>
+                   <widget class="QLabel" name="label_14">
+                    <property name="text">
+                     <string>Cursor X position:</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QLabel" name="label_15">
+                    <property name="text">
+                     <string>Cursor Y position:</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QLabel" name="label_16">
+                    <property name="font">
+                     <font>
+                      <bold>true</bold>
+                     </font>
+                    </property>
+                    <property name="text">
+                     <string>Cursor rain value:</string>
+                    </property>
                    </widget>
                   </item>
                  </layout>
@@ -1195,6 +1142,91 @@
              </widget>
             </item>
            </layout>
+          </widget>
+         </item>
+         <item>
+          <widget class="QTabWidget" name="tabMainRightCenter">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="currentIndex">
+            <number>0</number>
+           </property>
+           <widget class="QWidget" name="tab">
+            <attribute name="title">
+             <string>Parameters Summary</string>
+            </attribute>
+            <layout class="QGridLayout" name="gridLayout_3">
+             <item row="0" column="0">
+              <widget class="QTableWidget" name="tableWidget">
+               <property name="showGrid">
+                <bool>true</bool>
+               </property>
+               <property name="gridStyle">
+                <enum>Qt::SolidLine</enum>
+               </property>
+               <property name="rowCount">
+                <number>15</number>
+               </property>
+               <property name="columnCount">
+                <number>2</number>
+               </property>
+               <attribute name="horizontalHeaderMinimumSectionSize">
+                <number>150</number>
+               </attribute>
+               <attribute name="horizontalHeaderDefaultSectionSize">
+                <number>262</number>
+               </attribute>
+               <attribute name="verticalHeaderDefaultSectionSize">
+                <number>24</number>
+               </attribute>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <row/>
+               <column>
+                <property name="text">
+                 <string>Parameter</string>
+                </property>
+               </column>
+               <column>
+                <property name="text">
+                 <string>Value</string>
+                </property>
+               </column>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+           <widget class="QWidget" name="tab_2">
+            <attribute name="title">
+             <string>Included Links</string>
+            </attribute>
+            <layout class="QGridLayout" name="gridLayout_4">
+             <item row="0" column="0">
+              <widget class="QListWidget" name="listWidget"/>
+             </item>
+            </layout>
+           </widget>
+           <widget class="QWidget" name="tab_3">
+            <attribute name="title">
+             <string>Point Plot</string>
+            </attribute>
+           </widget>
           </widget>
          </item>
          <item>
