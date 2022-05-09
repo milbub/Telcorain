@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>SelectionDialog</class>
+ <widget class="QDialog" name="SelectionDialog">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1200</width>
+    <height>749</height>
+   </rect>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>500</width>
+    <height>500</height>
+   </size>
+  </property>
+  <property name="windowTitle">
+   <string>Edit Set - Link Selection</string>
+  </property>
+  <property name="locale">
+   <locale language="English" country="World"/>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <item>
+    <widget class="QTableWidget" name="tableSelection">
+     <attribute name="horizontalHeaderMinimumSectionSize">
+      <number>40</number>
+     </attribute>
+     <attribute name="verticalHeaderMinimumSectionSize">
+      <number>10</number>
+     </attribute>
+     <attribute name="verticalHeaderDefaultSectionSize">
+      <number>10</number>
+     </attribute>
+     <column>
+      <property name="text">
+       <string>ID</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>Include A to B</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>Include B to A</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>Link Name</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>Technology</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>A - Frequency (MHz)</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>B - Frequency (MHz)</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>Polarization</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>A - IP Address</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>B - IP Address</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>Length</string>
+      </property>
+     </column>
+    </widget>
+   </item>
+   <item>
+    <widget class="QDialogButtonBox" name="buttonBox">
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+     <property name="standardButtons">
+      <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections>
+  <connection>
+   <sender>buttonBox</sender>
+   <signal>rejected()</signal>
+   <receiver>SelectionDialog</receiver>
+   <slot>reject()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>316</x>
+     <y>260</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>286</x>
+     <y>274</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
+</ui>

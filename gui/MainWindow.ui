@@ -196,7 +196,7 @@
            </property>
            <property name="dateTime">
             <datetime>
-             <hour>7</hour>
+             <hour>6</hour>
              <minute>0</minute>
              <second>0</second>
              <year>2022</year>
@@ -206,21 +206,21 @@
            </property>
            <property name="time">
             <time>
-             <hour>7</hour>
+             <hour>6</hour>
              <minute>0</minute>
              <second>0</second>
             </time>
            </property>
            <property name="maximumTime">
             <time>
-             <hour>14</hour>
+             <hour>13</hour>
              <minute>59</minute>
              <second>59</second>
             </time>
            </property>
            <property name="minimumTime">
             <time>
-             <hour>15</hour>
+             <hour>14</hour>
              <minute>0</minute>
              <second>0</second>
             </time>
@@ -246,7 +246,7 @@
            </property>
            <property name="dateTime">
             <datetime>
-             <hour>7</hour>
+             <hour>6</hour>
              <minute>0</minute>
              <second>0</second>
              <year>2022</year>
@@ -256,21 +256,21 @@
            </property>
            <property name="time">
             <time>
-             <hour>7</hour>
+             <hour>6</hour>
              <minute>0</minute>
              <second>0</second>
             </time>
            </property>
            <property name="maximumTime">
             <time>
-             <hour>14</hour>
+             <hour>13</hour>
              <minute>59</minute>
              <second>59</second>
             </time>
            </property>
            <property name="minimumTime">
             <time>
-             <hour>15</hour>
+             <hour>14</hour>
              <minute>0</minute>
              <second>0</second>
             </time>
@@ -1949,11 +1949,17 @@
    </property>
   </action>
   <action name="actionOptions">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
    <property name="text">
     <string>&amp;Options...</string>
    </property>
   </action>
   <action name="actionAbout">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
    <property name="text">
     <string>&amp;About</string>
    </property>

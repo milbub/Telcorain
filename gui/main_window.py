@@ -13,6 +13,7 @@ import procedures.calculation as calc
 import writers.linksets_manager as setsman
 import writers.log_manager as logger
 from gui.form_dialog import FormDialog
+from gui.selection_dialog import SelectionDialog
 from gui.results_widget import ResultsWidget
 
 
@@ -335,7 +336,26 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage(f'Link set "{name}" was created.')
 
     def edit_linkset_fired(self):
-        pass
+        sel_name = self.lists.currentItem().text()
+        dialog = SelectionDialog(self, self.current_selection, self.links)
+
+        if dialog.exec():
+            self.current_selection = dialog.selection
+
+            # overwrite values in set file
+            for link_id in self.current_selection:
+                # set file has reverse logic -> in DEFAULT section (link set ALL), all links are there with
+                # BOTH CHANNELS (= flag 3) defined, while in subsections (link sets), only links with different status
+                # (= flags 1 and 2) are defined in them, and the rest (= flag 3) is INHERITED from DEFAULT section
+                # ==> THEREFORE, links with flag 3 are deleted from edited link set, and the rest is modified
+
+                if self.current_selection[link_id] == 3:
+                    self.sets_man.delete_link(sel_name, link_id)
+                else:
+                    self.sets_man.modify_link(sel_name, link_id, self.current_selection[link_id])
+
+            self.sets_man.save()
+            self._linkset_selected(sel_name)
 
     def copy_linkset_fired(self):
         sel_name = self.lists.currentItem().text()
@@ -419,6 +439,7 @@ class MainWindow(QMainWindow):
 
             active_count += 1
 
+        self.selection_table.clearContents()
         self.selection_table.setRowCount(active_count)
 
         # columns: 0 = ID, 1 = channel 1, 2 = channel 2, 3 = technology, 4 = band, 5 = length, 6 = name
