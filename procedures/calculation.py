@@ -222,7 +222,7 @@ class Calculation(QRunnable):
 
                     # if including only this channel, create empty second channel and fill it with zeros (pycomlink
                     # functions require both channels included -> with this hack it's valid, but zeros have no effect)
-                    if self.selection[link] == 1:
+                    if (self.selection[link] == 1) or not is_b_in:
                         channel_b = _fill_channel_dataset(self.links[link], influx_data, self.links[link].ip_a,
                                                           self.links[link].ip_a, 'B(rx)_A(tx)', self.links[link].freq_a,
                                                           tx_zeros_b, rx_zeros=True)
@@ -244,7 +244,7 @@ class Calculation(QRunnable):
 
                     # if including only this channel, create empty second channel and fill it with zeros (pycomlink
                     # functions require both channels included -> with this hack it's valid, but zeros have no effect)
-                    if self.selection[link] == 2:
+                    if (self.selection[link] == 2) or not is_a_in:
                         channel_a = _fill_channel_dataset(self.links[link], influx_data, self.links[link].ip_b,
                                                           self.links[link].ip_b, 'A(rx)_B(tx)', self.links[link].freq_b,
                                                           tx_zeros_b, rx_zeros=True)
