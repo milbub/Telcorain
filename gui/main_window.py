@@ -4,13 +4,16 @@ from PyQt6 import uic, QtGui, QtCore
 from PyQt6.QtCore import QTimer
 from PyQt6.QtGui import QPixmap
 from PyQt6.QtWidgets import QMainWindow, QLabel, QProgressBar, QHBoxLayout, QWidget, QTextEdit, QListWidget, \
-    QDateTimeEdit, QPushButton, QSpinBox, QTabWidget, QLineEdit, QDoubleSpinBox, QRadioButton, QCheckBox
-from gui.results_widget import ResultsWidget
+    QDateTimeEdit, QPushButton, QSpinBox, QTabWidget, QLineEdit, QDoubleSpinBox, QRadioButton, QCheckBox, \
+    QListWidgetItem, QTableWidget, QGridLayout, QMessageBox
 
 import input.influx_manager as influx
 import input.sqlite_manager as sqlite
 import procedures.calculation as calc
-import writers.logger as logger
+import writers.linksets_manager as setsman
+import writers.log_manager as logger
+from gui.form_dialog import FormDialog
+from gui.results_widget import ResultsWidget
 
 
 # TODO: move Control Tab elements into separate widget. Currently, this class contains main logic + Control Tab widgets.
@@ -62,6 +65,11 @@ class MainWindow(QMainWindow):
         # lookup for used widgets and define them
         self.text_log = self.findChild(QTextEdit, "textLog")
         self.lists = self.findChild(QListWidget, "listLists")
+        self.selection_table = self.findChild(QTableWidget, "tableSelection")
+        self.butt_new_set = self.findChild(QPushButton, "buttLstNew")
+        self.butt_edit_set = self.findChild(QPushButton, "buttLstEdit")
+        self.butt_copy_set = self.findChild(QPushButton, "buttLstCopy")
+        self.butt_del_set = self.findChild(QPushButton, "buttLstDel")
         self.datetime_start = self.findChild(QDateTimeEdit, "dateTimeStart")
         self.datetime_stop = self.findChild(QDateTimeEdit, "dateTimeStop")
         self.spin_timestep = self.findChild(QSpinBox, "spinTimestep")
@@ -85,15 +93,16 @@ class MainWindow(QMainWindow):
         self.results_icon = QtGui.QIcon()
         self.results_icon.addFile('./gui/icons/explore.png', QtCore.QSize(16, 16))
 
-        # add default value to list of link's list (ALL = list of all links)
-        self.lists.addItem("<ALL>")
-
         # connect buttons
         self.butt_start.clicked.connect(self.calculation_fired)
         self.butt_abort.clicked.connect(self.calculation_cancel_fired)
+        self.butt_new_set.clicked.connect(self.new_linkset_fired)
+        self.butt_edit_set.clicked.connect(self.edit_linkset_fired)
+        self.butt_copy_set.clicked.connect(self.copy_linkset_fired)
+        self.butt_del_set.clicked.connect(self.delete_linkset_fired)
 
         # connect other signals
-        self.spin_timestep.valueChanged.connect(self.adjust_window)
+        self.spin_timestep.valueChanged.connect(self._adjust_window)
 
         # show window
         self.show()
@@ -101,7 +110,7 @@ class MainWindow(QMainWindow):
         # ////// APP LOGIC CONSTRUCTOR \\\\\\
 
         # redirect stdout to log handler
-        sys.stdout = logger.Logger(self.text_log)
+        sys.stdout = logger.LogManager(self.text_log)
         print("Telcorain is starting...", flush=True)
 
         # init threadpool
@@ -134,19 +143,27 @@ class MainWindow(QMainWindow):
         self.links = self.sqlite_man.load_all()
         print(f"SQLite link database file connected: {len(self.links)} microwave link's definitions loaded.")
 
-    # influxDB's status changed GUI method
-    def _db_status_changed(self, status: bool):
-        if status:  # True == connected
-            self.status_db_state.setText("Connected")
-            self.status_db_icon_lbl.setPixmap(QPixmap('./gui/icons/check_green.png'))
-        else:       # False == disconnected
-            self.status_db_state.setText("Disconnected")
-            self.status_db_icon_lbl.setPixmap(QPixmap('./gui/icons/cross_red.png'))
+        # init link sets
+        self.current_selection = {}   # link channel selection flag: 0=none, 1=A, 2=B, 3=both -> dict: <link_id>: flag
+        self.sets_man = setsman.LinksetsManager(self.links)
+        self.lists.currentTextChanged.connect(self._linkset_selected)
 
-    # insert InfluxDB's status checker into threadpool and start it, called by timer
-    def _pool_checker(self):
-        influx_checker = influx.InfluxChecker(self.influx_signals)
-        self.threadpool.start(influx_checker)
+        # add default value to list of link's list (ALL = list of all links)
+        default_option = QListWidgetItem('<ALL>')
+        self.lists.addItem(default_option)
+        self.lists.setCurrentItem(default_option)
+
+        # fill with other sets
+        self._fill_linksets()
+
+        # style out link table
+        self.selection_table.setColumnWidth(0, 40)
+        self.selection_table.setColumnWidth(1, 42)
+        self.selection_table.setColumnWidth(2, 42)
+        self.selection_table.setColumnWidth(3, 75)
+        self.selection_table.setColumnWidth(4, 71)
+        self.selection_table.setColumnWidth(5, 75)
+        self.selection_table.setColumnWidth(6, 148)
 
     # influxDB's status selection logic, called from signal
     def check_influx_status(self, influx_ping: bool):
@@ -270,26 +287,10 @@ class MainWindow(QMainWindow):
             print(f"[WARNING] {msg}")
         else:
             self.result_id += 1
-            # link channel selection flag: 0=none, 1=A, 2=B, 3=both
-            # TODO: create link list dynamic load; temp list below
-            selection = {50236: 3, 50288: 0, 50462: 3, 50483: 3, 50508: 3, 50626: 3, 50687: 3, 50693: 3, 50829: 3,
-                         50923: 3, 50952: 3, 51426: 3, 51578: 3, 51588: 3, 51621: 3, 51647: 3, 51650: 3, 51656: 3,
-                         51689: 3, 51692: 3, 51827: 3, 51864: 3, 51865: 3, 51866: 3, 51881: 3, 51950: 3, 51955: 3,
-                         51958: 3, 51972: 3, 52037: 3, 52038: 3, 52039: 3, 52052: 3, 52062: 3, 52090: 3, 52098: 3,
-                         52146: 3, 52154: 3, 52157: 3, 52161: 3, 52211: 3, 52215: 3, 52342: 3, 52367: 3, 52485: 3,
-                         52486: 3, 52517: 3, 52539: 3, 52543: 3, 52549: 3, 52560: 3, 52562: 3, 52572: 3, 52617: 3,
-                         52624: 3, 52626: 3, 52710: 3, 52736: 3, 52739: 3, 52741: 3, 52752: 3, 52771: 3, 52782: 3,
-                         52799: 3, 52818: 3, 52834: 3, 52845: 3, 52846: 3, 52864: 3, 52886: 3, 52915: 3, 52935: 3,
-                         52994: 3, 50845: 3, 50988: 3, 51018: 3, 51022: 3, 51200: 3, 51231: 3, 51274: 3, 51340: 3,
-                         51499: 3, 51657: 3, 51680: 3, 51746: 3, 51794: 3, 51821: 3, 52024: 3, 52040: 3, 52189: 3,
-                         52191: 3, 52308: 3, 52412: 3, 52526: 3, 52566: 3, 52708: 3, 52748: 3, 52901: 3, 51188: 3,
-                         52346: 3, 50962: 1, 50989: 1, 51990: 1, 52119: 1, 52460: 1, 52753: 1, 52871: 1, 51320: 1,
-                         51729: 1, 50995: 2, 51284: 2, 51294: 2, 51998: 2, 52120: 2, 52127: 2, 52152: 2, 52835: 2,
-                         52852: 2, 52413: 2}
 
             # create calculation instance
-            calculation = calc.Calculation(self.calc_signals, self.result_id, self.links, selection, start, end, step,
-                                           rolling_values, output_step, is_only_overall, is_output_total)
+            calculation = calc.Calculation(self.calc_signals, self.result_id, self.links, self.current_selection, start,
+                                           end, step, rolling_values, output_step, is_only_overall, is_output_total)
 
             if self.results_name.text() == "":
                 results_tab_name = "<no name>"
@@ -313,11 +314,174 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage(msg)
 
     def calculation_cancel_fired(self):
+        # TODO: implement calculation cancelling
         pass
 
+    def new_linkset_fired(self):
+        dialog = FormDialog(self, "Link Set Creation", "Please, enter a name of the new link set:")
+
+        if dialog.exec():
+            name = dialog.answer_box.text()
+
+            if name == '':
+                self._show_empty_entry_warning()
+                return
+
+            self.sets_man.create_set(name)
+            new_item = QListWidgetItem(name)
+            self.lists.addItem(new_item)
+            self.lists.setCurrentItem(new_item)
+
+            self.statusBar().showMessage(f'Link set "{name}" was created.')
+
+    def edit_linkset_fired(self):
+        pass
+
+    def copy_linkset_fired(self):
+        sel_name = self.lists.currentItem().text()
+        dialog = FormDialog(self, "Link Set Copy", "Please, enter a name of the new link set copy:")
+
+        if dialog.exec():
+            new_name = dialog.answer_box.text()
+
+            if new_name == '':
+                self._show_empty_entry_warning()
+                return
+
+            self.sets_man.copy_set(sel_name, new_name)
+            new_item = QListWidgetItem(new_name)
+            self.lists.addItem(new_item)
+            self.lists.setCurrentItem(new_item)
+
+            self.statusBar().showMessage(f'New copy "{new_name}" of link set "{sel_name}" was created.')
+
+    def delete_linkset_fired(self):
+        selected = self.lists.currentItem()
+        sel_name = selected.text()
+
+        dialog = QMessageBox(self)
+        dialog.setWindowTitle("Are you sure?")
+        dialog.setText(f'You want to delete link set "{sel_name}". Are you sure?')
+        dialog.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.Cancel)
+        dialog.setIcon(QMessageBox.Icon.Question)
+        answer = dialog.exec()
+
+        if answer == QMessageBox.StandardButton.Yes:
+            self.sets_man.delete_set(sel_name)
+            self.lists.takeItem(self.lists.row(selected))
+
+            self.statusBar().showMessage(f'Link set "{sel_name}" was deleted.')
+
+    def _show_empty_entry_warning(self):
+        info = QMessageBox(self)
+        info.setWindowTitle("Attention!")
+        info.setText("Entered name cannot be empty.")
+        info.setStandardButtons(QMessageBox.StandardButton.Ok)
+        info.setIcon(QMessageBox.Icon.Warning)
+        info.exec()
+
+    # influxDB's status changed GUI method
+    def _db_status_changed(self, status: bool):
+        if status:  # True == connected
+            self.status_db_state.setText("Connected")
+            self.status_db_icon_lbl.setPixmap(QPixmap('./gui/icons/check_green.png'))
+        else:       # False == disconnected
+            self.status_db_state.setText("Disconnected")
+            self.status_db_icon_lbl.setPixmap(QPixmap('./gui/icons/cross_red.png'))
+
+    # insert InfluxDB's status checker into threadpool and start it, called by timer
+    def _pool_checker(self):
+        influx_checker = influx.InfluxChecker(self.influx_signals)
+        self.threadpool.start(influx_checker)
+
     # adjust wet/dry rolling window length when query timestep is changed, to default multiple of 36 (good results)
-    def adjust_window(self, step: int):
+    def _adjust_window(self, step: int):
         self.spin_roll_window.setValue(step * 36 / 60)
+
+    def _linkset_selected(self, selection: str):
+        if selection == '<ALL>':
+            sel = self.sets_man.linksets['DEFAULT']
+            self.butt_edit_set.setEnabled(False)
+            self.butt_copy_set.setEnabled(False)
+            self.butt_del_set.setEnabled(False)
+        else:
+            sel = self.sets_man.linksets[selection]
+            self.butt_edit_set.setEnabled(True)
+            self.butt_copy_set.setEnabled(True)
+            self.butt_del_set.setEnabled(True)
+
+        active_count = 0
+        for link_id in sel:
+            self.current_selection[int(link_id)] = int(sel[link_id])
+
+            if sel[link_id] == str(0):
+                continue
+
+            active_count += 1
+
+        self.selection_table.setRowCount(active_count)
+
+        # columns: 0 = ID, 1 = channel 1, 2 = channel 2, 3 = technology, 4 = band, 5 = length, 6 = name
+        row = 0
+        for link_id in self.current_selection:
+            if self.current_selection[link_id] == 0:
+                continue
+
+            id_label = QLabel(str(link_id))
+            id_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+            tech_label = QLabel(self.links[link_id].tech)
+            tech_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+            band_label = QLabel("{:.0f}".format(self.links[link_id].freq_a / 1000))
+            band_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+            length_label = QLabel("{:.2f}".format(self.links[link_id].distance))
+            length_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+            name_label = QLabel(self.links[link_id].name)
+
+            channel_1 = QCheckBox()
+            channel_2 = QCheckBox()
+
+            if self.current_selection[link_id] == 1:
+                channel_1.setChecked(True)
+                channel_2.setChecked(False)
+            elif self.current_selection[link_id] == 2:
+                channel_1.setChecked(False)
+                channel_2.setChecked(True)
+            elif self.current_selection[link_id] == 3:
+                channel_1.setChecked(True)
+                channel_2.setChecked(True)
+
+            # Qt TableWidget formatting weirdness:
+
+            channel_1.setAttribute(QtCore.Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+            channel_1.setFocusPolicy(QtCore.Qt.FocusPolicy.NoFocus)
+            channel_2.setAttribute(QtCore.Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+            channel_2.setFocusPolicy(QtCore.Qt.FocusPolicy.NoFocus)
+
+            channel_1_box = QGridLayout()
+            channel_1_box.addWidget(channel_1, 0, 0, alignment=QtCore.Qt.AlignmentFlag.AlignCenter)
+            channel_1_box.setContentsMargins(0, 0, 0, 0)
+            channel_1_box_box = QWidget()
+            channel_1_box_box.setLayout(channel_1_box)
+
+            channel_2_box = QGridLayout()
+            channel_2_box.addWidget(channel_2, 0, 0, alignment=QtCore.Qt.AlignmentFlag.AlignCenter)
+            channel_2_box.setContentsMargins(0, 0, 0, 0)
+            channel_2_box_box = QWidget()
+            channel_2_box_box.setLayout(channel_2_box)
+
+            self.selection_table.setCellWidget(row, 0, id_label)
+            self.selection_table.setCellWidget(row, 1, channel_1_box_box)
+            self.selection_table.setCellWidget(row, 2, channel_2_box_box)
+            self.selection_table.setCellWidget(row, 3, tech_label)
+            self.selection_table.setCellWidget(row, 4, band_label)
+            self.selection_table.setCellWidget(row, 5, length_label)
+            self.selection_table.setCellWidget(row, 6, name_label)
+
+            row += 1
+
+    def _fill_linksets(self):
+        for link_set in self.sets_man.set_names:
+            self.lists.addItem(link_set)
 
     # destructor
     def __del__(self):

@@ -394,7 +394,7 @@
               <property name="geometry">
                <rect>
                 <x>270</x>
-                <y>45</y>
+                <y>44</y>
                 <width>91</width>
                 <height>24</height>
                </rect>
@@ -407,7 +407,7 @@
               <property name="geometry">
                <rect>
                 <x>270</x>
-                <y>75</y>
+                <y>74</y>
                 <width>91</width>
                 <height>24</height>
                </rect>
@@ -420,7 +420,7 @@
               <property name="geometry">
                <rect>
                 <x>270</x>
-                <y>105</y>
+                <y>104</y>
                 <width>91</width>
                 <height>24</height>
                </rect>
@@ -433,7 +433,7 @@
               <property name="geometry">
                <rect>
                 <x>270</x>
-                <y>135</y>
+                <y>134</y>
                 <width>91</width>
                 <height>24</height>
                </rect>
@@ -465,7 +465,7 @@
                </rect>
               </property>
              </widget>
-             <widget class="QListWidget" name="listLinks">
+             <widget class="QTableWidget" name="tableSelection">
               <property name="geometry">
                <rect>
                 <x>400</x>
@@ -474,6 +474,53 @@
                 <height>112</height>
                </rect>
               </property>
+              <attribute name="horizontalHeaderMinimumSectionSize">
+               <number>40</number>
+              </attribute>
+              <attribute name="horizontalHeaderDefaultSectionSize">
+               <number>100</number>
+              </attribute>
+              <attribute name="verticalHeaderMinimumSectionSize">
+               <number>10</number>
+              </attribute>
+              <attribute name="verticalHeaderDefaultSectionSize">
+               <number>10</number>
+              </attribute>
+              <column>
+               <property name="text">
+                <string>ID</string>
+               </property>
+              </column>
+              <column>
+               <property name="text">
+                <string>A to B</string>
+               </property>
+              </column>
+              <column>
+               <property name="text">
+                <string>B to A</string>
+               </property>
+              </column>
+              <column>
+               <property name="text">
+                <string>Technology</string>
+               </property>
+              </column>
+              <column>
+               <property name="text">
+                <string>Band (GHz)</string>
+               </property>
+              </column>
+              <column>
+               <property name="text">
+                <string>Length (km)</string>
+               </property>
+              </column>
+              <column>
+               <property name="text">
+                <string>Link Name</string>
+               </property>
+              </column>
              </widget>
             </widget>
            </item>

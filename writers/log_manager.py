@@ -4,7 +4,7 @@ import time
 from PyQt6.QtCore import QTimer
 
 
-class Logger:
+class LogManager:
     def __init__(self, text_edit):
         self.out = sys.__stdout__
         self.te = text_edit

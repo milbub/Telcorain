@@ -1,5 +1,3 @@
-import copy
-
 import numpy as np
 import pycomlink as pycml
 import xarray as xr
@@ -78,6 +76,8 @@ class Calculation(QRunnable):
         # ////// DATA ACQUISITION \\\\\\
 
         try:
+            if len(self.selection) < 1:
+                raise ValueError('Empty selection container.')
 
             man = influx.InfluxManager()
             ips = []
