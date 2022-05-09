@@ -2,7 +2,7 @@ import matplotlib
 from PyQt6 import uic
 from PyQt6.QtCore import QDateTime, QTimer
 from PyQt6.QtWidgets import QWidget, QLabel, QGridLayout, QSlider, QPushButton
-from matplotlib import cm, colors
+from matplotlib import cm, colors, pyplot
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
 
@@ -10,14 +10,26 @@ matplotlib.use('QtAgg')
 
 
 class Canvas(FigureCanvasQTAgg):
+    # TODO: load from options
+    # rendered area borders
+    X_MIN = 14.21646819
+    X_MAX = 14.70604375
+    Y_MIN = 49.91505682
+    Y_MAX = 50.22841327
+
     def __init__(self, dpi=96, left=0, bottom=0.03, right=1, top=0.97):
         # setup single plot positioning
         self.fig = Figure(dpi=dpi)
         self.fig.tight_layout()
-        self.ax = self.fig.add_subplot(111)
+        self.ax = self.fig.add_subplot(111, xlim=(self.X_MIN, self.X_MAX), ylim=(self.Y_MIN, self.Y_MAX))
         self.ax.axes.xaxis.set_visible(False)
         self.ax.axes.yaxis.set_visible(False)
         self.fig.subplots_adjust(left, bottom, right, top)
+
+        # TODO: load path from options
+        bg_map = pyplot.imread('./outputs/map.png')
+        self.ax.imshow(bg_map, zorder=0, extent=(self.X_MIN, self.X_MAX, self.Y_MIN, self.Y_MAX), aspect='auto')
+
         super(Canvas, self).__init__(self.fig)
 
         self.pc = None
@@ -205,7 +217,7 @@ class ResultsWidget(QWidget):
             del canvas.pc
 
         canvas.pc = canvas.ax.pcolormesh(x_grid, y_grid, rain_grid, norm=colors.LogNorm(vmin=0.1, vmax=100),
-                                         shading='nearest', cmap=self.rain_cmap)
+                                         shading='nearest', cmap=self.rain_cmap, alpha=0.75)
         if is_total:
             canvas.cbar = canvas.fig.colorbar(canvas.pc, format='%d', label='Rainfall Total (mm)')
         else:

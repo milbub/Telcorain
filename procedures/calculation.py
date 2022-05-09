@@ -54,6 +54,13 @@ def _fill_channel_dataset(curr_link, flux_data, tx_ip, rx_ip, channel_id, freq,
 
 
 class Calculation(QRunnable):
+    # TODO: load from options
+    # rendered area borders
+    X_MIN = 14.21646819
+    X_MAX = 14.70604375
+    Y_MIN = 49.91505682
+    Y_MAX = 50.22841327
+
     def __init__(self, signals: CalcSignals, results_id: int, links: dict, selection: dict, start: QDateTime,
                  end: QDateTime, interval: int, rolling_vals: int, output_step: int, is_only_overall: bool,
                  is_output_total: bool):
@@ -348,8 +355,15 @@ class Calculation(QRunnable):
             interpolator = pycml.spatial.interpolator.IdwKdtreeInterpolator(nnear=50, p=1, exclude_nan=False,
                                                                             max_distance=1)
 
+            # calculate coordinate grids with defined area boundaries
+            resolution = 0.001
+            x_coords = np.arange(self.X_MIN - resolution, self.X_MAX + resolution, resolution)
+            y_coords = np.arange(self.Y_MIN - resolution, self.Y_MAX + resolution, resolution)
+            x_grid, y_grid = np.meshgrid(x_coords, y_coords)
+
             rain_grid = interpolator(x=calc_data_1h.lon_center, y=calc_data_1h.lat_center,
-                                     z=calc_data_1h.R.mean(dim='channel_id').sum(dim='time'), resolution=0.001)
+                                     z=calc_data_1h.R.mean(dim='channel_id').sum(dim='time'),
+                                     xgrid=x_grid, ygrid=y_grid)
 
             self.sig.progress_signal.emit({'prg_val': 99})
 
@@ -357,8 +371,8 @@ class Calculation(QRunnable):
             self.sig.overall_done_signal.emit({
                 "id": self.results_id,
                 "link_data": calc_data_1h,
-                "x_grid": interpolator.xgrid,
-                "y_grid": interpolator.ygrid,
+                "x_grid": x_grid,
+                "y_grid": y_grid,
                 "rain_grid": rain_grid,
                 "is_it_all": self.is_only_overall,
             })
@@ -409,7 +423,8 @@ class Calculation(QRunnable):
                 # interpolate each frame
                 for x in range(calc_data_steps.time.size):
                     grid = interpolator(x=calc_data_steps.lon_center, y=calc_data_steps.lat_center,
-                                        z=calc_data_steps.R.mean(dim='channel_id').isel(time=x), resolution=0.001)
+                                        z=calc_data_steps.R.mean(dim='channel_id').isel(time=x),
+                                        xgrid=x_grid, ygrid=y_grid)
                     animation_rain_grids.append(grid)
 
                     self.sig.progress_signal.emit({'prg_val': round((x / calc_data_steps.time.size) * 89) + 10})
@@ -418,8 +433,8 @@ class Calculation(QRunnable):
                 self.sig.plots_done_signal.emit({
                     "id": self.results_id,
                     "link_data": calc_data_steps,
-                    "x_grid": interpolator.xgrid,
-                    "y_grid": interpolator.ygrid,
+                    "x_grid": x_grid,
+                    "y_grid": y_grid,
                     "rain_grids": animation_rain_grids,
                 })
 

@@ -400,7 +400,7 @@
                </rect>
               </property>
               <property name="text">
-               <string>New...</string>
+               <string>New</string>
               </property>
              </widget>
              <widget class="QPushButton" name="buttLstEdit">
