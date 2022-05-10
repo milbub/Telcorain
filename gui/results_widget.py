@@ -1,7 +1,10 @@
+import os
+import webbrowser
+
 import matplotlib
 from PyQt6 import uic
 from PyQt6.QtCore import QDateTime, QTimer
-from PyQt6.QtWidgets import QWidget, QLabel, QGridLayout, QSlider, QPushButton
+from PyQt6.QtWidgets import QWidget, QLabel, QGridLayout, QSlider, QPushButton, QMessageBox
 from matplotlib import cm, colors, pyplot
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
@@ -27,7 +30,7 @@ class Canvas(FigureCanvasQTAgg):
         self.fig.subplots_adjust(left, bottom, right, top)
 
         # TODO: load path from options
-        bg_map = pyplot.imread('./outputs/map.png')
+        bg_map = pyplot.imread('./maps/prague_35x35.png')
         self.ax.imshow(bg_map, zorder=0, extent=(self.X_MIN, self.X_MAX, self.Y_MIN, self.Y_MAX), aspect='auto')
 
         super(Canvas, self).__init__(self.fig)
@@ -46,13 +49,24 @@ class ResultsWidget(QWidget):
     # animation speed constant, later speed control can be implemented
     ANIMATION_SPEED = 1000
 
-    def __init__(self, tab_name: str, start: QDateTime, end: QDateTime, output_step: int, are_results_totals: bool):
+    def __init__(self, tab_name: str, result_id: int, start: QDateTime, end: QDateTime, output_step: int,
+                 are_results_totals: bool, figs_path: str, is_pdf: bool, is_png: bool, tab_close, is_overall: bool):
         super(QWidget, self).__init__()
         self.tab_name = tab_name
+        self.result_id = result_id
         self.start = start
         self.end = end
         self.output_step = output_step
         self.are_results_totals = are_results_totals
+        self.figs_path = figs_path
+        self.is_pdf = is_pdf
+        self.is_png = is_png
+        self.tab_close = tab_close
+        self.is_only_overall = is_overall
+
+        # saves info
+        self.figs_full_path = ''
+        self.figs_save_info = {-1: False}
 
         # load UI definition from Qt XML file
         uic.loadUi("./gui/ResultsWidget.ui", self)
@@ -69,6 +83,9 @@ class ResultsWidget(QWidget):
         self.button_next = self.findChild(QPushButton, "buttNext")
         self.button_start = self.findChild(QPushButton, "buttStart")
         self.button_end = self.findChild(QPushButton, "buttEnd")
+        self.butt_save = self.findChild(QPushButton, "buttSave")
+        self.butt_open = self.findChild(QPushButton, "buttOpenFolder")
+        self.butt_close = self.findChild(QPushButton, "buttClose")
 
         # connect buttons
         self.button_play_pause.clicked.connect(self.start_pause_fired)
@@ -76,6 +93,9 @@ class ResultsWidget(QWidget):
         self.button_next.clicked.connect(self.next_animation_fig)
         self.button_start.clicked.connect(self.first_animation_fig)
         self.button_end.clicked.connect(self.last_animation_fig)
+        self.butt_save.clicked.connect(self.save_fired)
+        self.butt_open.clicked.connect(self.open_folder_fired)
+        self.butt_close.clicked.connect(self.close_tab_fired)
 
         # display info
         self.tab_name_label.setText(tab_name)
@@ -109,9 +129,11 @@ class ResultsWidget(QWidget):
 
     def change_no_anim_notification(self, still_interpolating: bool):
         if still_interpolating:
+            self.butt_save.setEnabled(False)
             self.label_no_anim_notify.setText("Animation figures are being interpolated...")
         else:
             self.label_no_anim_notify.hide()
+            self.butt_save.setEnabled(True)
 
     # called from signal
     def render_overall_fig(self, x_grid, y_grid, rain_grid, links_calc_data):
@@ -120,8 +142,6 @@ class ResultsWidget(QWidget):
 
         # plot link path lines
         _plot_link_lines(links_calc_data, self.overall_canvas.ax)
-
-        # self.overall_canvas.print_figure(filename='./outputs/test.png', dpi=75, format='png')
 
         # show in overall canvas frame
         self.overall_plot_layout.addWidget(self.overall_canvas)
@@ -151,12 +171,7 @@ class ResultsWidget(QWidget):
         self.slider.setMaximum(len(rain_grids) - 1)
 
         # unlock animation controls
-        self.button_play_pause.setEnabled(True)
-        self.button_prev.setEnabled(True)
-        self.button_next.setEnabled(True)
-        self.button_start.setEnabled(True)
-        self.button_end.setEnabled(True)
-        self.slider.setEnabled(True)
+        self._set_enabled_controls(True)
 
     def start_pause_fired(self):
         if self.animation_timer.isActive():
@@ -172,6 +187,7 @@ class ResultsWidget(QWidget):
         self.animation_counter += 1
         if self.animation_counter < len(self.animation_grids):
             self._update_animation_time()
+            self._update_save_button()
             self.slider.setValue(self.animation_counter)
             self._update_animation_fig()
         else:
@@ -181,6 +197,7 @@ class ResultsWidget(QWidget):
         self.animation_counter -= 1
         if self.animation_counter > -1:
             self._update_animation_time()
+            self._update_save_button()
             self.slider.setValue(self.animation_counter)
             self._update_animation_fig()
         else:
@@ -189,14 +206,77 @@ class ResultsWidget(QWidget):
     def first_animation_fig(self):
         self.animation_counter = 0
         self._update_animation_time()
+        self._update_save_button()
         self.slider.setValue(self.animation_counter)
         self._update_animation_fig()
 
     def last_animation_fig(self):
         self.animation_counter = len(self.animation_grids) - 1
         self._update_animation_time()
+        self._update_save_button()
         self.slider.setValue(self.animation_counter)
         self._update_animation_fig()
+
+    def save_fired(self):
+        self.butt_save.setEnabled(False)
+        self._set_enabled_controls(False)
+
+        # do only when first time fired
+        if not self.figs_save_info[-1]:
+            if self.is_pdf:
+                dialog = QMessageBox(self)
+                dialog.setWindowTitle("Notice")
+                dialog.setText('PDF saves take several seconds in current implementation.')
+                dialog.setStandardButtons(QMessageBox.StandardButton.Ok)
+                dialog.setIcon(QMessageBox.Icon.Information)
+                dialog.exec()
+
+            current_time = QDateTime.currentDateTime().toString("yyyy-MM-dd_HH-mm-ss")
+            self.figs_full_path = f'{self.figs_path}/{current_time}'
+            os.makedirs(self.figs_full_path, exist_ok=True)
+
+            overall_file = self.start.toString("yyyy-MM-dd_HH-mm-ss") + '_to_' + self.end.toString("yyyy-MM-dd_HH-mm-ss")
+            self._save_figs(self.overall_canvas, overall_file, 120)
+
+            self.butt_open.setEnabled(True)
+            self.figs_save_info[-1] = True
+
+        if len(self.animation_grids) > 0:
+            current_file = self.current_anim_time.toString("yyyy-MM-dd_HH-mm-ss")
+            if self.are_results_totals:
+                current_file = current_file + f'_{self.output_step}m_total'
+            else:
+                current_file = current_file + f'_{self.output_step}m_mean_R'
+
+            self._save_figs(self.animation_canvas, current_file, 96)
+            self.figs_save_info[self.animation_counter] = True
+
+        if not self.is_only_overall:
+            self._set_enabled_controls(True)
+
+    def open_folder_fired(self):
+        # must use webbrowser module, since it's only multiplatform solution
+        webbrowser.open(os.path.realpath(self.figs_full_path))
+
+    def close_tab_fired(self):
+        self.tab_close(self.result_id)
+
+    def _update_save_button(self):
+        if self.animation_counter not in self.figs_save_info:
+            self.figs_save_info[self.animation_counter] = False
+
+        if self.figs_save_info[self.animation_counter]:
+            self.butt_save.setEnabled(False)
+        else:
+            self.butt_save.setEnabled(True)
+
+    def _save_figs(self, canvas, file: str, dpi: int):
+        if self.is_png:
+            canvas.print_figure(filename=self.figs_full_path + '/' + file + '.png', format='png',
+                                dpi=dpi, bbox_inches='tight', pad_inches=0.3)
+        if self.is_pdf:
+            canvas.print_figure(filename=self.figs_full_path + '/' + file + '.pdf', format='pdf',
+                                dpi=dpi, bbox_inches='tight', pad_inches=0.3)
 
     def _update_animation_time(self):
         self.current_anim_time = self.start.addSecs(self.output_step * (self.animation_counter + 1) * 60)
@@ -236,9 +316,18 @@ class ResultsWidget(QWidget):
         self._update_animation_time()
 
     def _slider_released(self):
+        self._update_save_button()
         self._update_animation_fig()
 
         if self.slider_return_to_anim:
             self.button_play_pause.setText('⏸')
             self.slider_return_to_anim = False
             self.animation_timer.start(self.ANIMATION_SPEED)
+
+    def _set_enabled_controls(self, enabled: bool):
+        self.button_play_pause.setEnabled(enabled)
+        self.button_prev.setEnabled(enabled)
+        self.button_next.setEnabled(enabled)
+        self.button_start.setEnabled(enabled)
+        self.button_end.setEnabled(enabled)
+        self.slider.setEnabled(enabled)

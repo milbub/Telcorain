@@ -2,10 +2,10 @@ import sys
 
 from PyQt6 import uic, QtGui, QtCore
 from PyQt6.QtCore import QTimer
-from PyQt6.QtGui import QPixmap
+from PyQt6.QtGui import QPixmap, QAction
 from PyQt6.QtWidgets import QMainWindow, QLabel, QProgressBar, QHBoxLayout, QWidget, QTextEdit, QListWidget, \
     QDateTimeEdit, QPushButton, QSpinBox, QTabWidget, QLineEdit, QDoubleSpinBox, QRadioButton, QCheckBox, \
-    QListWidgetItem, QTableWidget, QGridLayout, QMessageBox
+    QListWidgetItem, QTableWidget, QGridLayout, QMessageBox, QFileDialog, QApplication
 
 import input.influx_manager as influx
 import input.sqlite_manager as sqlite
@@ -63,6 +63,10 @@ class MainWindow(QMainWindow):
         self.statusBar().addPermanentWidget(self.status_prg)
         self.statusBar().setContentsMargins(14, 0, 14, 0)
 
+        # lookup for used actions and define them
+        self.exit_action = self.findChild(QAction, "actionExit")
+        self.exit_action.triggered.connect(QApplication.quit)
+
         # lookup for used widgets and define them
         self.text_log = self.findChild(QTextEdit, "textLog")
         self.lists = self.findChild(QListWidget, "listLists")
@@ -82,6 +86,10 @@ class MainWindow(QMainWindow):
         self.spin_output_step = self.findChild(QSpinBox, "spinOutputStep")
         self.radio_output_total = self.findChild(QRadioButton, "radioOutputTotal")
         self.box_only_overall = self.findChild(QCheckBox, "checkOnlyOverall")
+        self.path_box = self.findChild(QLineEdit, "editPath")
+        self.butt_choose_path = self.findChild(QPushButton, "buttChoosePath")
+        self.pdf_box = self.findChild(QCheckBox, "checkFilePDF")
+        self.png_box = self.findChild(QCheckBox, "checkFilePNG")
 
         # declare dictionary for created tabs with calculation results
         # <key: int = result ID, value: ResultsWidget>
@@ -101,6 +109,7 @@ class MainWindow(QMainWindow):
         self.butt_edit_set.clicked.connect(self.edit_linkset_fired)
         self.butt_copy_set.clicked.connect(self.copy_linkset_fired)
         self.butt_del_set.clicked.connect(self.delete_linkset_fired)
+        self.butt_choose_path.clicked.connect(self.choose_path_fired)
 
         # connect other signals
         self.spin_timestep.valueChanged.connect(self._adjust_window)
@@ -165,6 +174,10 @@ class MainWindow(QMainWindow):
         self.selection_table.setColumnWidth(4, 71)
         self.selection_table.setColumnWidth(5, 75)
         self.selection_table.setColumnWidth(6, 148)
+
+        # output default path, TODO: load from options
+        self.path = './outputs'
+        self.path_box.setText(self.path + '/<time>')
 
     # influxDB's status selection logic, called from signal
     def check_influx_status(self, influx_ping: bool):
@@ -264,6 +277,9 @@ class MainWindow(QMainWindow):
         output_step = self.spin_output_step.value()
         is_only_overall = self.box_only_overall.isChecked()
         is_output_total = self.radio_output_total.isChecked()
+        is_pdf = self.pdf_box.isChecked()
+        is_png = self.png_box.isChecked()
+        close_func = self.close_tab_result
 
         # INPUT CHECKS:
         if time_diff < 0:   # if timediff is less than 1 hour (in msecs)
@@ -299,8 +315,9 @@ class MainWindow(QMainWindow):
                 results_tab_name = self.results_name.text()
 
             # create results widget instance
-            self.results_tabs[self.result_id] = ResultsWidget(results_tab_name, start, end, output_step,
-                                                              is_output_total)
+            self.results_tabs[self.result_id] = ResultsWidget(results_tab_name, self.result_id, start, end, output_step,
+                                                              is_output_total, self.path, is_pdf, is_png, close_func,
+                                                              is_only_overall)
 
             self.results_name.clear()
             self.butt_abort.setEnabled(True)
@@ -391,6 +408,17 @@ class MainWindow(QMainWindow):
             self.lists.takeItem(self.lists.row(selected))
 
             self.statusBar().showMessage(f'Link set "{sel_name}" was deleted.')
+
+    def choose_path_fired(self):
+        self.path = QFileDialog.getExistingDirectory(self, 'Select folder for outputs', self.path)
+        if self.path == '':
+            self.path = './outputs'
+        self.path_box.setText(self.path + '/<time>')
+
+    def close_tab_result(self, result_id: int):
+        self.tabs.removeTab(self.tabs.currentIndex())
+        self.results_tabs.pop(result_id)
+        self.tabs.setCurrentIndex(0)
 
     def _show_empty_entry_warning(self):
         info = QMessageBox(self)

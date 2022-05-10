@@ -196,7 +196,7 @@
            </property>
            <property name="dateTime">
             <datetime>
-             <hour>6</hour>
+             <hour>5</hour>
              <minute>0</minute>
              <second>0</second>
              <year>2022</year>
@@ -206,21 +206,21 @@
            </property>
            <property name="time">
             <time>
-             <hour>6</hour>
+             <hour>5</hour>
              <minute>0</minute>
              <second>0</second>
             </time>
            </property>
            <property name="maximumTime">
             <time>
-             <hour>13</hour>
+             <hour>12</hour>
              <minute>59</minute>
              <second>59</second>
             </time>
            </property>
            <property name="minimumTime">
             <time>
-             <hour>14</hour>
+             <hour>13</hour>
              <minute>0</minute>
              <second>0</second>
             </time>
@@ -246,7 +246,7 @@
            </property>
            <property name="dateTime">
             <datetime>
-             <hour>6</hour>
+             <hour>5</hour>
              <minute>0</minute>
              <second>0</second>
              <year>2022</year>
@@ -256,21 +256,21 @@
            </property>
            <property name="time">
             <time>
-             <hour>6</hour>
+             <hour>5</hour>
              <minute>0</minute>
              <second>0</second>
             </time>
            </property>
            <property name="maximumTime">
             <time>
-             <hour>13</hour>
+             <hour>12</hour>
              <minute>59</minute>
              <second>59</second>
             </time>
            </property>
            <property name="minimumTime">
             <time>
-             <hour>14</hour>
+             <hour>13</hour>
              <minute>0</minute>
              <second>0</second>
             </time>
@@ -1327,7 +1327,7 @@
              </widget>
              <widget class="QLabel" name="label_14">
               <property name="enabled">
-               <bool>false</bool>
+               <bool>true</bool>
               </property>
               <property name="geometry">
                <rect>
@@ -1341,9 +1341,9 @@
                <string>Saves directory:</string>
               </property>
              </widget>
-             <widget class="QLineEdit" name="lineEdit">
+             <widget class="QLineEdit" name="editPath">
               <property name="enabled">
-               <bool>false</bool>
+               <bool>true</bool>
               </property>
               <property name="geometry">
                <rect>
@@ -1354,17 +1354,20 @@
                </rect>
               </property>
               <property name="text">
-               <string>outputs/&lt;time&gt;</string>
+               <string/>
+              </property>
+              <property name="readOnly">
+               <bool>true</bool>
               </property>
              </widget>
-             <widget class="QPushButton" name="pushButton">
+             <widget class="QPushButton" name="buttChoosePath">
               <property name="enabled">
-               <bool>false</bool>
+               <bool>true</bool>
               </property>
               <property name="geometry">
                <rect>
                 <x>271</x>
-                <y>160</y>
+                <y>159</y>
                 <width>20</width>
                 <height>24</height>
                </rect>
@@ -1402,7 +1405,7 @@
              <widget class="QCheckBox" name="checkFilePNG">
               <property name="geometry">
                <rect>
-                <x>180</x>
+                <x>130</x>
                 <y>130</y>
                 <width>51</width>
                 <height>20</height>
@@ -1411,11 +1414,14 @@
               <property name="text">
                <string>PNG</string>
               </property>
+              <property name="checked">
+               <bool>true</bool>
+              </property>
              </widget>
              <widget class="QCheckBox" name="checkFilePDF">
               <property name="geometry">
                <rect>
-                <x>130</x>
+                <x>180</x>
                 <y>130</y>
                 <width>51</width>
                 <height>20</height>
@@ -1425,7 +1431,7 @@
                <string>PDF</string>
               </property>
               <property name="checked">
-               <bool>true</bool>
+               <bool>false</bool>
               </property>
              </widget>
             </widget>
@@ -1503,15 +1509,15 @@
              <property name="currentIndex">
               <number>0</number>
              </property>
-             <widget class="QWidget" name="tabWaaConst">
+             <widget class="QWidget" name="tabWaaSchleiss">
               <attribute name="title">
-               <string>Constant</string>
+               <string>Schleiss 2013</string>
               </attribute>
               <widget class="QDoubleSpinBox" name="doubleSpinBox_3">
                <property name="geometry">
                 <rect>
-                 <x>150</x>
-                 <y>80</y>
+                 <x>210</x>
+                 <y>70</y>
                  <width>111</width>
                  <height>22</height>
                 </rect>
@@ -1526,40 +1532,11 @@
                 <double>1.400000000000000</double>
                </property>
               </widget>
-              <widget class="QRadioButton" name="radioButton_14">
-               <property name="geometry">
-                <rect>
-                 <x>20</x>
-                 <y>80</y>
-                 <width>131</width>
-                 <height>20</height>
-                </rect>
-               </property>
-               <property name="text">
-                <string>Common constant:</string>
-               </property>
-               <property name="checked">
-                <bool>true</bool>
-               </property>
-              </widget>
-              <widget class="QRadioButton" name="radioButton_13">
-               <property name="geometry">
-                <rect>
-                 <x>20</x>
-                 <y>50</y>
-                 <width>241</width>
-                 <height>20</height>
-                </rect>
-               </property>
-               <property name="text">
-                <string>Calibrated value</string>
-               </property>
-              </widget>
               <widget class="QLabel" name="label_20">
                <property name="geometry">
                 <rect>
                  <x>20</x>
-                 <y>20</y>
+                 <y>10</y>
                  <width>541</width>
                  <height>16</height>
                 </rect>
@@ -1573,6 +1550,45 @@
                 <string>Apply constant WAA value on all units, or individually using the calibrated value from DB. </string>
                </property>
               </widget>
+              <widget class="QRadioButton" name="radioButton_14">
+               <property name="geometry">
+                <rect>
+                 <x>120</x>
+                 <y>70</y>
+                 <width>81</width>
+                 <height>20</height>
+                </rect>
+               </property>
+               <property name="text">
+                <string>Common:</string>
+               </property>
+               <property name="checked">
+                <bool>true</bool>
+               </property>
+              </widget>
+              <widget class="QRadioButton" name="radioButton_13">
+               <property name="geometry">
+                <rect>
+                 <x>20</x>
+                 <y>70</y>
+                 <width>101</width>
+                 <height>20</height>
+                </rect>
+               </property>
+               <property name="text">
+                <string>Calibrated</string>
+               </property>
+              </widget>
+             </widget>
+             <widget class="QWidget" name="tabWaaPastor">
+              <attribute name="title">
+               <string>Pastorek 2021</string>
+              </attribute>
+             </widget>
+             <widget class="QWidget" name="tab">
+              <attribute name="title">
+               <string>Leijnse 2008</string>
+              </attribute>
              </widget>
              <widget class="QWidget" name="tabWaaRatio">
               <attribute name="title">
@@ -1638,21 +1654,6 @@
                 <bool>false</bool>
                </property>
               </widget>
-             </widget>
-             <widget class="QWidget" name="tabWaaPastor">
-              <attribute name="title">
-               <string>Pastorek 2021</string>
-              </attribute>
-             </widget>
-             <widget class="QWidget" name="tabWaaSchleiss">
-              <attribute name="title">
-               <string>Schleiss 2013</string>
-              </attribute>
-             </widget>
-             <widget class="QWidget" name="tab">
-              <attribute name="title">
-               <string>Leijnse 2008</string>
-              </attribute>
              </widget>
             </widget>
            </item>
