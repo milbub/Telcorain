@@ -332,10 +332,23 @@ class MainWindow(QMainWindow):
             else:
                 results_tab_name = self.results_name.text()
 
+            # pass some calc params into the results in dict
+            params = {
+                'roll': rolling_hours,
+                'sd': wet_dry_deviation,
+                'base_smp': baseline_samples,
+                'resolution': interpol_res,
+                'pow': idw_power,
+                'near': idw_near,
+                'dist': idw_dist,
+                'schleiss_m': waa_schleiss_val,
+                'schleiss_t': waa_schleiss_tau,
+            }
+
             # create results widget instance
             self.results_tabs[self.result_id] = ResultsWidget(results_tab_name, self.result_id, start, end, output_step,
                                                               is_output_total, self.path, is_pdf, is_png, close_func,
-                                                              is_only_overall)
+                                                              is_only_overall, params)
 
             self.results_name.clear()
             self.butt_abort.setEnabled(True)

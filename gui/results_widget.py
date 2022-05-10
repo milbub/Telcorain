@@ -2,9 +2,9 @@ import os
 import webbrowser
 
 import matplotlib
-from PyQt6 import uic
+from PyQt6 import uic, QtCore
 from PyQt6.QtCore import QDateTime, QTimer
-from PyQt6.QtWidgets import QWidget, QLabel, QGridLayout, QSlider, QPushButton, QMessageBox
+from PyQt6.QtWidgets import QWidget, QLabel, QGridLayout, QSlider, QPushButton, QMessageBox, QTableWidget
 from matplotlib import cm, colors, pyplot
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
@@ -50,7 +50,8 @@ class ResultsWidget(QWidget):
     ANIMATION_SPEED = 1000
 
     def __init__(self, tab_name: str, result_id: int, start: QDateTime, end: QDateTime, output_step: int,
-                 are_results_totals: bool, figs_path: str, is_pdf: bool, is_png: bool, tab_close, is_overall: bool):
+                 are_results_totals: bool, figs_path: str, is_pdf: bool, is_png: bool, tab_close, is_overall: bool,
+                 calc_params: dict):
         super(QWidget, self).__init__()
         self.tab_name = tab_name
         self.result_id = result_id
@@ -63,6 +64,7 @@ class ResultsWidget(QWidget):
         self.is_png = is_png
         self.tab_close = tab_close
         self.is_only_overall = is_overall
+        self.calc_params = calc_params
 
         # saves info
         self.figs_full_path = ''
@@ -90,6 +92,7 @@ class ResultsWidget(QWidget):
         self.butt_save = self.findChild(QPushButton, "buttSave")
         self.butt_open = self.findChild(QPushButton, "buttOpenFolder")
         self.butt_close = self.findChild(QPushButton, "buttClose")
+        self.table_params = self.findChild(QTableWidget, "tableParams")
 
         # connect buttons
         self.button_play_pause.clicked.connect(self.start_pause_fired)
@@ -137,6 +140,9 @@ class ResultsWidget(QWidget):
         # init animation timer
         self.animation_timer = QTimer()  # create timer for next checks
         self.animation_timer.timeout.connect(self.next_animation_fig)
+
+        # show calculation parameters info
+        self._show_info()
 
     def change_no_anim_notification(self, still_interpolating: bool):
         if still_interpolating:
@@ -342,3 +348,13 @@ class ResultsWidget(QWidget):
         self.button_start.setEnabled(enabled)
         self.button_end.setEnabled(enabled)
         self.slider.setEnabled(enabled)
+
+    def _show_info(self):
+        p = self.calc_params
+        labels = [QLabel(str(p['roll'])), QLabel(str(p['sd'])), QLabel(str(p['base_smp'])),
+                  QLabel(str(p['resolution'])), QLabel(str(p['pow'])), QLabel(str(p['near'])), QLabel(str(p['dist'])),
+                  QLabel(str(p['schleiss_m'])), QLabel(str(p['schleiss_t']))]
+
+        for x in range(9):
+            labels[x].setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+            self.table_params.setCellWidget(x, 1, labels[x])
