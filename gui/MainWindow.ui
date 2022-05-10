@@ -717,7 +717,7 @@
                <rect>
                 <x>230</x>
                 <y>65</y>
-                <width>89</width>
+                <width>81</width>
                 <height>20</height>
                </rect>
               </property>
@@ -747,7 +747,7 @@
                <bool>false</bool>
               </property>
              </widget>
-             <widget class="QDoubleSpinBox" name="doubleSpinBox">
+             <widget class="QDoubleSpinBox" name="spinWetDrySD">
               <property name="geometry">
                <rect>
                 <x>310</x>
@@ -873,7 +873,7 @@
                <rect>
                 <x>20</x>
                 <y>160</y>
-                <width>321</width>
+                <width>211</width>
                 <height>16</height>
                </rect>
               </property>
@@ -881,7 +881,7 @@
                <string>Reference signal level average samples:</string>
               </property>
              </widget>
-             <widget class="QSpinBox" name="spinBox_3">
+             <widget class="QSpinBox" name="spinBaselineSamples">
               <property name="geometry">
                <rect>
                 <x>290</x>
@@ -891,7 +891,7 @@
                </rect>
               </property>
               <property name="value">
-               <number>3</number>
+               <number>5</number>
               </property>
              </widget>
              <widget class="QDoubleSpinBox" name="spinRollWindow">
@@ -958,7 +958,7 @@
                <string>Power:</string>
               </property>
              </widget>
-             <widget class="QSpinBox" name="spinBox_2">
+             <widget class="QSpinBox" name="spinIdwPower">
               <property name="enabled">
                <bool>true</bool>
               </property>
@@ -971,7 +971,7 @@
                </rect>
               </property>
               <property name="value">
-               <number>2</number>
+               <number>1</number>
               </property>
              </widget>
              <widget class="QRadioButton" name="radioButton_18">
@@ -1159,7 +1159,7 @@
                <string>Distance:</string>
               </property>
              </widget>
-             <widget class="QDoubleSpinBox" name="doubleSpinBox_10">
+             <widget class="QDoubleSpinBox" name="spinIdwDist">
               <property name="geometry">
                <rect>
                 <x>320</x>
@@ -1175,7 +1175,7 @@
                <double>1.000000000000000</double>
               </property>
              </widget>
-             <widget class="QSpinBox" name="spinBox_4">
+             <widget class="QSpinBox" name="spinIdwNear">
               <property name="geometry">
                <rect>
                 <x>190</x>
@@ -1201,7 +1201,7 @@
                <string>Spatial resolution:</string>
               </property>
              </widget>
-             <widget class="QDoubleSpinBox" name="doubleSpinBox_9">
+             <widget class="QDoubleSpinBox" name="spinInterResolution">
               <property name="geometry">
                <rect>
                 <x>150</x>
@@ -1494,11 +1494,16 @@
               <item>
                <widget class="QComboBox" name="comboBox">
                 <property name="currentText">
-                 <string/>
+                 <string>Schleiss 2013</string>
                 </property>
                 <property name="placeholderText">
-                 <string>None</string>
+                 <string/>
                 </property>
+                <item>
+                 <property name="text">
+                  <string>Schleiss 2013</string>
+                 </property>
+                </item>
                </widget>
               </item>
              </layout>
@@ -1509,14 +1514,14 @@
              <property name="currentIndex">
               <number>0</number>
              </property>
-             <widget class="QWidget" name="tabWaaSchleiss">
+             <widget class="QWidget" name="waaSchleiss">
               <attribute name="title">
                <string>Schleiss 2013</string>
               </attribute>
-              <widget class="QDoubleSpinBox" name="doubleSpinBox_3">
+              <widget class="QDoubleSpinBox" name="spinSchleissWaa">
                <property name="geometry">
                 <rect>
-                 <x>210</x>
+                 <x>290</x>
                  <y>70</y>
                  <width>111</width>
                  <height>22</height>
@@ -1529,16 +1534,16 @@
                 <double>100.000000000000000</double>
                </property>
                <property name="value">
-                <double>1.400000000000000</double>
+                <double>1.550000000000000</double>
                </property>
               </widget>
               <widget class="QLabel" name="label_20">
                <property name="geometry">
                 <rect>
                  <x>20</x>
-                 <y>10</y>
-                 <width>541</width>
-                 <height>16</height>
+                 <y>20</y>
+                 <width>701</width>
+                 <height>31</height>
                 </rect>
                </property>
                <property name="font">
@@ -1547,13 +1552,13 @@
                 </font>
                </property>
                <property name="text">
-                <string>Apply constant WAA value on all units, or individually using the calibrated value from DB. </string>
+                <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Dynamic time-bound model. When wet period starts, effective WAA value exponentially progress up to the defined constant value.&lt;br/&gt;When wet period fades, WAA decreases exponentially to zero.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                </property>
               </widget>
-              <widget class="QRadioButton" name="radioButton_14">
+              <widget class="QRadioButton" name="radioSchleissCommon">
                <property name="geometry">
                 <rect>
-                 <x>120</x>
+                 <x>210</x>
                  <y>70</y>
                  <width>81</width>
                  <height>20</height>
@@ -1566,12 +1571,12 @@
                 <bool>true</bool>
                </property>
               </widget>
-              <widget class="QRadioButton" name="radioButton_13">
+              <widget class="QRadioButton" name="radioSchleissCalibr">
                <property name="geometry">
                 <rect>
-                 <x>20</x>
+                 <x>120</x>
                  <y>70</y>
-                 <width>101</width>
+                 <width>81</width>
                  <height>20</height>
                 </rect>
                </property>
@@ -1579,18 +1584,108 @@
                 <string>Calibrated</string>
                </property>
               </widget>
+              <widget class="QLabel" name="label_28">
+               <property name="geometry">
+                <rect>
+                 <x>20</x>
+                 <y>70</y>
+                 <width>91</width>
+                 <height>16</height>
+                </rect>
+               </property>
+               <property name="text">
+                <string>WAA maximum:</string>
+               </property>
+              </widget>
+              <widget class="QLabel" name="label_29">
+               <property name="geometry">
+                <rect>
+                 <x>440</x>
+                 <y>70</y>
+                 <width>71</width>
+                 <height>21</height>
+                </rect>
+               </property>
+               <property name="text">
+                <string>Tau 𝜏 value:</string>
+               </property>
+              </widget>
+              <widget class="QDoubleSpinBox" name="spinSchleissTau">
+               <property name="geometry">
+                <rect>
+                 <x>510</x>
+                 <y>70</y>
+                 <width>111</width>
+                 <height>22</height>
+                </rect>
+               </property>
+               <property name="suffix">
+                <string> minutes</string>
+               </property>
+               <property name="decimals">
+                <number>1</number>
+               </property>
+               <property name="maximum">
+                <double>1000.000000000000000</double>
+               </property>
+               <property name="value">
+                <double>15.000000000000000</double>
+               </property>
+              </widget>
+              <widget class="QLabel" name="label_30">
+               <property name="geometry">
+                <rect>
+                 <x>630</x>
+                 <y>70</y>
+                 <width>331</width>
+                 <height>21</height>
+                </rect>
+               </property>
+               <property name="font">
+                <font>
+                 <italic>true</italic>
+                </font>
+               </property>
+               <property name="text">
+                <string>= time after which, 95% of the maximum WAA value is applied</string>
+               </property>
+              </widget>
              </widget>
-             <widget class="QWidget" name="tabWaaPastor">
+             <widget class="QWidget" name="waaPastor">
               <attribute name="title">
                <string>Pastorek 2021</string>
               </attribute>
+              <layout class="QGridLayout" name="gridLayout_3">
+               <item row="0" column="0">
+                <widget class="QLabel" name="label_31">
+                 <property name="text">
+                  <string>UNDER CONSTRUCTION</string>
+                 </property>
+                 <property name="alignment">
+                  <set>Qt::AlignCenter</set>
+                 </property>
+                </widget>
+               </item>
+              </layout>
              </widget>
-             <widget class="QWidget" name="tab">
+             <widget class="QWidget" name="waaLeijnse">
               <attribute name="title">
                <string>Leijnse 2008</string>
               </attribute>
+              <layout class="QGridLayout" name="gridLayout_4">
+               <item row="0" column="0">
+                <widget class="QLabel" name="label_32">
+                 <property name="text">
+                  <string>UNDER CONSTRUCTION</string>
+                 </property>
+                 <property name="alignment">
+                  <set>Qt::AlignCenter</set>
+                 </property>
+                </widget>
+               </item>
+              </layout>
              </widget>
-             <widget class="QWidget" name="tabWaaRatio">
+             <widget class="QWidget" name="waaRatio">
               <attribute name="title">
                <string>Ratio</string>
               </attribute>
@@ -1600,8 +1695,8 @@
                </property>
                <property name="geometry">
                 <rect>
-                 <x>150</x>
-                 <y>80</y>
+                 <x>440</x>
+                 <y>70</y>
                  <width>111</width>
                  <height>22</height>
                 </rect>
@@ -1622,14 +1717,14 @@
                </property>
                <property name="geometry">
                 <rect>
-                 <x>20</x>
-                 <y>50</y>
-                 <width>231</width>
+                 <x>270</x>
+                 <y>70</y>
+                 <width>81</width>
                  <height>20</height>
                 </rect>
                </property>
                <property name="text">
-                <string>Calibrated value</string>
+                <string>Calibrated</string>
                </property>
                <property name="checked">
                 <bool>true</bool>
@@ -1641,17 +1736,48 @@
                </property>
                <property name="geometry">
                 <rect>
-                 <x>20</x>
-                 <y>80</y>
-                 <width>131</width>
+                 <x>360</x>
+                 <y>70</y>
+                 <width>81</width>
                  <height>20</height>
                 </rect>
                </property>
                <property name="text">
-                <string>Common constant:</string>
+                <string>Common:</string>
                </property>
                <property name="checked">
                 <bool>false</bool>
+               </property>
+              </widget>
+              <widget class="QLabel" name="label_33">
+               <property name="geometry">
+                <rect>
+                 <x>20</x>
+                 <y>70</y>
+                 <width>241</width>
+                 <height>16</height>
+                </rect>
+               </property>
+               <property name="text">
+                <string>WAA portion of the total signal attenuation:</string>
+               </property>
+              </widget>
+              <widget class="QLabel" name="label_34">
+               <property name="geometry">
+                <rect>
+                 <x>20</x>
+                 <y>30</y>
+                 <width>861</width>
+                 <height>16</height>
+                </rect>
+               </property>
+               <property name="font">
+                <font>
+                 <italic>true</italic>
+                </font>
+               </property>
+               <property name="text">
+                <string>This model multiple all the attenuation values by constant percentage value. Resulting values are considered as WAA and subtracted from original attenuations.</string>
                </property>
               </widget>
              </widget>
@@ -1678,6 +1804,9 @@
           <layout class="QHBoxLayout" name="horizontalLayout">
            <item>
             <widget class="QPushButton" name="buttLoad">
+             <property name="enabled">
+              <bool>false</bool>
+             </property>
              <property name="sizePolicy">
               <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
                <horstretch>0</horstretch>
@@ -1697,6 +1826,9 @@
            </item>
            <item>
             <widget class="QPushButton" name="buttSave">
+             <property name="enabled">
+              <bool>false</bool>
+             </property>
              <property name="sizePolicy">
               <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
                <horstretch>0</horstretch>
@@ -1716,6 +1848,9 @@
            </item>
            <item>
             <widget class="QPushButton" name="buttDef">
+             <property name="enabled">
+              <bool>false</bool>
+             </property>
              <property name="sizePolicy">
               <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
                <horstretch>0</horstretch>
@@ -2061,6 +2196,38 @@
     <hint type="destinationlabel">
      <x>1067</x>
      <y>402</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>radioSchleissCommon</sender>
+   <signal>clicked(bool)</signal>
+   <receiver>spinSchleissWaa</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>506</x>
+     <y>659</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>601</x>
+     <y>660</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>radioSchleissCalibr</sender>
+   <signal>clicked(bool)</signal>
+   <receiver>spinSchleissWaa</receiver>
+   <slot>setDisabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>416</x>
+     <y>659</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>601</x>
+     <y>660</y>
     </hint>
    </hints>
   </connection>

@@ -83,13 +83,21 @@ class MainWindow(QMainWindow):
         self.tabs = self.findChild(QTabWidget, "tabWidget")
         self.results_name = self.findChild(QLineEdit, "resultsNameEdit")
         self.spin_roll_window = self.findChild(QDoubleSpinBox, "spinRollWindow")
+        self.spin_wet_dry_sd = self.findChild(QDoubleSpinBox, "spinWetDrySD")
+        self.spin_baseline_samples = self.findChild(QSpinBox, "spinBaselineSamples")
         self.spin_output_step = self.findChild(QSpinBox, "spinOutputStep")
+        self.spin_interpol_res = self.findChild(QDoubleSpinBox, "spinInterResolution")
+        self.spin_idw_power = self.findChild(QSpinBox, "spinIdwPower")
+        self.spin_idw_near = self.findChild(QSpinBox, "spinIdwNear")
+        self.spin_idw_dist = self.findChild(QDoubleSpinBox, "spinIdwDist")
         self.radio_output_total = self.findChild(QRadioButton, "radioOutputTotal")
         self.box_only_overall = self.findChild(QCheckBox, "checkOnlyOverall")
         self.path_box = self.findChild(QLineEdit, "editPath")
         self.butt_choose_path = self.findChild(QPushButton, "buttChoosePath")
         self.pdf_box = self.findChild(QCheckBox, "checkFilePDF")
         self.png_box = self.findChild(QCheckBox, "checkFilePNG")
+        self.spin_waa_schleiss_val = self.findChild(QDoubleSpinBox, "spinSchleissWaa")
+        self.spin_waa_schleiss_tau = self.findChild(QDoubleSpinBox, "spinSchleissTau")
 
         # declare dictionary for created tabs with calculation results
         # <key: int = result ID, value: ResultsWidget>
@@ -274,11 +282,19 @@ class MainWindow(QMainWindow):
         time_diff = start.msecsTo(end)
         rolling_hours = self.spin_roll_window.value()
         rolling_values = int((rolling_hours * 60) / step)
+        wet_dry_deviation = self.spin_wet_dry_sd.value()
+        baseline_samples = self.spin_baseline_samples.value()
+        interpol_res = self.spin_interpol_res.value()
+        idw_power = self.spin_idw_power.value()
+        idw_near = self.spin_idw_near.value()
+        idw_dist = self.spin_idw_dist.value()
         output_step = self.spin_output_step.value()
         is_only_overall = self.box_only_overall.isChecked()
         is_output_total = self.radio_output_total.isChecked()
         is_pdf = self.pdf_box.isChecked()
         is_png = self.png_box.isChecked()
+        waa_schleiss_val = self.spin_waa_schleiss_val.value()
+        waa_schleiss_tau = self.spin_waa_schleiss_tau.value()
         close_func = self.close_tab_result
 
         # INPUT CHECKS:
@@ -307,7 +323,9 @@ class MainWindow(QMainWindow):
 
             # create calculation instance
             calculation = calc.Calculation(self.calc_signals, self.result_id, self.links, self.current_selection, start,
-                                           end, step, rolling_values, output_step, is_only_overall, is_output_total)
+                                           end, step, rolling_values, output_step, is_only_overall, is_output_total,
+                                           wet_dry_deviation, baseline_samples, interpol_res, idw_power, idw_near,
+                                           idw_dist, waa_schleiss_val, waa_schleiss_tau)
 
             if self.results_name.text() == "":
                 results_tab_name = "<no name>"

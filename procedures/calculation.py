@@ -63,7 +63,8 @@ class Calculation(QRunnable):
 
     def __init__(self, signals: CalcSignals, results_id: int, links: dict, selection: dict, start: QDateTime,
                  end: QDateTime, interval: int, rolling_vals: int, output_step: int, is_only_overall: bool,
-                 is_output_total: bool):
+                 is_output_total: bool, wet_dry_deviation: float, baseline_samples: int, interpol_res, idw_pow,
+                 idw_near, idw_dist, schleiss_val, schleiss_tau):
         QRunnable.__init__(self)
         self.sig = signals
         self.results_id = results_id
@@ -76,6 +77,14 @@ class Calculation(QRunnable):
         self.output_step = output_step
         self.is_only_overall = is_only_overall
         self.is_output_total = is_output_total
+        self.wet_dry_deviation = wet_dry_deviation
+        self.baseline_samples = baseline_samples
+        self.interpol_res = interpol_res
+        self.idw_pow = idw_pow
+        self.idw_near = idw_near
+        self.idw_dist = idw_dist
+        self.schleiss_val = schleiss_val
+        self.schleiss_tau = schleiss_tau
 
     def run(self):
         print(f"[CALC ID: {self.results_id}] Rainfall calculation procedure started.", flush=True)
@@ -301,19 +310,21 @@ class Calculation(QRunnable):
             for link in calc_data:
 
                 # determine wet periods
-                link['wet'] = link.trsl.rolling(time=self.rolling_vals, center=True).std(skipna=False) > 0.8
+                link['wet'] = link.trsl.rolling(time=self.rolling_vals, center=True).std(skipna=False) > \
+                              self.wet_dry_deviation
 
                 # calculate ratio of wet periods
                 link['wet_fraction'] = (link.wet == 1).sum() / (link.wet == 0).sum()
 
                 # determine signal baseline
                 link['baseline'] = pycml.processing.baseline.baseline_constant(trsl=link.trsl, wet=link.wet,
-                                                                               n_average_last_dry=5)
+                                                                               n_average_last_dry=self.baseline_samples)
 
                 # calculate wet antenna attenuation
                 link['waa'] = pycml.processing.wet_antenna.waa_schleiss_2013(rsl=link.trsl, baseline=link.baseline,
-                                                                             wet=link.wet, waa_max=1.55, delta_t=1,
-                                                                             tau=15)
+                                                                             wet=link.wet, waa_max=self.schleiss_val,
+                                                                             delta_t=60 / ((60 / self.interval) * 60),
+                                                                             tau=self.schleiss_tau)
 
                 # calculate final rain attenuation
                 link['A'] = link.trsl - link.baseline - link.waa
@@ -352,13 +363,13 @@ class Calculation(QRunnable):
             calc_data_1h['lat_center'] = (calc_data_1h.site_a_latitude + calc_data_1h.site_b_latitude) / 2
             calc_data_1h['lon_center'] = (calc_data_1h.site_a_longitude + calc_data_1h.site_b_longitude) / 2
 
-            interpolator = pycml.spatial.interpolator.IdwKdtreeInterpolator(nnear=50, p=1, exclude_nan=False,
-                                                                            max_distance=1)
+            interpolator = pycml.spatial.interpolator.IdwKdtreeInterpolator(nnear=self.idw_near, p=self.idw_pow,
+                                                                            exclude_nan=False,
+                                                                            max_distance=self.idw_dist)
 
             # calculate coordinate grids with defined area boundaries
-            resolution = 0.001
-            x_coords = np.arange(self.X_MIN - resolution, self.X_MAX + resolution, resolution)
-            y_coords = np.arange(self.Y_MIN - resolution, self.Y_MAX + resolution, resolution)
+            x_coords = np.arange(self.X_MIN - self.interpol_res, self.X_MAX + self.interpol_res, self.interpol_res)
+            y_coords = np.arange(self.Y_MIN - self.interpol_res, self.Y_MAX + self.interpol_res, self.interpol_res)
             x_grid, y_grid = np.meshgrid(x_coords, y_coords)
 
             rain_grid = interpolator(x=calc_data_1h.lon_center, y=calc_data_1h.lat_center,

@@ -66,7 +66,7 @@ class ResultsWidget(QWidget):
 
         # saves info
         self.figs_full_path = ''
-        self.figs_save_info = {-1: False}
+        self.figs_save_info = {-1: False}   # -1 = overall fig, then 0+ corresponds with animation counter
 
         # load UI definition from Qt XML file
         uic.loadUi("./gui/ResultsWidget.ui", self)
@@ -75,6 +75,10 @@ class ResultsWidget(QWidget):
         self.overall_plot_layout = self.findChild(QGridLayout, "layoutOverallPlot")
         self.main_plot_layout = self.findChild(QGridLayout, "layoutMainPlot")
         self.tab_name_label = self.findChild(QLabel, "labelCalcName")
+        self.start_label = self.findChild(QLabel, "labelStartTime")
+        self.end_label = self.findChild(QLabel, "labelEndTime")
+        self.interval_label = self.findChild(QLabel, "labelFrameInterval")
+        self.output_label = self.findChild(QLabel, "labelOutputType")
         self.label_no_anim_notify = self.findChild(QLabel, "labelNoAnim")
         self.label_current_fig_time = self.findChild(QLabel, "labelCurrentFig")
         self.slider = self.findChild(QSlider, "sliderFrames")
@@ -99,6 +103,13 @@ class ResultsWidget(QWidget):
 
         # display info
         self.tab_name_label.setText(tab_name)
+        self.start_label.setText(self.start.toString("dd.MM.yyyy HH:mm"))
+        self.end_label.setText(self.end.toString("dd.MM.yyyy HH:mm"))
+        self.interval_label.setText(str(self.output_step) + ' minutes')
+        if are_results_totals:
+            self.output_label.setText('Totals (mm)')
+        else:
+            self.output_label.setText('Intensity (mm/h)')
 
         # setup colormap for plots
         self.rain_cmap = cm.get_cmap('turbo', 15)
