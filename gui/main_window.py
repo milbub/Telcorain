@@ -122,6 +122,15 @@ class MainWindow(QMainWindow):
         # connect other signals
         self.spin_timestep.valueChanged.connect(self._adjust_window)
 
+        # style out link table
+        self.selection_table.setColumnWidth(0, 40)
+        self.selection_table.setColumnWidth(1, 42)
+        self.selection_table.setColumnWidth(2, 42)
+        self.selection_table.setColumnWidth(3, 75)
+        self.selection_table.setColumnWidth(4, 71)
+        self.selection_table.setColumnWidth(5, 75)
+        self.selection_table.setColumnWidth(6, 148)
+
         # show window
         self.show()
 
@@ -173,15 +182,6 @@ class MainWindow(QMainWindow):
 
         # fill with other sets
         self._fill_linksets()
-
-        # style out link table
-        self.selection_table.setColumnWidth(0, 40)
-        self.selection_table.setColumnWidth(1, 42)
-        self.selection_table.setColumnWidth(2, 42)
-        self.selection_table.setColumnWidth(3, 75)
-        self.selection_table.setColumnWidth(4, 71)
-        self.selection_table.setColumnWidth(5, 75)
-        self.selection_table.setColumnWidth(6, 148)
 
         # output default path, TODO: load from options
         self.path = './outputs'
