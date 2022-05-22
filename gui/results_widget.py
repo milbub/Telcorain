@@ -13,30 +13,29 @@ matplotlib.use('QtAgg')
 
 
 class Canvas(FigureCanvasQTAgg):
-    # TODO: load from options
-    # rendered area borders
-    X_MIN = 14.21646819
-    X_MAX = 14.70604375
-    Y_MIN = 49.91505682
-    Y_MAX = 50.22841327
-
-    def __init__(self, dpi=96, left=0, bottom=0.03, right=1, top=0.97):
+    def __init__(self, x_min, x_max, y_min, y_max, dpi=96, left=0, bottom=0.03, right=1, top=0.97):
         # setup single plot positioning
         self.fig = Figure(dpi=dpi)
         self.fig.tight_layout()
-        self.ax = self.fig.add_subplot(111, xlim=(self.X_MIN, self.X_MAX), ylim=(self.Y_MIN, self.Y_MAX))
+        self.ax = self.fig.add_subplot(111, xlim=(x_min, x_max), ylim=(y_min, y_max))
         self.ax.axes.xaxis.set_visible(False)
         self.ax.axes.yaxis.set_visible(False)
         self.fig.subplots_adjust(left, bottom, right, top)
 
         # TODO: load path from options
         bg_map = pyplot.imread('./maps/prague_35x35.png')
-        self.ax.imshow(bg_map, zorder=0, extent=(self.X_MIN, self.X_MAX, self.Y_MIN, self.Y_MAX), aspect='auto')
+        self.ax.imshow(bg_map, zorder=0, extent=(x_min, x_max, y_min, y_max), aspect='auto')
 
         super(Canvas, self).__init__(self.fig)
 
         self.pc = None
         self.cbar = None
+
+        # TEST
+        def onclick(event):
+            print(event)
+
+        self.mpl_connect('button_press_event', onclick)
 
 
 def _plot_link_lines(links_data, ax):
@@ -45,7 +44,20 @@ def _plot_link_lines(links_data, ax):
             'k', linewidth=1)
 
 
+def _get_z_value(x_min: float, y_min: float, res: float, z_grid, x: float, y: float) -> float:
+    x_pos = round((x - x_min) * (1 / res))
+    y_pos = round((y - y_min) * (1 / res))
+    return z_grid[y_pos][x_pos]
+
+
 class ResultsWidget(QWidget):
+    # TODO: load from options
+    # rendered area borders
+    X_MIN = 14.21646819
+    X_MAX = 14.70604375
+    Y_MIN = 49.91505682
+    Y_MAX = 50.22841327
+
     # animation speed constant, later speed control can be implemented
     ANIMATION_SPEED = 1000
 
@@ -119,8 +131,8 @@ class ResultsWidget(QWidget):
         self.rain_cmap.set_under('k', alpha=0)
 
         # prepare canvases
-        self.overall_canvas = Canvas(dpi=75)
-        self.animation_canvas = Canvas(dpi=75)
+        self.overall_canvas = Canvas(self.X_MIN, self.X_MAX, self.Y_MIN, self.Y_MAX, dpi=75)
+        self.animation_canvas = Canvas(self.X_MIN, self.X_MAX, self.Y_MIN, self.Y_MAX, dpi=75)
 
         # declare animation rain grids
         self.animation_grids = []
@@ -144,6 +156,12 @@ class ResultsWidget(QWidget):
         # show calculation parameters info
         self._show_info()
 
+        # value point coordinates (X, Y)
+        # TODO: load coordinates from file, implement adding, deleting, editing, ...
+        self.points = [(14.352689, 50.080843), (14.4278, 50.0692), (14.4619, 50.0758), (14.5381, 50.1233)]
+        self.anim_annotations = []
+        self.overall_annotations = []
+
     def change_no_anim_notification(self, still_interpolating: bool):
         if still_interpolating:
             self.butt_save.setEnabled(False)
@@ -155,7 +173,7 @@ class ResultsWidget(QWidget):
     # called from signal
     def render_overall_fig(self, x_grid, y_grid, rain_grid, links_calc_data):
         # render rainfall total
-        self._refresh_fig(self.overall_canvas, x_grid, y_grid, rain_grid, is_total=True)
+        self._refresh_fig(self.overall_canvas, x_grid, y_grid, rain_grid, self.overall_annotations, is_total=True)
 
         # plot link path lines
         _plot_link_lines(links_calc_data, self.overall_canvas.ax)
@@ -170,7 +188,8 @@ class ResultsWidget(QWidget):
         self.animation_y_grid = y_grid
 
         # render first figure of the animation
-        self._refresh_fig(self.animation_canvas, x_grid, y_grid, rain_grids[0], is_total=self.are_results_totals)
+        self._refresh_fig(self.animation_canvas, x_grid, y_grid, rain_grids[0], self.anim_annotations,
+                          is_total=self.are_results_totals)
 
         # plot link path lines
         _plot_link_lines(links_calc_data, self.animation_canvas.ax)
@@ -301,10 +320,11 @@ class ResultsWidget(QWidget):
 
     def _update_animation_fig(self):
         self._refresh_fig(self.animation_canvas, self.animation_x_grid, self.animation_y_grid,
-                          self.animation_grids[self.animation_counter], is_total=self.are_results_totals)
+                          self.animation_grids[self.animation_counter], self.anim_annotations,
+                          is_total=self.are_results_totals)
         self.animation_canvas.draw()
 
-    def _refresh_fig(self, canvas, x_grid, y_grid, rain_grid, is_total: bool = False):
+    def _refresh_fig(self, canvas, x_grid, y_grid, rain_grid, annotations, is_total: bool = False):
         # clear old plots
         if canvas.cbar is not None:
             canvas.pc.colorbar.remove()
@@ -312,6 +332,9 @@ class ResultsWidget(QWidget):
         if canvas.pc is not None:
             canvas.pc.remove()
             del canvas.pc
+        for annotation in annotations:
+            annotation.remove()
+        del annotations[:]
 
         canvas.pc = canvas.ax.pcolormesh(x_grid, y_grid, rain_grid, norm=colors.LogNorm(vmin=0.1, vmax=100),
                                          shading='nearest', cmap=self.rain_cmap, alpha=0.75)
@@ -321,6 +344,10 @@ class ResultsWidget(QWidget):
             canvas.cbar = canvas.fig.colorbar(canvas.pc, format='%d', label='Rainfall Intensity (mm/h)')
 
         canvas.cbar.draw_all()
+
+        for coords in self.points:
+            z = _get_z_value(self.X_MIN, self.Y_MIN, self.calc_params['resolution'], rain_grid, coords[0], coords[1])
+            annotations.append(canvas.ax.annotate(text='{:.1f}'.format(z), xy=(coords[0], coords[1]), fontsize=14))
 
     def _slider_pressed(self):
         if self.animation_timer.isActive():
