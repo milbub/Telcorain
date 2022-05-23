@@ -23,8 +23,10 @@ def _fill_channel_dataset(curr_link, flux_data, tx_ip, rx_ip, channel_id, freq,
     # if creating empty channel dataset, fill Rx vars with zeros
     if rx_zeros:
         rsl = np.zeros((len(flux_data[rx_ip]["rx_power"]),), dtype=float)
+        dummy = True
     else:
         rsl = [*flux_data[rx_ip]["rx_power"].values()]
+        dummy = False
 
     # in case of Tx power zeros, get array length from Rx array since it should be always available
     if tx_zeros:
@@ -48,6 +50,7 @@ def _fill_channel_dataset(curr_link, flux_data, tx_ip, rx_ip, channel_id, freq,
             "frequency": freq / 1000,
             "polarization": curr_link.polarization,
             "length": curr_link.distance,
+            "dummy_channel": dummy,
         },
     )
     return channel
@@ -364,7 +367,7 @@ class Calculation(QRunnable):
             calc_data_1h['lon_center'] = (calc_data_1h.site_a_longitude + calc_data_1h.site_b_longitude) / 2
 
             interpolator = pycml.spatial.interpolator.IdwKdtreeInterpolator(nnear=self.idw_near, p=self.idw_pow,
-                                                                            exclude_nan=False,
+                                                                            exclude_nan=True,
                                                                             max_distance=self.idw_dist)
 
             # calculate coordinate grids with defined area boundaries
