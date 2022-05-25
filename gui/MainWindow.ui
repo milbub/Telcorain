@@ -196,7 +196,7 @@
            </property>
            <property name="dateTime">
             <datetime>
-             <hour>5</hour>
+             <hour>3</hour>
              <minute>0</minute>
              <second>0</second>
              <year>2022</year>
@@ -206,21 +206,21 @@
            </property>
            <property name="time">
             <time>
-             <hour>5</hour>
+             <hour>3</hour>
              <minute>0</minute>
              <second>0</second>
             </time>
            </property>
            <property name="maximumTime">
             <time>
-             <hour>12</hour>
+             <hour>10</hour>
              <minute>59</minute>
              <second>59</second>
             </time>
            </property>
            <property name="minimumTime">
             <time>
-             <hour>13</hour>
+             <hour>11</hour>
              <minute>0</minute>
              <second>0</second>
             </time>
@@ -246,7 +246,7 @@
            </property>
            <property name="dateTime">
             <datetime>
-             <hour>5</hour>
+             <hour>3</hour>
              <minute>0</minute>
              <second>0</second>
              <year>2022</year>
@@ -256,21 +256,21 @@
            </property>
            <property name="time">
             <time>
-             <hour>5</hour>
+             <hour>3</hour>
              <minute>0</minute>
              <second>0</second>
             </time>
            </property>
            <property name="maximumTime">
             <time>
-             <hour>12</hour>
+             <hour>10</hour>
              <minute>59</minute>
              <second>59</second>
             </time>
            </property>
            <property name="minimumTime">
             <time>
-             <hour>13</hour>
+             <hour>11</hour>
              <minute>0</minute>
              <second>0</second>
             </time>
@@ -1240,13 +1240,13 @@
               <property name="geometry">
                <rect>
                 <x>20</x>
-                <y>30</y>
+                <y>60</y>
                 <width>111</width>
                 <height>16</height>
                </rect>
               </property>
               <property name="text">
-               <string>Rainfall output type:</string>
+               <string>Measure type:</string>
               </property>
              </widget>
              <widget class="QRadioButton" name="radioOutputIntensity">
@@ -1255,7 +1255,7 @@
               </property>
               <property name="geometry">
                <rect>
-                <x>150</x>
+                <x>230</x>
                 <y>60</y>
                 <width>161</width>
                 <height>20</height>
@@ -1268,7 +1268,7 @@
              <widget class="QRadioButton" name="radioOutputTotal">
               <property name="geometry">
                <rect>
-                <x>20</x>
+                <x>130</x>
                 <y>60</y>
                 <width>81</width>
                 <height>20</height>
@@ -1379,14 +1379,14 @@
              <widget class="QCheckBox" name="checkOnlyOverall">
               <property name="geometry">
                <rect>
-                <x>150</x>
+                <x>20</x>
                 <y>30</y>
-                <width>241</width>
+                <width>191</width>
                 <height>20</height>
                </rect>
               </property>
               <property name="text">
-               <string>Calculate only overall total rainfall</string>
+               <string>Preview - calculate only overall</string>
               </property>
              </widget>
              <widget class="QLabel" name="label_27">
@@ -1432,6 +1432,19 @@
               </property>
               <property name="checked">
                <bool>false</bool>
+              </property>
+             </widget>
+             <widget class="QCheckBox" name="checkDummy">
+              <property name="geometry">
+               <rect>
+                <x>230</x>
+                <y>30</y>
+                <width>161</width>
+                <height>20</height>
+               </rect>
+              </property>
+              <property name="text">
+               <string>Show dummy link paths</string>
               </property>
              </widget>
             </widget>

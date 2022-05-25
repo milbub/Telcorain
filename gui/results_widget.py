@@ -38,18 +38,6 @@ class Canvas(FigureCanvasQTAgg):
         self.mpl_connect('button_press_event', onclick)
 
 
-def _plot_link_lines(links_data, ax):
-    ax.plot([links_data.site_a_longitude, links_data.site_b_longitude],
-            [links_data.site_a_latitude, links_data.site_b_latitude],
-            'k', linewidth=1)
-
-
-def _get_z_value(x_min: float, y_min: float, res: float, z_grid, x: float, y: float) -> float:
-    x_pos = round((x - x_min) * (1 / res))
-    y_pos = round((y - y_min) * (1 / res))
-    return z_grid[y_pos][x_pos]
-
-
 class ResultsWidget(QWidget):
     # TODO: load from options
     # rendered area borders
@@ -63,7 +51,7 @@ class ResultsWidget(QWidget):
 
     def __init__(self, tab_name: str, result_id: int, start: QDateTime, end: QDateTime, output_step: int,
                  are_results_totals: bool, figs_path: str, is_pdf: bool, is_png: bool, tab_close, is_overall: bool,
-                 calc_params: dict):
+                 is_dummy: bool, calc_params: dict):
         super(QWidget, self).__init__()
         self.tab_name = tab_name
         self.result_id = result_id
@@ -76,6 +64,7 @@ class ResultsWidget(QWidget):
         self.is_png = is_png
         self.tab_close = tab_close
         self.is_only_overall = is_overall
+        self.is_dummy = is_dummy
         self.calc_params = calc_params
 
         # saves info
@@ -176,7 +165,7 @@ class ResultsWidget(QWidget):
         self._refresh_fig(self.overall_canvas, x_grid, y_grid, rain_grid, self.overall_annotations, is_total=True)
 
         # plot link path lines
-        _plot_link_lines(links_calc_data, self.overall_canvas.ax)
+        self._plot_link_lines(links_calc_data, self.overall_canvas.ax)
 
         # show in overall canvas frame
         self.overall_plot_layout.addWidget(self.overall_canvas)
@@ -192,7 +181,7 @@ class ResultsWidget(QWidget):
                           is_total=self.are_results_totals)
 
         # plot link path lines
-        _plot_link_lines(links_calc_data, self.animation_canvas.ax)
+        self._plot_link_lines(links_calc_data, self.animation_canvas.ax)
 
         # hide notification
         self.change_no_anim_notification(False)
@@ -346,8 +335,23 @@ class ResultsWidget(QWidget):
         canvas.cbar.draw_all()
 
         for coords in self.points:
-            z = _get_z_value(self.X_MIN, self.Y_MIN, self.calc_params['resolution'], rain_grid, coords[0], coords[1])
+            z = self._get_z_value(rain_grid, coords[0], coords[1])
             annotations.append(canvas.ax.annotate(text='{:.1f}'.format(z), xy=(coords[0], coords[1]), fontsize=14))
+
+    def _plot_link_lines(self, links_data, ax):
+        if self.is_dummy:
+            ax.plot([links_data.dummy_a_longitude, links_data.dummy_b_longitude],
+                    [links_data.dummy_a_latitude, links_data.dummy_b_latitude],
+                    'k', linewidth=1)
+        else:
+            ax.plot([links_data.site_a_longitude, links_data.site_b_longitude],
+                    [links_data.site_a_latitude, links_data.site_b_latitude],
+                    'k', linewidth=1)
+
+    def _get_z_value(self, z_grid, x: float, y: float) -> float:
+        x_pos = round((x - self.X_MIN) * (1 / self.calc_params['resolution']))
+        y_pos = round((y - self.Y_MIN) * (1 / self.calc_params['resolution']))
+        return z_grid[y_pos][x_pos]
 
     def _slider_pressed(self):
         if self.animation_timer.isActive():

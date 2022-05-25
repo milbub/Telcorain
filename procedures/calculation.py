@@ -13,49 +13,6 @@ class CalcSignals(QObject):
     progress_signal = pyqtSignal(dict)
 
 
-def _fill_channel_dataset(curr_link, flux_data, tx_ip, rx_ip, channel_id, freq,
-                          tx_zeros: bool = False, rx_zeros: bool = False) -> xr.Dataset:
-    # get times from the Rx power array, since these data should be always available
-    times = []
-    for time in flux_data[rx_ip]["rx_power"].keys():
-        times.append(np.datetime64(time).astype("datetime64[ns]"))
-
-    # if creating empty channel dataset, fill Rx vars with zeros
-    if rx_zeros:
-        rsl = np.zeros((len(flux_data[rx_ip]["rx_power"]),), dtype=float)
-        dummy = True
-    else:
-        rsl = [*flux_data[rx_ip]["rx_power"].values()]
-        dummy = False
-
-    # in case of Tx power zeros, get array length from Rx array since it should be always available
-    if tx_zeros:
-        tsl = np.zeros((len(flux_data[rx_ip]["rx_power"]),), dtype=float)
-    else:
-        tsl = [*flux_data[tx_ip]["tx_power"].values()]
-
-    channel = xr.Dataset(
-        data_vars={
-            "tsl": ("time", tsl),
-            "rsl": ("time", rsl),
-        },
-        coords={
-            "time": times,
-            "channel_id": channel_id,
-            "cml_id": curr_link.link_id,
-            "site_a_latitude": curr_link.latitude_a,
-            "site_b_latitude": curr_link.latitude_b,
-            "site_a_longitude": curr_link.longitude_a,
-            "site_b_longitude": curr_link.longitude_b,
-            "frequency": freq / 1000,
-            "polarization": curr_link.polarization,
-            "length": curr_link.distance,
-            "dummy_channel": dummy,
-        },
-    )
-    return channel
-
-
 class Calculation(QRunnable):
     # TODO: load from options
     # rendered area borders
@@ -234,17 +191,17 @@ class Calculation(QRunnable):
                                   f"Non-coherent Rx/Tx data on channel A(rx)_B(tx).", flush=True)
                             continue
 
-                    channel_a = _fill_channel_dataset(self.links[link], influx_data, self.links[link].ip_b,
-                                                      self.links[link].ip_a, 'A(rx)_B(tx)', self.links[link].freq_b,
-                                                      tx_zeros_b)
+                    channel_a = self._fill_channel_dataset(self.links[link], influx_data, self.links[link].ip_b,
+                                                           self.links[link].ip_a, 'A(rx)_B(tx)',
+                                                           self.links[link].freq_b, tx_zeros_b)
                     link_channels.append(channel_a)
 
                     # if including only this channel, create empty second channel and fill it with zeros (pycomlink
                     # functions require both channels included -> with this hack it's valid, but zeros have no effect)
                     if (self.selection[link] == 1) or not is_b_in:
-                        channel_b = _fill_channel_dataset(self.links[link], influx_data, self.links[link].ip_a,
-                                                          self.links[link].ip_a, 'B(rx)_A(tx)', self.links[link].freq_a,
-                                                          tx_zeros_b, rx_zeros=True)
+                        channel_b = self._fill_channel_dataset(self.links[link], influx_data, self.links[link].ip_a,
+                                                               self.links[link].ip_a, 'B(rx)_A(tx)',
+                                                               self.links[link].freq_a, tx_zeros_b, rx_zeros=True)
                         link_channels.append(channel_b)
 
                 # Side/unit B (channel A to B)
@@ -256,17 +213,17 @@ class Calculation(QRunnable):
                                   f"Non-coherent Rx/Tx data on channel B(rx)_A(tx).", flush=True)
                             continue
 
-                    channel_b = _fill_channel_dataset(self.links[link], influx_data, self.links[link].ip_a,
-                                                      self.links[link].ip_b, 'B(rx)_A(tx)', self.links[link].freq_a,
-                                                      tx_zeros_a)
+                    channel_b = self._fill_channel_dataset(self.links[link], influx_data, self.links[link].ip_a,
+                                                           self.links[link].ip_b, 'B(rx)_A(tx)',
+                                                           self.links[link].freq_a, tx_zeros_a)
                     link_channels.append(channel_b)
 
                     # if including only this channel, create empty second channel and fill it with zeros (pycomlink
                     # functions require both channels included -> with this hack it's valid, but zeros have no effect)
                     if (self.selection[link] == 2) or not is_a_in:
-                        channel_a = _fill_channel_dataset(self.links[link], influx_data, self.links[link].ip_b,
-                                                          self.links[link].ip_b, 'A(rx)_B(tx)', self.links[link].freq_b,
-                                                          tx_zeros_b, rx_zeros=True)
+                        channel_a = self._fill_channel_dataset(self.links[link], influx_data, self.links[link].ip_b,
+                                                               self.links[link].ip_b, 'A(rx)_B(tx)',
+                                                               self.links[link].freq_b, tx_zeros_b, rx_zeros=True)
                         link_channels.append(channel_a)
 
                 calc_data.append(xr.concat(link_channels, dim="channel_id"))
@@ -460,3 +417,50 @@ class Calculation(QRunnable):
             return
 
         print(f"[CALC ID: {self.results_id}] Rainfall calculation procedure ended.", flush=True)
+
+    # noinspection PyMethodMayBeStatic
+    def _fill_channel_dataset(self, curr_link, flux_data, tx_ip, rx_ip, channel_id, freq,
+                              tx_zeros: bool = False, rx_zeros: bool = False) -> xr.Dataset:
+        # get times from the Rx power array, since these data should be always available
+        times = []
+        for time in flux_data[rx_ip]["rx_power"].keys():
+            times.append(np.datetime64(time).astype("datetime64[ns]"))
+
+        # if creating empty channel dataset, fill Rx vars with zeros
+        if rx_zeros:
+            rsl = np.zeros((len(flux_data[rx_ip]["rx_power"]),), dtype=float)
+            dummy = True
+        else:
+            rsl = [*flux_data[rx_ip]["rx_power"].values()]
+            dummy = False
+
+        # in case of Tx power zeros, get array length from Rx array since it should be always available
+        if tx_zeros:
+            tsl = np.zeros((len(flux_data[rx_ip]["rx_power"]),), dtype=float)
+        else:
+            tsl = [*flux_data[tx_ip]["tx_power"].values()]
+
+        channel = xr.Dataset(
+            data_vars={
+                "tsl": ("time", tsl),
+                "rsl": ("time", rsl),
+            },
+            coords={
+                "time": times,
+                "channel_id": channel_id,
+                "cml_id": curr_link.link_id,
+                "site_a_latitude": curr_link.latitude_a,
+                "site_b_latitude": curr_link.latitude_b,
+                "site_a_longitude": curr_link.longitude_a,
+                "site_b_longitude": curr_link.longitude_b,
+                "frequency": freq / 1000,
+                "polarization": curr_link.polarization,
+                "length": curr_link.distance,
+                "dummy_channel": dummy,
+                "dummy_a_latitude": curr_link.dummy_latitude_a,
+                "dummy_b_latitude": curr_link.dummy_latitude_b,
+                "dummy_a_longitude": curr_link.dummy_longitude_a,
+                "dummy_b_longitude": curr_link.dummy_longitude_b,
+            },
+        )
+        return channel

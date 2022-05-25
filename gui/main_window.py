@@ -96,6 +96,7 @@ class MainWindow(QMainWindow):
         self.butt_choose_path = self.findChild(QPushButton, "buttChoosePath")
         self.pdf_box = self.findChild(QCheckBox, "checkFilePDF")
         self.png_box = self.findChild(QCheckBox, "checkFilePNG")
+        self.check_dummy = self.findChild(QCheckBox, "checkDummy")
         self.spin_waa_schleiss_val = self.findChild(QDoubleSpinBox, "spinSchleissWaa")
         self.spin_waa_schleiss_tau = self.findChild(QDoubleSpinBox, "spinSchleissTau")
 
@@ -293,6 +294,7 @@ class MainWindow(QMainWindow):
         is_output_total = self.radio_output_total.isChecked()
         is_pdf = self.pdf_box.isChecked()
         is_png = self.png_box.isChecked()
+        is_dummy = self.check_dummy.isChecked()
         waa_schleiss_val = self.spin_waa_schleiss_val.value()
         waa_schleiss_tau = self.spin_waa_schleiss_tau.value()
         close_func = self.close_tab_result
@@ -348,7 +350,7 @@ class MainWindow(QMainWindow):
             # create results widget instance
             self.results_tabs[self.result_id] = ResultsWidget(results_tab_name, self.result_id, start, end, output_step,
                                                               is_output_total, self.path, is_pdf, is_png, close_func,
-                                                              is_only_overall, params)
+                                                              is_only_overall, is_dummy, params)
 
             self.results_name.clear()
             self.butt_abort.setEnabled(True)
