@@ -357,8 +357,8 @@ class MainWindow(QMainWindow):
             self.butt_start.setEnabled(False)
 
             # RUN calculation on worker thread from threadpool
-            self.threadpool.start(calculation)
-            # calculation.run()  # TEMP: run directly on gui thread for debugging reasons
+            #self.threadpool.start(calculation)
+            calculation.run()  # TEMP: run directly on gui thread for debugging reasons
 
             msg = "Processing..."
 

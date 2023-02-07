@@ -29,7 +29,7 @@ class InfluxManager:
         # construct flux query
         flux = f"from(bucket: \"{self.bucket}\")\n" + \
                f"  |> range(start: {start_str}, stop: {end_str})\n" + \
-               f"  |> filter(fn: (r) => r[\"_field\"] == \"rx_power\" or r[\"_field\"] == \"tx_power\")\n" + \
+               f"  |> filter(fn: (r) => r[\"_field\"] == \"rx_power\" or r[\"_field\"] == \"tx_power\" or r[\"_field\"] == \"temperature\")\n" + \
                f"  |> filter(fn: (r) => {ips_str})\n" + \
                f"  |> aggregateWindow(every: {interval_str}, fn: mean, createEmpty: true)\n" + \
                f"  |> yield(name: \"mean\")"
@@ -53,6 +53,12 @@ class InfluxManager:
                     # correct bad Tx Power data in InfluxDB in case of missing zero values
                     if (record.get_field() == 'tx_power') and (record.get_value() is None):
                         data[ip]['tx_power'][record.get_time()] = 0.0
+                    else:
+                        data[ip][record.get_field()][record.get_time()] = record.get_value()
+
+                    # correct bad Temperature data in InfluxDB in case of missing zero values
+                    if (record.get_field() == 'temperature') and (record.get_value() is None):
+                        data[ip]['temperature'][record.get_time()] = 0.0
                     else:
                         data[ip][record.get_field()][record.get_time()] = record.get_value()
 

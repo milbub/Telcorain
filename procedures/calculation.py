@@ -2,8 +2,11 @@ import numpy as np
 import pycomlink as pycml
 import xarray as xr
 from PyQt6.QtCore import QRunnable, QObject, QDateTime, pyqtSignal
+import matplotlib.pyplot as plt
 
 import input.influx_manager as influx
+from procedures import correlation
+from procedures import linear_regression
 
 
 class CalcSignals(QObject):
@@ -136,9 +139,9 @@ class Calculation(QRunnable):
                 is_b_in = self.links[link].ip_b in influx_data
 
                 # TODO: load from options list of constant Tx power devices
-                is_constant_tx_power = self.links[link].tech in ("1s10", "ip20G", )
+                is_constant_tx_power = self.links[link].tech in ("1s10", "ip20G",)
                 # TODO: load from options list of bugged techs with missing Tx zeros in InfluxDB
-                is_tx_power_bugged = self.links[link].tech in ("ip10", )
+                is_tx_power_bugged = self.links[link].tech in ("ip10",)
 
                 # skip links, where data of one unit (or both) are not available
                 # but constant Tx power devices are exceptions
@@ -156,7 +159,7 @@ class Calculation(QRunnable):
                     tx_zeros_b = True
                     tx_zeros_a = True
                 elif ("tx_power" not in influx_data[self.links[link].ip_a]) or \
-                     ("tx_power" not in influx_data[self.links[link].ip_b]):
+                        ("tx_power" not in influx_data[self.links[link].ip_b]):
                     # sadly, some devices of certain techs are badly exported from original source, and they are
                     # missing Tx zero values in InfluxDB, so this hack needs to be done
                     # (for other techs, there is no certainty, if original Tx value was zero in fact, or it's a NMS
@@ -185,7 +188,7 @@ class Calculation(QRunnable):
                 # Side/unit A (channel B to A)
                 if (self.selection[link] in (1, 3)) and (self.links[link].ip_a in influx_data):
                     if not tx_zeros_b:
-                        if len(influx_data[self.links[link].ip_a]["rx_power"])\
+                        if len(influx_data[self.links[link].ip_a]["rx_power"]) \
                                 != len(influx_data[self.links[link].ip_b]["tx_power"]):
                             print(f"[CALC ID: {self.results_id}] WARNING: Skipping link ID: {link}. "
                                   f"Non-coherent Rx/Tx data on channel A(rx)_B(tx).", flush=True)
@@ -201,13 +204,14 @@ class Calculation(QRunnable):
                     if (self.selection[link] == 1) or not is_b_in:
                         channel_b = self._fill_channel_dataset(self.links[link], influx_data, self.links[link].ip_a,
                                                                self.links[link].ip_a, 'B(rx)_A(tx)',
-                                                               self.links[link].freq_a, tx_zeros_b, rx_zeros=True)
+                                                               self.links[link].freq_a, tx_zeros_b,
+                                                               rx_zeros=True)
                         link_channels.append(channel_b)
 
                 # Side/unit B (channel A to B)
                 if (self.selection[link] in (2, 3)) and (self.links[link].ip_b in influx_data):
                     if not tx_zeros_a:
-                        if len(influx_data[self.links[link].ip_b]["rx_power"])\
+                        if len(influx_data[self.links[link].ip_b]["rx_power"]) \
                                 != len(influx_data[self.links[link].ip_a]["tx_power"]):
                             print(f"[CALC ID: {self.results_id}] WARNING: Skipping link ID: {link}. "
                                   f"Non-coherent Rx/Tx data on channel B(rx)_A(tx).", flush=True)
@@ -223,7 +227,8 @@ class Calculation(QRunnable):
                     if (self.selection[link] == 2) or not is_a_in:
                         channel_a = self._fill_channel_dataset(self.links[link], influx_data, self.links[link].ip_b,
                                                                self.links[link].ip_b, 'A(rx)_B(tx)',
-                                                               self.links[link].freq_b, tx_zeros_b, rx_zeros=True)
+                                                               self.links[link].freq_b, tx_zeros_b,
+                                                               rx_zeros=True)
                         link_channels.append(channel_a)
 
                 calc_data.append(xr.concat(link_channels, dim="channel_id"))
@@ -246,29 +251,49 @@ class Calculation(QRunnable):
             print(f"[CALC ID: {self.results_id}] Smoothing signal data...")
             link_count = len(calc_data)
             curr_link = 0
-
+            count = 0
+            link_todelete = []
             # interpolate NaNs in input data and filter out nonsenses out of limits
             for link in calc_data:
                 # TODO: load upper tx power from options (here it's 99 dBm)
                 link['tsl'] = link.tsl.astype(float).where(link.tsl < 99.0)
                 link['tsl'] = link.tsl.astype(float).interpolate_na(dim='time', method='linear', max_gap='5min')
+                link['tsl'] = link.tsl.astype(float).fillna(0.0)
                 # TODO: load bottom rx power from options (here it's -80 dBm)
                 link['rsl'] = link.rsl.astype(float).where(link.rsl != 0.0).where(link.rsl > -80.0)
                 link['rsl'] = link.rsl.astype(float).interpolate_na(dim='time', method='linear', max_gap='5min')
+                link['rsl'] = link.rsl.astype(float).fillna(0.0)
 
                 link['trsl'] = link.tsl - link.rsl
                 link['trsl'] = link.trsl.astype(float).interpolate_na(dim='time', method='nearest', max_gap='5min')
-                link['trsl'] = link.trsl.astype(float).fillna(0.0)
+                #link['trsl'] = link.trsl.astype(float).fillna(0.0)
+
+                link['temperature_rx'] = link.temperature_rx.astype(float).interpolate_na(dim='time', method='linear',
+                                                                                          max_gap='5min')
+                link['temperature_rx'] = link.temperature_rx.astype(float).fillna(0.0)
+
+                link['temperature_tx'] = link.temperature_tx.astype(float).interpolate_na(dim='time', method='linear',
+                                                                                          max_gap='5min')
+                link['temperature_tx'] = link.temperature_tx.astype(float).fillna(0.0)
 
                 self.sig.progress_signal.emit({'prg_val': round((curr_link / link_count) * 15) + 35})
                 curr_link += 1
+                count += 1
+                #print(link['trsl'])
+                #print(link['temperature_tx'])
+                #linear_regression.Linear_regression.koeficient_a(self, link)
+                #correlation.Correlation.pearson_correlation(self, count, ips, curr_link, link_todelete, link)
+
+                curr_link += 1
+
+            for link in link_todelete:
+                calc_data.remove(link)
 
             # process each link -> get intensity R value for each link:
             print(f"[CALC ID: {self.results_id}] Computing rain values...")
             curr_link = 0
 
             for link in calc_data:
-
                 # determine wet periods
                 link['wet'] = link.trsl.rolling(time=self.rolling_vals, center=True).std(skipna=False) > \
                               self.wet_dry_deviation
@@ -305,7 +330,6 @@ class Calculation(QRunnable):
             return
 
         # ////// RESAMPLE AND SPATIAL INTERPOLATION \\\\\\
-
         try:
 
             # ***** FIRST PART: Calculate overall rainfall total map ******
@@ -356,13 +380,13 @@ class Calculation(QRunnable):
                 print(f"[CALC ID: {self.results_id}] Resampling data for rainfall animation maps...")
 
                 # resample data to desired resolution, if needed
-                if self.output_step == 60:   # if case of one hour steps, use already existing resamples
+                if self.output_step == 60:  # if case of one hour steps, use already existing resamples
                     calc_data_steps = calc_data_1h
                 elif self.output_step > self.interval:
                     calc_data_steps = xr.concat(
                         objs=[cml.R.resample(time=f'{self.output_step}m', label='right').mean() for cml in calc_data],
                         dim='cml_id').to_dataset()
-                elif self.output_step == self.interval:   # in case of same intervals, no resample needed
+                elif self.output_step == self.interval:  # in case of same intervals, no resample needed
                     calc_data_steps = xr.concat(calc_data, dim='cml_id')
                 else:
                     raise ValueError("Invalid value of output_steps")
@@ -373,7 +397,7 @@ class Calculation(QRunnable):
                 # calculate totals instead of intensities, if desired
                 if self.is_output_total:
                     # get calc ratio
-                    time_ratio = 60 / self.output_step   # 60 = 1 hour, since rain intensity is measured in mm/hour
+                    time_ratio = 60 / self.output_step  # 60 = 1 hour, since rain intensity is measured in mm/hour
                     # overwrite values with totals per output step interval
                     calc_data_steps['R'] = calc_data_steps.R / time_ratio
 
@@ -419,8 +443,10 @@ class Calculation(QRunnable):
         print(f"[CALC ID: {self.results_id}] Rainfall calculation procedure ended.", flush=True)
 
     # noinspection PyMethodMayBeStatic
+
     def _fill_channel_dataset(self, curr_link, flux_data, tx_ip, rx_ip, channel_id, freq,
-                              tx_zeros: bool = False, rx_zeros: bool = False) -> xr.Dataset:
+                              tx_zeros: bool = False, rx_zeros: bool = False,
+                              temperature_zeros: bool = False) -> xr.Dataset:
         # get times from the Rx power array, since these data should be always available
         times = []
         for time in flux_data[rx_ip]["rx_power"].keys():
@@ -440,10 +466,25 @@ class Calculation(QRunnable):
         else:
             tsl = [*flux_data[tx_ip]["tx_power"].values()]
 
+        # in case Temperature_rx is empty, fill temperature with zeros
+        if temperature_zeros:
+            temperature_rx = np.zeros((len(flux_data[rx_ip]["temperature"]),), dtype=float)
+        else:
+            temperature_rx = [*flux_data[rx_ip]["temperature"].values()]
+
+        # in case Temperature_tx is empty, fill temperature with zeros
+        if temperature_zeros:
+            temperature_tx = np.zeros((len(flux_data[tx_ip]["temperature"]),), dtype=float)
+        else:
+            temperature_tx = [*flux_data[tx_ip]["temperature"].values()]
+
         channel = xr.Dataset(
             data_vars={
                 "tsl": ("time", tsl),
                 "rsl": ("time", rsl),
+                "temperature_rx": ("time", temperature_rx),
+                "temperature_tx": ("time", temperature_tx),
+
             },
             coords={
                 "time": times,
