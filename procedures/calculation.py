@@ -253,6 +253,7 @@ class Calculation(QRunnable):
             curr_link = 0
             count = 0
             link_todelete = []
+            #link_compensation = []
             # interpolate NaNs in input data and filter out nonsenses out of limits
             for link in calc_data:
                 # TODO: load upper tx power from options (here it's 99 dBm)
@@ -266,7 +267,7 @@ class Calculation(QRunnable):
 
                 link['trsl'] = link.tsl - link.rsl
                 link['trsl'] = link.trsl.astype(float).interpolate_na(dim='time', method='nearest', max_gap='5min')
-                #link['trsl'] = link.trsl.astype(float).fillna(0.0)
+                link['trsl'] = link.trsl.astype(float).fillna(0.0)
 
                 link['temperature_rx'] = link.temperature_rx.astype(float).interpolate_na(dim='time', method='linear',
                                                                                           max_gap='5min')
@@ -281,13 +282,16 @@ class Calculation(QRunnable):
                 count += 1
                 #print(link['trsl'])
                 #print(link['temperature_tx'])
-                #linear_regression.Linear_regression.koeficient_a(self, link)
+                linear_regression.Linear_regression.compensation(self, link)
                 #correlation.Correlation.pearson_correlation(self, count, ips, curr_link, link_todelete, link)
 
                 curr_link += 1
 
             for link in link_todelete:
                 calc_data.remove(link)
+
+            #for link in link_compensation:
+                #calc_data.append(link)
 
             # process each link -> get intensity R value for each link:
             print(f"[CALC ID: {self.results_id}] Computing rain values...")
