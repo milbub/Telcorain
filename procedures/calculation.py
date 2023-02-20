@@ -2,11 +2,9 @@ import numpy as np
 import pycomlink as pycml
 import xarray as xr
 from PyQt6.QtCore import QRunnable, QObject, QDateTime, pyqtSignal
-import matplotlib.pyplot as plt
 
 import input.influx_manager as influx
-from procedures import correlation
-from procedures import linear_regression
+from procedures import correlation, linear_regression, algoritm
 
 
 class CalcSignals(QObject):
@@ -252,8 +250,10 @@ class Calculation(QRunnable):
             link_count = len(calc_data)
             curr_link = 0
             count = 0
-            link_todelete = []
-            #link_compensation = []
+
+            # Vytvorenie pola na odstranenie spojov s vysokou korelaciou (class correlation.py)
+            #link_todelete = []
+
             # interpolate NaNs in input data and filter out nonsenses out of limits
             for link in calc_data:
                 # TODO: load upper tx power from options (here it's 99 dBm)
@@ -280,18 +280,24 @@ class Calculation(QRunnable):
                 self.sig.progress_signal.emit({'prg_val': round((curr_link / link_count) * 15) + 35})
                 curr_link += 1
                 count += 1
-                #print(link['trsl'])
-                #print(link['temperature_tx'])
-                linear_regression.Linear_regression.compensation(self, link)
+
+                """
+                # Correlation - odstranenie spojov, ak korelacia prekroci stanovenu hranicu
+                # Linear_regression - nahradzuje originalne trsl za korigovane
+                # Algoritm - kombinacia predchadzajucich dvoch
+                """
+
                 #correlation.Correlation.pearson_correlation(self, count, ips, curr_link, link_todelete, link)
+                #linear_regression.Linear_regression.compensation(self, link)
+                #algoritm.Algoritm.algoritm(self, count, ips, curr_link, link)
 
                 curr_link += 1
 
+            """
+            # Spusta odstranenie spojov s vysokou korelaciou (class correlation.py)
             for link in link_todelete:
                 calc_data.remove(link)
-
-            #for link in link_compensation:
-                #calc_data.append(link)
+            """
 
             # process each link -> get intensity R value for each link:
             print(f"[CALC ID: {self.results_id}] Computing rain values...")
