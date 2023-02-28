@@ -203,7 +203,7 @@ class Calculation(QRunnable):
                         channel_b = self._fill_channel_dataset(self.links[link], influx_data, self.links[link].ip_a,
                                                                self.links[link].ip_a, 'B(rx)_A(tx)',
                                                                self.links[link].freq_a, tx_zeros_b,
-                                                               rx_zeros=True)
+                                                               is_empty_channel=True)
                         link_channels.append(channel_b)
 
                 # Side/unit B (channel A to B)
@@ -226,7 +226,7 @@ class Calculation(QRunnable):
                         channel_a = self._fill_channel_dataset(self.links[link], influx_data, self.links[link].ip_b,
                                                                self.links[link].ip_b, 'A(rx)_B(tx)',
                                                                self.links[link].freq_b, tx_zeros_b,
-                                                               rx_zeros=True)
+                                                               is_empty_channel=True)
                         link_channels.append(channel_a)
 
                 calc_data.append(xr.concat(link_channels, dim="channel_id"))
@@ -290,8 +290,6 @@ class Calculation(QRunnable):
                 #correlation.Correlation.pearson_correlation(self, count, ips, curr_link, link_todelete, link)
                 #linear_regression.Linear_regression.compensation(self, link)
                 #algoritm.Algoritm.algoritm(self, count, ips, curr_link, link)
-
-                curr_link += 1
 
             """
             # Spusta odstranenie spojov s vysokou korelaciou (class correlation.py)
@@ -455,36 +453,39 @@ class Calculation(QRunnable):
     # noinspection PyMethodMayBeStatic
 
     def _fill_channel_dataset(self, curr_link, flux_data, tx_ip, rx_ip, channel_id, freq,
-                              tx_zeros: bool = False, rx_zeros: bool = False,
-                              temperature_zeros: bool = False) -> xr.Dataset:
-        # get times from the Rx power array, since these data should be always available
+                              tx_zeros: bool = False, is_empty_channel: bool = False) -> xr.Dataset:
+        # get times from the Rx power array => since Rx unit should be always available, rx_ip can be used
         times = []
         for time in flux_data[rx_ip]["rx_power"].keys():
             times.append(np.datetime64(time).astype("datetime64[ns]"))
 
-        # if creating empty channel dataset, fill Rx vars with zeros
-        if rx_zeros:
+        # if creating empty channel dataset, fill Rx vars with zeros =>
+        # => since Rx unit should be always available, rx_ip can be used
+        if is_empty_channel:
             rsl = np.zeros((len(flux_data[rx_ip]["rx_power"]),), dtype=float)
             dummy = True
         else:
             rsl = [*flux_data[rx_ip]["rx_power"].values()]
             dummy = False
 
-        # in case of Tx power zeros, get array length from Rx array since it should be always available
+        # in case of Tx power zeros, we don't have data of Tx unit available in flux_data =>
+        # => get array length from Rx array of rx_ip unit, since it should be always available
         if tx_zeros:
             tsl = np.zeros((len(flux_data[rx_ip]["rx_power"]),), dtype=float)
         else:
             tsl = [*flux_data[tx_ip]["tx_power"].values()]
 
-        # in case Temperature_rx is empty, fill temperature with zeros
-        if temperature_zeros:
+        # if creating empty channel dataset, fill Temperature_Rx vars with zeros
+        # since Rx unit should be always available, rx_ip can be used
+        if is_empty_channel:
             temperature_rx = np.zeros((len(flux_data[rx_ip]["temperature"]),), dtype=float)
         else:
             temperature_rx = [*flux_data[rx_ip]["temperature"].values()]
 
-        # in case Temperature_tx is empty, fill temperature with zeros
-        if temperature_zeros:
-            temperature_tx = np.zeros((len(flux_data[tx_ip]["temperature"]),), dtype=float)
+        # in case of Tx power zeros, we don't have data of Tx unit available in flux_data =>
+        # => get array length from Temperature array of rx_ip unit, since it should be always available
+        if tx_zeros:
+            temperature_tx = np.zeros((len(flux_data[rx_ip]["temperature"]),), dtype=float)
         else:
             temperature_tx = [*flux_data[tx_ip]["temperature"].values()]
 
