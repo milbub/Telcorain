@@ -6,7 +6,7 @@ class Linear_regression:
 
     def compensation(self, link):
 
-        # Definovanie premennych s ktorymi sa bude pracovat
+        # Defining variables to work with
         trsl_orig = np.array(link['trsl'])
         temperature_tx = np.array(link['temperature_tx'])
         fixed_temperature = 21
@@ -14,8 +14,6 @@ class Linear_regression:
         # Calculate coefficients for trsl correction for A to B pole
         b_poletrsl = trsl_orig[0]
         b_poletemptx = temperature_tx[0]
-        pcctrsl_a = pd.Series(b_poletrsl).corr(pd.Series(b_poletemptx))
-        print(f"Korelacia stara A je %0.3f" % (pcctrsl_a))
         koeficient_ab, bb = np.polyfit(b_poletemptx, b_poletrsl, 1)
 
         trsl_korig_B = trsl_orig[0] - koeficient_ab * (temperature_tx[0] - fixed_temperature)
@@ -33,5 +31,5 @@ class Linear_regression:
 
         trsl_orig[1] = trsl_compensated_A
 
-        # Ulozenie korigovanych dovod do link['trsl']
+        # Saving corrected values to link['trsl']
         link['trsl'] = (["channel_id", "time"], trsl_orig)

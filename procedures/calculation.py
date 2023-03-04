@@ -4,7 +4,7 @@ import xarray as xr
 from PyQt6.QtCore import QRunnable, QObject, QDateTime, pyqtSignal
 
 import input.influx_manager as influx
-from procedures import correlation, linear_regression, algoritm
+from procedures import correlation, linear_regression, algorithm
 
 
 class CalcSignals(QObject):
@@ -25,7 +25,7 @@ class Calculation(QRunnable):
     def __init__(self, signals: CalcSignals, results_id: int, links: dict, selection: dict, start: QDateTime,
                  end: QDateTime, interval: int, rolling_vals: int, output_step: int, is_only_overall: bool,
                  is_output_total: bool, wet_dry_deviation: float, baseline_samples: int, interpol_res, idw_pow,
-                 idw_near, idw_dist, schleiss_val, schleiss_tau):
+                 idw_near, idw_dist, schleiss_val, schleiss_tau, is_correlation, spin_correlation):
         QRunnable.__init__(self)
         self.sig = signals
         self.results_id = results_id
@@ -46,6 +46,8 @@ class Calculation(QRunnable):
         self.idw_dist = idw_dist
         self.schleiss_val = schleiss_val
         self.schleiss_tau = schleiss_tau
+        self.is_correlation = is_correlation
+        self.spin_correlation = spin_correlation
 
     def run(self):
         print(f"[CALC ID: {self.results_id}] Rainfall calculation procedure started.", flush=True)
@@ -251,8 +253,8 @@ class Calculation(QRunnable):
             curr_link = 0
             count = 0
 
-            # Vytvorenie pola na odstranenie spojov s vysokou korelaciou (class correlation.py)
-            #link_todelete = []
+            # Creating array to remove high-correlation links (class correlation.py)
+            link_todelete = []
 
             # interpolate NaNs in input data and filter out nonsenses out of limits
             for link in calc_data:
@@ -282,20 +284,25 @@ class Calculation(QRunnable):
                 count += 1
 
                 """
-                # Correlation - odstranenie spojov, ak korelacia prekroci stanovenu hranicu
-                # Linear_regression - nahradzuje originalne trsl za korigovane
-                # Algoritm - kombinacia predchadzajucich dvoch
+                # Correlation - remove links if the correlation exceeds the specified threshold
+                # Linear_regression - replaces the original trsl with the corrected ones
+                # Algorithm - combination of the previous two
                 """
 
-                #correlation.Correlation.pearson_correlation(self, count, ips, curr_link, link_todelete, link)
+                #correlation.Correlation.pearson_correlation(self, count, ips, curr_link, link_todelete, link, self.spin_correlation)
                 #linear_regression.Linear_regression.compensation(self, link)
-                #algoritm.Algoritm.algoritm(self, count, ips, curr_link, link)
+                if self.is_correlation:
+                    algorithm.Algorithm.algorithm(self, count, ips, curr_link, link, self.spin_correlation)
+                print("Compensation algorithm procedure started.")
 
-            """
-            # Spusta odstranenie spojov s vysokou korelaciou (class correlation.py)
-            for link in link_todelete:
-                calc_data.remove(link)
-            """
+                # 'curr link += 1' serves to accurately list the 'count' and ip address of CML unit
+                # when the 'algorithm.py' or 'correlation.py' is called
+                curr_link += 1
+
+
+            # Run the removal of high correlation links (class correlation.py)
+            #for link in link_todelete:
+                #calc_data.remove(link)
 
             # process each link -> get intensity R value for each link:
             print(f"[CALC ID: {self.results_id}] Computing rain values...")

@@ -99,6 +99,8 @@ class MainWindow(QMainWindow):
         self.check_dummy = self.findChild(QCheckBox, "checkDummy")
         self.spin_waa_schleiss_val = self.findChild(QDoubleSpinBox, "spinSchleissWaa")
         self.spin_waa_schleiss_tau = self.findChild(QDoubleSpinBox, "spinSchleissTau")
+        self.is_correlation_box = self.findChild(QCheckBox, "isCorrelationBox")
+        self.correlation_spin = self.findChild(QDoubleSpinBox, "correlationSpin")
 
         # declare dictionary for created tabs with calculation results
         # <key: int = result ID, value: ResultsWidget>
@@ -298,6 +300,8 @@ class MainWindow(QMainWindow):
         waa_schleiss_val = self.spin_waa_schleiss_val.value()
         waa_schleiss_tau = self.spin_waa_schleiss_tau.value()
         close_func = self.close_tab_result
+        is_correlation = self.is_correlation_box.isChecked()
+        spin_correlation = self.correlation_spin.value()
 
         # INPUT CHECKS:
         if time_diff < 0:   # if timediff is less than 1 hour (in msecs)
@@ -327,7 +331,7 @@ class MainWindow(QMainWindow):
             calculation = calc.Calculation(self.calc_signals, self.result_id, self.links, self.current_selection, start,
                                            end, step, rolling_values, output_step, is_only_overall, is_output_total,
                                            wet_dry_deviation, baseline_samples, interpol_res, idw_power, idw_near,
-                                           idw_dist, waa_schleiss_val, waa_schleiss_tau)
+                                           idw_dist, waa_schleiss_val, waa_schleiss_tau, is_correlation, spin_correlation)
 
             if self.results_name.text() == "":
                 results_tab_name = "<no name>"
