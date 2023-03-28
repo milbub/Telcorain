@@ -293,10 +293,9 @@ class Calculation(QRunnable):
                 #linear_regression.Linear_regression.compensation(self, link)
                 if self.is_correlation:
                     algorithm.Algorithm.algorithm(self, count, ips, curr_link, link, self.spin_correlation)
-                print("Compensation algorithm procedure started.")
+                #print("Compensation algorithm procedure started.")
 
-                # 'curr link += 1' serves to accurately list the 'count' and ip address of CML unit
-                # when the 'algorithm.py' or 'correlation.py' is called
+                # 'curr link += 1' serves to accurately list the 'count' and ip address of CML unit when the 'algorithm.py' or 'correlation.py' is called
                 curr_link += 1
 
 

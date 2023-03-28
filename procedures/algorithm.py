@@ -1,7 +1,6 @@
 import numpy as np
 import pandas as pd
 
-
 class Algorithm:
 
     def algorithm(self, count, ips, curr_link, link, spin_correlation):
@@ -13,42 +12,42 @@ class Algorithm:
         temperature_tx = np.array(link['temperature_tx'])
         fixed_temperature = 21
 
-        b_poletrsl = trsl_orig[0]
-        b_poletemptx = temperature_tx[0]
+        b_trsl_array = trsl_orig[0]
+        b_temptx_array = temperature_tx[0]
 
-        a_poletrsl = trsl_orig[1]
-        a_poletemptx = temperature_tx[1]
+        a_trsl_array = trsl_orig[1]
+        a_temptx_array = temperature_tx[1]
 
         #Calculation of the Pearson correlation index for side A
-        pcctrsl_a = pd.Series(b_poletrsl).corr(pd.Series(b_poletemptx))
+        pcctrsl_a = pd.Series(b_trsl_array).corr(pd.Series(b_temptx_array))
         # print(f"Correlation 'A(rx)_B(tx)' for link {count}"
         # f" IP: {ips[curr_link - 1]} %0.3f" % (pcctrsl_a))
 
         #Calculation of the Pearson correlation index for side B
-        pcctrsl_b = pd.Series(a_poletrsl).corr(pd.Series(a_poletemptx))
+        pcctrsl_b = pd.Series(a_trsl_array).corr(pd.Series(a_temptx_array))
         # print(f"Correlation 'B(rx)_A(tx)' for link {count}"
         # f" IP: {ips[curr_link]} %0.3f" % (pcctrsl_b))
 
         if not (np.isnan(pcctrsl_a) or np.isnan(pcctrsl_b)):
             if ((pcctrsl_a >= spin_correlation) or (pcctrsl_a <= -spin_correlation)) or ((pcctrsl_b >= spin_correlation) or (pcctrsl_b <= -spin_correlation)):
-                print(f"!!! Edit link !!! - Number: {count}"
+                print(f"!!! Compensated link !!! - Number: {count}"
                       f" for IP_A: {ips[curr_link - 1]}"
                       f" a IP_B: {ips[curr_link]};"
                       f" Correlation: IP_A %0.3f" % (pcctrsl_a)
                       + " a IP_B %0.3f" % (pcctrsl_b))
-                koeficient_ab, bb = np.polyfit(b_poletemptx, b_poletrsl, 1)
+                coeficient_ab, bb = np.polyfit(b_temptx_array, b_trsl_array, 1)
 
-                trsl_korig_B = trsl_orig[0] - koeficient_ab * (temperature_tx[0] - fixed_temperature)
-                trsl_compensated_B = np.where(temperature_tx[0] < fixed_temperature, trsl_orig[0], trsl_korig_B)
+                trsl_corig_b = trsl_orig[0] - coeficient_ab * (temperature_tx[0] - fixed_temperature)
+                trsl_compensated_b = np.where(temperature_tx[0] < fixed_temperature, trsl_orig[0], trsl_corig_b)
 
-                trsl_orig[0] = trsl_compensated_B
+                trsl_orig[0] = trsl_compensated_b
 
-                koeficient_ba, bb = np.polyfit(a_poletemptx, a_poletrsl, 1)
+                coeficient_ba, bb = np.polyfit(a_temptx_array, a_trsl_array, 1)
 
-                trsl_korig_A = trsl_orig[1] - koeficient_ba * (temperature_tx[1] - fixed_temperature)
-                trsl_compensated_A = np.where(temperature_tx[1] < fixed_temperature, trsl_orig[1], trsl_korig_A)
+                trsl_corig_a = trsl_orig[1] - coeficient_ba * (temperature_tx[1] - fixed_temperature)
+                trsl_compensated_a = np.where(temperature_tx[1] < fixed_temperature, trsl_orig[1], trsl_corig_a)
 
-                trsl_orig[1] = trsl_compensated_A
+                trsl_orig[1] = trsl_compensated_a
 
                 # Saving corrected values to link['trsl']
                 link['trsl'] = (["channel_id", "time"], trsl_orig)

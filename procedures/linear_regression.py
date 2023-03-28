@@ -1,6 +1,4 @@
 import numpy as np
-import pandas as pd
-
 
 class Linear_regression:
 
@@ -12,24 +10,24 @@ class Linear_regression:
         fixed_temperature = 21
 
         # Calculate coefficients for trsl correction for A to B pole
-        b_poletrsl = trsl_orig[0]
-        b_poletemptx = temperature_tx[0]
-        koeficient_ab, bb = np.polyfit(b_poletemptx, b_poletrsl, 1)
+        b_trsl_array = trsl_orig[0]
+        b_temptx_array = temperature_tx[0]
+        coeficient_ab, bb = np.polyfit(b_temptx_array, b_trsl_array, 1)
 
-        trsl_korig_B = trsl_orig[0] - koeficient_ab * (temperature_tx[0] - fixed_temperature)
-        trsl_compensated_B = np.where(temperature_tx[0] < fixed_temperature, trsl_orig[0], trsl_korig_B)
+        trsl_corig_b = trsl_orig[0] - coeficient_ab * (temperature_tx[0] - fixed_temperature)
+        trsl_compensated_b = np.where(temperature_tx[0] < fixed_temperature, trsl_orig[0], trsl_corig_b)
 
-        trsl_orig[0] = trsl_compensated_B
+        trsl_orig[0] = trsl_compensated_b
 
         # Calculate coefficients for trsl correction for B to A pole
-        a_poletrsl = trsl_orig[1]
-        a_poletemptx = temperature_tx[1]
-        koeficient_ba, bb = np.polyfit(a_poletemptx, a_poletrsl, 1)
+        a_trsl_array = trsl_orig[1]
+        a_temptx_array = temperature_tx[1]
+        coeficient_ba, bb = np.polyfit(a_temptx_array, a_trsl_array, 1)
 
-        trsl_korig_A = trsl_orig[1] - koeficient_ba * (temperature_tx[1] - fixed_temperature)
-        trsl_compensated_A = np.where(temperature_tx[1] < fixed_temperature, trsl_orig[1], trsl_korig_A)
+        trsl_corig_a = trsl_orig[1] - coeficient_ba * (temperature_tx[1] - fixed_temperature)
+        trsl_compensated_a = np.where(temperature_tx[1] < fixed_temperature, trsl_orig[1], trsl_corig_a)
 
-        trsl_orig[1] = trsl_compensated_A
+        trsl_orig[1] = trsl_compensated_a
 
         # Saving corrected values to link['trsl']
         link['trsl'] = (["channel_id", "time"], trsl_orig)

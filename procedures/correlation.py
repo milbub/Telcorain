@@ -1,7 +1,6 @@
 import numpy as np
 import pandas as pd
 
-
 class Correlation:
 
     def pearson_correlation(self, count, ips, curr_link,
@@ -13,19 +12,19 @@ class Correlation:
         trsl = link['trsl']
         temperature_tx = np.array(link['temperature_tx'])
 
-        b_poletrsl = trsl[0]
-        b_poletemptx = temperature_tx[0]
+        b_trsl_array = trsl[0]
+        b_temptx_array = temperature_tx[0]
 
-        a_poletrsl = trsl[1]
-        a_poletemptx = temperature_tx[1]
+        a_trsl_array = trsl[1]
+        a_temptx_array = temperature_tx[1]
 
         # Calculation of the Pearson correlation index for side A
-        pcctrsl_a = pd.Series(b_poletrsl).corr(pd.Series(b_poletemptx))
+        pcctrsl_a = pd.Series(b_trsl_array).corr(pd.Series(b_temptx_array))
         print(f"Correlation 'A(rx)_B(tx)' for link {count}"
               f" IP: {ips[curr_link - 1]} %0.3f" % (pcctrsl_a))
 
         # Calculation of the Pearson correlation index for side B
-        pcctrsl_b = pd.Series(a_poletrsl).corr(pd.Series(a_poletemptx))
+        pcctrsl_b = pd.Series(a_trsl_array).corr(pd.Series(a_temptx_array))
         print(f"Correlation 'B(rx)_A(tx)' for link {count}"
               f" IP: {ips[curr_link]} %0.3f" % (pcctrsl_b))
 

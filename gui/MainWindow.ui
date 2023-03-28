@@ -111,7 +111,7 @@
           </property>
           <widget class="QRadioButton" name="radioRealtime">
            <property name="enabled">
-            <bool>false</bool>
+            <bool>true</bool>
            </property>
            <property name="geometry">
             <rect>
@@ -135,7 +135,7 @@
             </rect>
            </property>
            <property name="text">
-            <string>Time Interval</string>
+            <string>Historic</string>
            </property>
            <property name="checked">
             <bool>true</bool>
@@ -196,7 +196,7 @@
            </property>
            <property name="dateTime">
             <datetime>
-             <hour>2</hour>
+             <hour>1</hour>
              <minute>0</minute>
              <second>0</second>
              <year>2022</year>
@@ -206,21 +206,21 @@
            </property>
            <property name="time">
             <time>
-             <hour>2</hour>
+             <hour>1</hour>
              <minute>0</minute>
              <second>0</second>
             </time>
            </property>
            <property name="maximumTime">
             <time>
-             <hour>9</hour>
+             <hour>8</hour>
              <minute>59</minute>
              <second>59</second>
             </time>
            </property>
            <property name="minimumTime">
             <time>
-             <hour>10</hour>
+             <hour>9</hour>
              <minute>0</minute>
              <second>0</second>
             </time>
@@ -246,7 +246,7 @@
            </property>
            <property name="dateTime">
             <datetime>
-             <hour>2</hour>
+             <hour>1</hour>
              <minute>0</minute>
              <second>0</second>
              <year>2022</year>
@@ -256,21 +256,21 @@
            </property>
            <property name="time">
             <time>
-             <hour>2</hour>
+             <hour>1</hour>
              <minute>0</minute>
              <second>0</second>
             </time>
            </property>
            <property name="maximumTime">
             <time>
-             <hour>9</hour>
+             <hour>8</hour>
              <minute>59</minute>
              <second>59</second>
             </time>
            </property>
            <property name="minimumTime">
             <time>
-             <hour>10</hour>
+             <hour>9</hour>
              <minute>0</minute>
              <second>0</second>
             </time>
