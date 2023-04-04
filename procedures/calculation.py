@@ -25,7 +25,8 @@ class Calculation(QRunnable):
     def __init__(self, signals: CalcSignals, results_id: int, links: dict, selection: dict, start: QDateTime,
                  end: QDateTime, interval: int, rolling_vals: int, output_step: int, is_only_overall: bool,
                  is_output_total: bool, wet_dry_deviation: float, baseline_samples: int, interpol_res, idw_pow,
-                 idw_near, idw_dist, schleiss_val, schleiss_tau, is_correlation, spin_correlation):
+                 idw_near, idw_dist, schleiss_val, schleiss_tau, is_correlation, spin_correlation, is_realtime,
+                 is_historic, realtime_time):
         QRunnable.__init__(self)
         self.sig = signals
         self.results_id = results_id
@@ -48,11 +49,29 @@ class Calculation(QRunnable):
         self.schleiss_tau = schleiss_tau
         self.is_correlation = is_correlation
         self.spin_correlation = spin_correlation
+        self.is_realtime = is_realtime
+        self.is_historic = is_historic
+        self.realtime_time = realtime_time
 
     def run(self):
         print(f"[CALC ID: {self.results_id}] Rainfall calculation procedure started.", flush=True)
 
         # ////// DATA ACQUISITION \\\\\\
+
+        # run Historic data or Realtime data
+        if self.is_historic:
+            self.start.setVisible(True)
+            self.end.setVisible(True)
+        else:
+            self.start.setVisible(False)
+            self.end.setVisible(False)
+
+        if self.is_realtime:
+            self.start.setVisible(False)
+            self.end.setVisible(False)
+            self.realtime_time.setVisible(True)
+        else:
+            self.realtime_time.setVisible(False)
 
         try:
             if len(self.selection) < 1:

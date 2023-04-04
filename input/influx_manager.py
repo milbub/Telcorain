@@ -9,7 +9,7 @@ class InfluxManager:
         self.qapi = self.client.query_api()
 
         # TODO: load value from settings
-        self.bucket = "realtime_cbl"
+        self.bucket = "mws"
 
     def check_connection(self) -> bool:
         return self.client.ping()
@@ -22,15 +22,14 @@ class InfluxManager:
         start_str = start.toString("yyyy-MM-ddTHH:mm:ss.000Z")  # RFC 3339
         end_str = end.toString("yyyy-MM-ddTHH:mm:ss.000Z")      # RFC 3339
         interval_str = f"{interval * 60}s"                      # time in seconds
-        ips_str = f"r[\"agent_host\"] == \"{ips[0]}\""                  # IP addresses in query format
+        ips_str = f"r[\"ip\"] == \"{ips[0]}\""                  # IP addresses in query format
         for ip in ips[1:]:
-            ips_str += f" or r[\"agent_host\"] == \"{ip}\""
+            ips_str += f" or r[\"ip\"] == \"{ip}\""
 
         # construct flux query
         flux = f"from(bucket: \"{self.bucket}\")\n" + \
                f"  |> range(start: {start_str}, stop: {end_str})\n" + \
-               f"  |> filter(fn: (r) => r[\"_field\"] == \"Teplota\" or r[\"_field\"] == \"PrijimanaUroven\" or" \
-               f" r[\"_field\"] == \"Vysilany_Vykon\")\n" + \
+               f"  |> filter(fn: (r) => r[\"_field\"] == \"rx_power\" or r[\"_field\"] == \"tx_power\")\n" + \
                f"  |> filter(fn: (r) => {ips_str})\n" + \
                f"  |> aggregateWindow(every: {interval_str}, fn: mean, createEmpty: true)\n" + \
                f"  |> yield(name: \"mean\")"
@@ -51,11 +50,9 @@ class InfluxManager:
                     if record.get_field() not in data[ip]:
                         data[ip][record.get_field()] = {}
 
-                    # correct bad Tx Power and Temperature data in InfluxDB in case of missing zero values
+                    # correct bad Tx Power data in InfluxDB in case of missing zero values
                     if (record.get_field() == 'tx_power') and (record.get_value() is None):
                         data[ip]['tx_power'][record.get_time()] = 0.0
-                    elif (record.get_field() == 'temperature') and (record.get_value() is None):
-                        data[ip]['temperature'][record.get_time()] = 0.0
                     else:
                         data[ip][record.get_field()][record.get_time()] = record.get_value()
 

@@ -109,264 +109,293 @@
           <property name="title">
            <string>Input Time Period</string>
           </property>
-          <widget class="QRadioButton" name="radioRealtime">
-           <property name="enabled">
-            <bool>true</bool>
-           </property>
-           <property name="geometry">
-            <rect>
-             <x>130</x>
-             <y>30</y>
-             <width>69</width>
-             <height>20</height>
-            </rect>
-           </property>
-           <property name="text">
-            <string>Realtime</string>
-           </property>
-          </widget>
-          <widget class="QRadioButton" name="radioTimeint">
-           <property name="geometry">
-            <rect>
-             <x>20</x>
-             <y>30</y>
-             <width>89</width>
-             <height>20</height>
-            </rect>
-           </property>
-           <property name="text">
-            <string>Historic</string>
-           </property>
-           <property name="checked">
-            <bool>true</bool>
-           </property>
-          </widget>
-          <widget class="QSpinBox" name="spinTimestep">
-           <property name="geometry">
-            <rect>
-             <x>330</x>
-             <y>29</y>
-             <width>101</width>
-             <height>22</height>
-            </rect>
-           </property>
-           <property name="toolTip">
-            <string/>
-           </property>
-           <property name="wrapping">
-            <bool>false</bool>
-           </property>
-           <property name="suffix">
-            <string> min</string>
-           </property>
-           <property name="prefix">
-            <string/>
-           </property>
-           <property name="minimum">
-            <number>1</number>
-           </property>
-           <property name="maximum">
-            <number>1440</number>
-           </property>
-           <property name="value">
-            <number>10</number>
-           </property>
-          </widget>
-          <widget class="QLabel" name="label">
-           <property name="geometry">
-            <rect>
-             <x>240</x>
-             <y>20</y>
-             <width>91</width>
-             <height>41</height>
-            </rect>
-           </property>
-           <property name="text">
-            <string>Data resolution:</string>
-           </property>
-          </widget>
-          <widget class="QDateTimeEdit" name="dateTimeStart">
-           <property name="geometry">
-            <rect>
-             <x>500</x>
-             <y>29</y>
-             <width>131</width>
-             <height>22</height>
-            </rect>
-           </property>
-           <property name="dateTime">
-            <datetime>
-             <hour>1</hour>
-             <minute>0</minute>
-             <second>0</second>
-             <year>2022</year>
-             <month>1</month>
-             <day>1</day>
-            </datetime>
-           </property>
-           <property name="time">
-            <time>
-             <hour>1</hour>
-             <minute>0</minute>
-             <second>0</second>
-            </time>
-           </property>
-           <property name="maximumTime">
-            <time>
-             <hour>8</hour>
-             <minute>59</minute>
-             <second>59</second>
-            </time>
-           </property>
-           <property name="minimumTime">
-            <time>
-             <hour>9</hour>
-             <minute>0</minute>
-             <second>0</second>
-            </time>
-           </property>
-           <property name="displayFormat">
-            <string>dd.MM.yyyy HH:mm:ss</string>
-           </property>
-           <property name="calendarPopup">
-            <bool>true</bool>
-           </property>
-           <property name="timeSpec">
-            <enum>Qt::UTC</enum>
-           </property>
-          </widget>
-          <widget class="QDateTimeEdit" name="dateTimeStop">
-           <property name="geometry">
-            <rect>
-             <x>690</x>
-             <y>29</y>
-             <width>131</width>
-             <height>22</height>
-            </rect>
-           </property>
-           <property name="dateTime">
-            <datetime>
-             <hour>1</hour>
-             <minute>0</minute>
-             <second>0</second>
-             <year>2022</year>
-             <month>1</month>
-             <day>1</day>
-            </datetime>
-           </property>
-           <property name="time">
-            <time>
-             <hour>1</hour>
-             <minute>0</minute>
-             <second>0</second>
-            </time>
-           </property>
-           <property name="maximumTime">
-            <time>
-             <hour>8</hour>
-             <minute>59</minute>
-             <second>59</second>
-            </time>
-           </property>
-           <property name="minimumTime">
-            <time>
-             <hour>9</hour>
-             <minute>0</minute>
-             <second>0</second>
-            </time>
-           </property>
-           <property name="displayFormat">
-            <string>dd.MM.yyyy HH:mm:ss</string>
-           </property>
-           <property name="calendarPopup">
-            <bool>true</bool>
-           </property>
-           <property name="timeSpec">
-            <enum>Qt::UTC</enum>
-           </property>
-          </widget>
-          <widget class="QLabel" name="label_2">
-           <property name="geometry">
-            <rect>
-             <x>460</x>
-             <y>20</y>
-             <width>31</width>
-             <height>41</height>
-            </rect>
-           </property>
-           <property name="text">
-            <string>Start:</string>
-           </property>
-          </widget>
-          <widget class="QLabel" name="label_3">
-           <property name="geometry">
-            <rect>
-             <x>650</x>
-             <y>20</y>
-             <width>31</width>
-             <height>41</height>
-            </rect>
-           </property>
-           <property name="text">
-            <string>Stop:</string>
-           </property>
-          </widget>
-          <widget class="QLabel" name="label_4">
-           <property name="geometry">
-            <rect>
-             <x>830</x>
-             <y>20</y>
-             <width>171</width>
-             <height>41</height>
-            </rect>
-           </property>
-           <property name="font">
-            <font>
-             <weight>50</weight>
-             <italic>true</italic>
-             <bold>false</bold>
-             <underline>false</underline>
-            </font>
-           </property>
-           <property name="text">
-            <string>All times are in UTC format!</string>
-           </property>
-          </widget>
-          <widget class="QCheckBox" name="isCorrelationBox">
-           <property name="geometry">
-            <rect>
-             <x>1000</x>
-             <y>30</y>
-             <width>111</width>
-             <height>20</height>
-            </rect>
-           </property>
-           <property name="text">
-            <string>Apply algorithm</string>
-           </property>
-           <property name="checked">
-            <bool>true</bool>
-           </property>
-          </widget>
-          <widget class="QDoubleSpinBox" name="correlationSpin">
-           <property name="geometry">
-            <rect>
-             <x>1120</x>
-             <y>30</y>
-             <width>62</width>
-             <height>22</height>
-            </rect>
-           </property>
-           <property name="decimals">
-            <number>3</number>
-           </property>
-           <property name="singleStep">
-            <double>0.100000000000000</double>
-           </property>
-           <property name="value">
-            <double>0.700000000000000</double>
-           </property>
-          </widget>
+          <layout class="QHBoxLayout" name="horizontalLayout_2">
+           <item>
+            <widget class="QRadioButton" name="radioTimeint">
+             <property name="text">
+              <string>Historic</string>
+             </property>
+             <property name="checked">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QRadioButton" name="radioRealtime">
+             <property name="enabled">
+              <bool>true</bool>
+             </property>
+             <property name="text">
+              <string>Realtime</string>
+             </property>
+             <property name="checked">
+              <bool>false</bool>
+             </property>
+             <property name="autoExclusive">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLabel" name="label">
+             <property name="text">
+              <string>Data resolution:</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QSpinBox" name="spinTimestep">
+             <property name="toolTip">
+              <string/>
+             </property>
+             <property name="wrapping">
+              <bool>false</bool>
+             </property>
+             <property name="suffix">
+              <string> min</string>
+             </property>
+             <property name="prefix">
+              <string/>
+             </property>
+             <property name="minimum">
+              <number>1</number>
+             </property>
+             <property name="maximum">
+              <number>1440</number>
+             </property>
+             <property name="value">
+              <number>10</number>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLabel" name="label_2">
+             <property name="text">
+              <string>Start:</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QDateTimeEdit" name="dateTimeStart">
+             <property name="dateTime">
+              <datetime>
+               <hour>10</hour>
+               <minute>0</minute>
+               <second>0</second>
+               <year>2022</year>
+               <month>12</month>
+               <day>31</day>
+              </datetime>
+             </property>
+             <property name="date">
+              <date>
+               <year>2022</year>
+               <month>12</month>
+               <day>31</day>
+              </date>
+             </property>
+             <property name="time">
+              <time>
+               <hour>10</hour>
+               <minute>0</minute>
+               <second>0</second>
+              </time>
+             </property>
+             <property name="maximumTime">
+              <time>
+               <hour>5</hour>
+               <minute>59</minute>
+               <second>59</second>
+              </time>
+             </property>
+             <property name="minimumTime">
+              <time>
+               <hour>6</hour>
+               <minute>0</minute>
+               <second>0</second>
+              </time>
+             </property>
+             <property name="displayFormat">
+              <string>dd.MM.yyyy HH:mm:ss</string>
+             </property>
+             <property name="calendarPopup">
+              <bool>true</bool>
+             </property>
+             <property name="timeSpec">
+              <enum>Qt::UTC</enum>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLabel" name="label_3">
+             <property name="text">
+              <string>Stop:</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QDateTimeEdit" name="dateTimeStop">
+             <property name="dateTime">
+              <datetime>
+               <hour>22</hour>
+               <minute>0</minute>
+               <second>0</second>
+               <year>2022</year>
+               <month>12</month>
+               <day>31</day>
+              </datetime>
+             </property>
+             <property name="date">
+              <date>
+               <year>2022</year>
+               <month>12</month>
+               <day>31</day>
+              </date>
+             </property>
+             <property name="time">
+              <time>
+               <hour>22</hour>
+               <minute>0</minute>
+               <second>0</second>
+              </time>
+             </property>
+             <property name="maximumTime">
+              <time>
+               <hour>5</hour>
+               <minute>59</minute>
+               <second>59</second>
+              </time>
+             </property>
+             <property name="minimumTime">
+              <time>
+               <hour>6</hour>
+               <minute>0</minute>
+               <second>0</second>
+              </time>
+             </property>
+             <property name="displayFormat">
+              <string>dd.MM.yyyy HH:mm:ss</string>
+             </property>
+             <property name="calendarPopup">
+              <bool>true</bool>
+             </property>
+             <property name="timeSpec">
+              <enum>Qt::UTC</enum>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QComboBox" name="comboRealtime">
+             <property name="enabled">
+              <bool>true</bool>
+             </property>
+             <property name="font">
+              <font>
+               <pointsize>9</pointsize>
+              </font>
+             </property>
+             <property name="editable">
+              <bool>false</bool>
+             </property>
+             <property name="maxVisibleItems">
+              <number>10</number>
+             </property>
+             <item>
+              <property name="text">
+               <string>Past 1m</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Past 5m</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Past 15m</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Past 1h</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Past 3h</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Past 6h</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Past 12h</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Past 24h</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Past 2d</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Past 7d</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Past 30d</string>
+              </property>
+             </item>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLabel" name="label_4">
+             <property name="font">
+              <font>
+               <weight>50</weight>
+               <italic>true</italic>
+               <bold>false</bold>
+               <underline>false</underline>
+              </font>
+             </property>
+             <property name="text">
+              <string>All times are in UTC format!</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QCheckBox" name="isCorrelationBox">
+             <property name="text">
+              <string>Apply algorithm</string>
+             </property>
+             <property name="checked">
+              <bool>false</bool>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QDoubleSpinBox" name="correlationSpin">
+             <property name="decimals">
+              <number>3</number>
+             </property>
+             <property name="singleStep">
+              <double>0.100000000000000</double>
+             </property>
+             <property name="value">
+              <double>0.700000000000000</double>
+             </property>
+            </widget>
+           </item>
+          </layout>
          </widget>
         </item>
         <item>
@@ -2157,15 +2186,15 @@
    <sender>radioRealtime</sender>
    <signal>clicked(bool)</signal>
    <receiver>dateTimeStart</receiver>
-   <slot>setDisabled(bool)</slot>
+   <slot>setHidden(bool)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>74</x>
-     <y>104</y>
+     <x>111</x>
+     <y>128</y>
     </hint>
     <hint type="destinationlabel">
-     <x>575</x>
-     <y>104</y>
+     <x>486</x>
+     <y>129</y>
     </hint>
    </hints>
   </connection>
@@ -2173,15 +2202,15 @@
    <sender>radioRealtime</sender>
    <signal>clicked(bool)</signal>
    <receiver>dateTimeStop</receiver>
-   <slot>setDisabled(bool)</slot>
+   <slot>setHidden(bool)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>74</x>
-     <y>104</y>
+     <x>111</x>
+     <y>128</y>
     </hint>
     <hint type="destinationlabel">
-     <x>745</x>
-     <y>104</y>
+     <x>661</x>
+     <y>129</y>
     </hint>
    </hints>
   </connection>
@@ -2189,15 +2218,15 @@
    <sender>radioTimeint</sender>
    <signal>clicked(bool)</signal>
    <receiver>dateTimeStart</receiver>
-   <slot>setEnabled(bool)</slot>
+   <slot>setVisible(bool)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>194</x>
-     <y>104</y>
+     <x>103</x>
+     <y>128</y>
     </hint>
     <hint type="destinationlabel">
-     <x>575</x>
-     <y>104</y>
+     <x>486</x>
+     <y>129</y>
     </hint>
    </hints>
   </connection>
@@ -2205,15 +2234,15 @@
    <sender>radioTimeint</sender>
    <signal>clicked(bool)</signal>
    <receiver>dateTimeStop</receiver>
-   <slot>setEnabled(bool)</slot>
+   <slot>setVisible(bool)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>194</x>
-     <y>104</y>
+     <x>103</x>
+     <y>128</y>
     </hint>
     <hint type="destinationlabel">
-     <x>745</x>
-     <y>104</y>
+     <x>661</x>
+     <y>129</y>
     </hint>
    </hints>
   </connection>
@@ -2224,12 +2253,12 @@
    <slot>setDisabled(bool)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>1107</x>
-     <y>362</y>
+     <x>1047</x>
+     <y>384</y>
     </hint>
     <hint type="destinationlabel">
-     <x>897</x>
-     <y>402</y>
+     <x>1047</x>
+     <y>414</y>
     </hint>
    </hints>
   </connection>
@@ -2240,8 +2269,8 @@
    <slot>setDisabled(bool)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>1107</x>
-     <y>362</y>
+     <x>1047</x>
+     <y>384</y>
     </hint>
     <hint type="destinationlabel">
      <x>1067</x>
@@ -2256,12 +2285,12 @@
    <slot>setEnabled(bool)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>506</x>
-     <y>659</y>
+     <x>567</x>
+     <y>680</y>
     </hint>
     <hint type="destinationlabel">
-     <x>601</x>
-     <y>660</y>
+     <x>677</x>
+     <y>682</y>
     </hint>
    </hints>
   </connection>
@@ -2272,12 +2301,108 @@
    <slot>setDisabled(bool)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>416</x>
-     <y>659</y>
+     <x>477</x>
+     <y>680</y>
     </hint>
     <hint type="destinationlabel">
-     <x>601</x>
-     <y>660</y>
+     <x>677</x>
+     <y>682</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>radioTimeint</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>comboRealtime</receiver>
+   <slot>setHidden(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>82</x>
+     <y>120</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>814</x>
+     <y>124</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>radioRealtime</sender>
+   <signal>clicked(bool)</signal>
+   <receiver>comboRealtime</receiver>
+   <slot>setVisible(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>155</x>
+     <y>114</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>821</x>
+     <y>110</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>radioTimeint</sender>
+   <signal>clicked(bool)</signal>
+   <receiver>label_2</receiver>
+   <slot>setVisible(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>77</x>
+     <y>112</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>399</x>
+     <y>119</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>radioTimeint</sender>
+   <signal>clicked(bool)</signal>
+   <receiver>label_3</receiver>
+   <slot>setVisible(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>60</x>
+     <y>110</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>599</x>
+     <y>123</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>radioRealtime</sender>
+   <signal>clicked(bool)</signal>
+   <receiver>label_2</receiver>
+   <slot>setHidden(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>153</x>
+     <y>116</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>404</x>
+     <y>108</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>radioRealtime</sender>
+   <signal>clicked(bool)</signal>
+   <receiver>label_3</receiver>
+   <slot>setHidden(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>179</x>
+     <y>124</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>597</x>
+     <y>116</y>
     </hint>
    </hints>
   </connection>
