@@ -179,38 +179,38 @@
             <widget class="QDateTimeEdit" name="dateTimeStart">
              <property name="dateTime">
               <datetime>
-               <hour>10</hour>
+               <hour>12</hour>
                <minute>0</minute>
                <second>0</second>
                <year>2022</year>
-               <month>12</month>
-               <day>31</day>
+               <month>6</month>
+               <day>24</day>
               </datetime>
              </property>
              <property name="date">
               <date>
                <year>2022</year>
-               <month>12</month>
-               <day>31</day>
+               <month>6</month>
+               <day>24</day>
               </date>
              </property>
              <property name="time">
               <time>
-               <hour>10</hour>
+               <hour>12</hour>
                <minute>0</minute>
                <second>0</second>
               </time>
              </property>
              <property name="maximumTime">
               <time>
-               <hour>5</hour>
+               <hour>2</hour>
                <minute>59</minute>
                <second>59</second>
               </time>
              </property>
              <property name="minimumTime">
               <time>
-               <hour>6</hour>
+               <hour>3</hour>
                <minute>0</minute>
                <second>0</second>
               </time>
@@ -237,38 +237,38 @@
             <widget class="QDateTimeEdit" name="dateTimeStop">
              <property name="dateTime">
               <datetime>
-               <hour>22</hour>
+               <hour>0</hour>
                <minute>0</minute>
                <second>0</second>
                <year>2022</year>
-               <month>12</month>
-               <day>31</day>
+               <month>6</month>
+               <day>25</day>
               </datetime>
              </property>
              <property name="date">
               <date>
                <year>2022</year>
-               <month>12</month>
-               <day>31</day>
+               <month>6</month>
+               <day>25</day>
               </date>
              </property>
              <property name="time">
               <time>
-               <hour>22</hour>
+               <hour>0</hour>
                <minute>0</minute>
                <second>0</second>
               </time>
              </property>
              <property name="maximumTime">
               <time>
-               <hour>5</hour>
+               <hour>2</hour>
                <minute>59</minute>
                <second>59</second>
               </time>
              </property>
              <property name="minimumTime">
               <time>
-               <hour>6</hour>
+               <hour>3</hour>
                <minute>0</minute>
                <second>0</second>
               </time>
@@ -297,24 +297,12 @@
              <property name="editable">
               <bool>false</bool>
              </property>
+             <property name="currentText">
+              <string>Past 1h</string>
+             </property>
              <property name="maxVisibleItems">
               <number>10</number>
              </property>
-             <item>
-              <property name="text">
-               <string>Past 1m</string>
-              </property>
-             </item>
-             <item>
-              <property name="text">
-               <string>Past 5m</string>
-              </property>
-             </item>
-             <item>
-              <property name="text">
-               <string>Past 15m</string>
-              </property>
-             </item>
              <item>
               <property name="text">
                <string>Past 1h</string>
@@ -373,9 +361,19 @@
             </widget>
            </item>
            <item>
+            <widget class="QCheckBox" name="isRemoveBox">
+             <property name="text">
+              <string>Remove</string>
+             </property>
+             <property name="checked">
+              <bool>false</bool>
+             </property>
+            </widget>
+           </item>
+           <item>
             <widget class="QCheckBox" name="isCorrelationBox">
              <property name="text">
-              <string>Apply algorithm</string>
+              <string>Algorithm</string>
              </property>
              <property name="checked">
               <bool>false</bool>

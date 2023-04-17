@@ -103,8 +103,8 @@ class MainWindow(QMainWindow):
         self.correlation_spin = self.findChild(QDoubleSpinBox, "correlationSpin")
         self.combo_realtime_box = self.findChild(QComboBox, "comboRealtime")
         self.combo_realtime_box.setHidden(True)
-        self.radio_realtime = self.findChild(QRadioButton, "radioRealtime")
         self.radio_historic = self.findChild(QRadioButton, "radioTimeint")
+        self.is_remove_box = self.findChild(QCheckBox, "isRemoveBox")
 
 
         # declare dictionary for created tabs with calculation results
@@ -307,9 +307,9 @@ class MainWindow(QMainWindow):
         close_func = self.close_tab_result
         is_correlation = self.is_correlation_box.isChecked()
         spin_correlation = self.correlation_spin.value()
-        realtime_time = self.combo_realtime_box.dateTime()
-        is_realtime = self.radio_realtime.isChecked()
+        combo_realtime = self.combo_realtime_box.currentText()
         is_historic = self.radio_historic.isChecked()
+        is_remove = self.is_remove_box.isChecked()
 
         # INPUT CHECKS:
         if time_diff < 0:   # if timediff is less than 1 hour (in msecs)
@@ -339,8 +339,8 @@ class MainWindow(QMainWindow):
             calculation = calc.Calculation(self.calc_signals, self.result_id, self.links, self.current_selection, start,
                                            end, step, rolling_values, output_step, is_only_overall, is_output_total,
                                            wet_dry_deviation, baseline_samples, interpol_res, idw_power, idw_near,
-                                           idw_dist, waa_schleiss_val, waa_schleiss_tau, is_correlation, spin_correlation,
-                                           realtime_time, is_realtime, is_historic)
+                                           idw_dist, waa_schleiss_val, waa_schleiss_tau, is_correlation,
+                                           spin_correlation, combo_realtime, is_historic, is_remove)
 
             if self.results_name.text() == "":
                 results_tab_name = "<no name>"
@@ -397,40 +397,6 @@ class MainWindow(QMainWindow):
             self.lists.setCurrentItem(new_item)
 
             self.statusBar().showMessage(f'Link set "{name}" was created.')
-
-    """
-    def certain_time(self):
-
-        # Create the Historic checkbox
-        #self.historic_checkbox = QtWidgets.QCheckBox("Historic", self)
-        self.radio_historic.stateChanged.connect(self.on_historic_toggled)
-
-        # Create the Realtime checkbox
-        #self.realtime_checkbox = QtWidgets.QCheckBox("Realtime", self)
-        self.radio_realtime.stateChanged.connect(self.on_realtime_toggled)
-
-        # Set up the Past min QDateTimeEdit widget
-        #self.past_min_edit = QtWidgets.QDateTimeEdit(self)
-        self.combo_realtime_box.setDateTime(QComboBox.currentDateTime().addSecs(-300))
-        #self.combo_realtime_box.setDisplayFormat("dd.MM.yyyy HH:mm:ss")
-        self.combo_realtime_box.setVisible(False)
-
-    def on_historic_toggled(self):
-        if self.radio_historic:
-            self.datetime_start.setVisible(True)
-            self.datetime_stop.setVisible(True)
-        else:
-            self.datetime_start.setVisible(False)
-            self.datetime_stop.setVisible(False)
-
-    def on_realtime_toggled(self):
-        if self.radio_realtime:
-            self.datetime_start.setVisible(False)
-            self.datetime_stop.setVisible(False)
-            self.combo_realtime_box.setVisible(True)
-        else:
-            self.combo_realtime_box.setVisible(False)
-        """
 
     def edit_linkset_fired(self):
         sel_name = self.lists.currentItem().text()
