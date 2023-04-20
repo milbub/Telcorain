@@ -1,9 +1,10 @@
+import mariadb
 import sqlite3
 from database.mwlink_model import MwLink
 
 
-class SqliteManager:
-    def __init__(self):
+class SqlManager:
+    def __init__(self, config_man):
         # TODO: load file name from config
         self.connection = sqlite3.connect('telcolinks.db')
 

@@ -5,9 +5,11 @@ from datetime import datetime, timedelta
 
 
 class InfluxManager:
-    def __init__(self):
+    def __init__(self, config_man):
+        super(InfluxManager, self).__init__()
+
         # create influx client with parameters from config file
-        self.client = InfluxDBClient.from_config_file("config.ini")
+        self.client = InfluxDBClient.from_config_file(config_man.config_path)
         self.qapi = self.client.query_api()
 
         # TODO: load value from settings
@@ -146,12 +148,11 @@ class InfluxManager:
         return data
 
 
-class InfluxChecker(QRunnable, InfluxManager):
+class InfluxChecker(InfluxManager, QRunnable):
     # subclass for use in threadpool, for connection testing
     # emits 'ping_signal' from 'InfluxSignal' class passed as 'signals' parameter
-    def __init__(self, signals: QObject):
-        QRunnable.__init__(self)
-        InfluxManager.__init__(self)
+    def __init__(self, config_man, signals: QObject):
+        super(InfluxChecker, self).__init__(config_man)
         self.sig = signals
 
     def run(self):

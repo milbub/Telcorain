@@ -7,11 +7,13 @@ from PyQt6.QtWidgets import QMainWindow, QLabel, QProgressBar, QHBoxLayout, QWid
     QDateTimeEdit, QPushButton, QSpinBox, QTabWidget, QLineEdit, QDoubleSpinBox, QRadioButton, QCheckBox, \
     QListWidgetItem, QTableWidget, QGridLayout, QMessageBox, QFileDialog, QApplication, QComboBox
 
-import database.influx_manager as influx_man
-import database.sql_manager as sql_man
-import procedures.calculation as calc
-import writers.linksets_manager as sets_man
-import writers.log_manager as log_man
+from database.influx_manager import InfluxManager, InfluxChecker, InfluxSignals
+from database.sql_manager import SqlManager
+from writers.config_manager import ConfigManager
+from writers.linksets_manager import LinksetsManager
+from writers.log_manager import LogManager
+from procedures.calculation import Calculation, CalcSignals
+
 from gui.form_dialog import FormDialog
 from gui.selection_dialog import SelectionDialog
 from gui.results_widget import ResultsWidget
@@ -106,7 +108,6 @@ class MainWindow(QMainWindow):
         self.radio_historic = self.findChild(QRadioButton, "radioTimeint")
         self.is_remove_box = self.findChild(QCheckBox, "isRemoveBox")
 
-
         # declare dictionary for created tabs with calculation results
         # <key: int = result ID, value: ResultsWidget>
         self.results_tabs = {}
@@ -144,16 +145,22 @@ class MainWindow(QMainWindow):
 
         # ////// APP LOGIC CONSTRUCTOR \\\\\\
 
+        # init core managers
+        self.config_man = ConfigManager()
+        self.log_man = LogManager(self.text_log)
+        self.sql_man = SqlManager(self.config_man)
+        self.influx_man = InfluxManager(self.config_man)
+
         # redirect stdout to log handler
-        sys.stdout = log_man.LogManager(self.text_log)
+        sys.stdout = self.log_man
         print("Telcorain is starting...", flush=True)
 
         # init threadpool
         self.threadpool = QtCore.QThreadPool()
 
         # init app logic signaling
-        self.influx_signals = influx_man.InfluxSignals()
-        self.calc_signals = calc.CalcSignals()
+        self.influx_signals = InfluxSignals()
+        self.calc_signals = CalcSignals()
 
         # influxDB status signal
         self.influx_signals.ping_signal.connect(self.check_influx_status)
@@ -166,7 +173,7 @@ class MainWindow(QMainWindow):
 
         # init influxDB connection and status checker
         self.influx_status: int = 0  # 0 = unknown, 1 = ok, -1 = not available
-        influx_man.InfluxChecker(self.influx_signals).run()  # first connection check
+        InfluxChecker(self.config_man, self.influx_signals).run()  # first connection check
 
         self.influx_timer = QTimer()  # create timer for next checks
         self.influx_timer.timeout.connect(self._pool_checker)
@@ -174,13 +181,12 @@ class MainWindow(QMainWindow):
         self.influx_timer.start(5000)
 
         # load CML definitions from SQLite database
-        self.sqlite_man = sql_man.SqliteManager()
-        self.links = self.sqlite_man.load_all()
+        self.links = self.sql_man.load_all()
         print(f"SQLite link database file connected: {len(self.links)} microwave link's definitions loaded.")
 
         # init link sets
+        self.sets_man = LinksetsManager(self.links)
         self.current_selection = {}   # link channel selection flag: 0=none, 1=A, 2=B, 3=both -> dict: <link_id>: flag
-        self.sets_man = sets_man.LinksetsManager(self.links)
         self.lists.currentTextChanged.connect(self._linkset_selected)
 
         # add default value to list of link's list (ALL = list of all links)
@@ -336,11 +342,11 @@ class MainWindow(QMainWindow):
             self.result_id += 1
 
             # create calculation instance
-            calculation = calc.Calculation(self.calc_signals, self.result_id, self.links, self.current_selection, start,
-                                           end, step, rolling_values, output_step, is_only_overall, is_output_total,
-                                           wet_dry_deviation, baseline_samples, interpol_res, idw_power, idw_near,
-                                           idw_dist, waa_schleiss_val, waa_schleiss_tau, is_correlation,
-                                           spin_correlation, combo_realtime, is_historic, is_remove)
+            calculation = Calculation(self.influx_man, self.calc_signals, self.result_id, self.links, self.current_selection, start,
+                                      end, step, rolling_values, output_step, is_only_overall, is_output_total,
+                                      wet_dry_deviation, baseline_samples, interpol_res, idw_power, idw_near,
+                                      idw_dist, waa_schleiss_val, waa_schleiss_tau, is_correlation,
+                                      spin_correlation, combo_realtime, is_historic, is_remove)
 
             if self.results_name.text() == "":
                 results_tab_name = "<no name>"
@@ -485,7 +491,7 @@ class MainWindow(QMainWindow):
 
     # insert InfluxDB's status checker into threadpool and start it, called by timer
     def _pool_checker(self):
-        influx_checker = influx_man.InfluxChecker(self.influx_signals)
+        influx_checker = InfluxChecker(self.config_man, self.influx_signals)
         self.threadpool.start(influx_checker)
 
     # adjust wet/dry rolling window length when query timestep is changed, to default multiple of 36 (good results)

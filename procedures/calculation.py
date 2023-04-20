@@ -4,7 +4,6 @@ import xarray as xr
 from PyQt6.QtCore import QRunnable, QObject, QDateTime, pyqtSignal
 import time
 
-import database.influx_manager as influx_man
 from procedures import correlation, linear_regression, algorithm
 
 
@@ -23,14 +22,15 @@ class Calculation(QRunnable):
     Y_MIN = 49.91505682
     Y_MAX = 50.22841327
 
-    def __init__(self, signals: CalcSignals, results_id: int, links: dict, selection: dict, start: QDateTime,
+    def __init__(self, influx_man, signals: CalcSignals, results_id: int, links: dict, selection: dict, start: QDateTime,
                  end: QDateTime, interval: int, rolling_vals: int, output_step: int, is_only_overall: bool,
                  is_output_total: bool, wet_dry_deviation: float, baseline_samples: int, interpol_res, idw_pow,
                  idw_near, idw_dist, schleiss_val, schleiss_tau, is_correlation,
                  spin_correlation, combo_realtime, is_historic, is_remove):
 
         QRunnable.__init__(self)
-        self.sig = signals
+        self.influx_man = influx_man
+        self.signals = signals
         self.results_id = results_id
         self.links = links
         self.selection = selection
@@ -64,7 +64,6 @@ class Calculation(QRunnable):
                 if len(self.selection) < 1:
                     raise ValueError('Empty selection container.')
 
-                man = influx_man.InfluxManager()
                 ips = []
                 for link in self.selection:
                     if link in self.links:
@@ -85,21 +84,21 @@ class Calculation(QRunnable):
                             ips.append(self.links[link].ip_a)
                             ips.append(self.links[link].ip_b)
 
-                self.sig.progress_signal.emit({'prg_val': 5})
+                self.signals.progress_signal.emit({'prg_val': 5})
                 print(f"[CALC ID: {self.results_id}] Querying InfluxDB for selected microwave links data...",
                       flush=True)
 
                 if self.is_historic:
                     print("Historic data procedure started.")
-                    influx_data = man.query_signal_mean(ips, self.start, self.end, self.interval)
+                    influx_data = self.influx_man.query_signal_mean(ips, self.start, self.end, self.interval)
 
                 else:
                     print("Realtime data procedure started.")
-                    influx_data = man.query_signal_mean_realtime(ips, self.combo_realtime, self.interval)
+                    influx_data = self.influx_man.query_signal_mean_realtime(ips, self.combo_realtime, self.interval)
 
                 diff = len(ips) - len(influx_data)
 
-                self.sig.progress_signal.emit({'prg_val': 15})
+                self.signals.progress_signal.emit({'prg_val': 15})
                 print(f"[CALC ID: {self.results_id}] Querying done. Got data of {len(influx_data)} units,"
                       f" of total {len(ips)} selected units.")
 
@@ -122,10 +121,10 @@ class Calculation(QRunnable):
                                     missing_links.append(link)
                                     break
 
-                self.sig.progress_signal.emit({'prg_val': 18})
+                self.signals.progress_signal.emit({'prg_val': 18})
 
             except BaseException as error:
-                self.sig.error_signal.emit({"id": self.results_id})
+                self.signals.error_signal.emit({"id": self.results_id})
                 print(f"[CALC ID: {self.results_id}] ERROR: An unexpected error occurred during InfluxDB query: "
                       f"{type(error)}.")
                 print(f"[CALC ID: {self.results_id}] ERROR: Calculation thread terminated.")
@@ -246,11 +245,11 @@ class Calculation(QRunnable):
 
                     calc_data.append(xr.concat(link_channels, dim="channel_id"))
 
-                    self.sig.progress_signal.emit({'prg_val': round((curr_link / link_count) * 17) + 18})
+                    self.signals.progress_signal.emit({'prg_val': round((curr_link / link_count) * 17) + 18})
                     curr_link += 1
 
             except BaseException as error:
-                self.sig.error_signal.emit({"id": self.results_id})
+                self.signals.error_signal.emit({"id": self.results_id})
                 print(f"[CALC ID: {self.results_id}] ERROR: An unexpected error occurred during data processing: "
                       f"{type(error)} {error}.")
                 print(f"[CALC ID: {self.results_id}] ERROR: Last processed microwave link ID: {link}")
@@ -295,7 +294,7 @@ class Calculation(QRunnable):
                                                                                               max_gap='5min')
                     link['temperature_tx'] = link.temperature_tx.astype(float).fillna(0.0)
 
-                    self.sig.progress_signal.emit({'prg_val': round((curr_link / link_count) * 15) + 35})
+                    self.signals.progress_signal.emit({'prg_val': round((curr_link / link_count) * 15) + 35})
                     curr_link += 1
                     count += 1
 
@@ -356,11 +355,11 @@ class Calculation(QRunnable):
                     link['R'] = pycml.processing.k_R_relation.calc_R_from_A(A=link.A, L_km=float(link.length),
                                                                             f_GHz=link.frequency, pol=link.polarization)
 
-                    self.sig.progress_signal.emit({'prg_val': round((curr_link / link_count) * 40) + 50})
+                    self.signals.progress_signal.emit({'prg_val': round((curr_link / link_count) * 40) + 50})
                     curr_link += 1
 
             except BaseException as error:
-                self.sig.error_signal.emit({"id": self.results_id})
+                self.signals.error_signal.emit({"id": self.results_id})
                 print(f"[CALC ID: {self.results_id}] ERROR: An unexpected error occurred during rain calculation: "
                       f"{type(error)} {error}.")
                 print(
@@ -378,7 +377,7 @@ class Calculation(QRunnable):
                 calc_data_1h = xr.concat(objs=[cml.R.resample(time='1h', label='right').mean() for cml in calc_data],
                                          dim='cml_id').to_dataset()
 
-                self.sig.progress_signal.emit({'prg_val': 93})
+                self.signals.progress_signal.emit({'prg_val': 93})
 
                 print(f"[CALC ID: {self.results_id}] Interpolating spatial data for rainfall overall map...")
 
@@ -399,10 +398,10 @@ class Calculation(QRunnable):
                                          z=calc_data_1h.R.mean(dim='channel_id').sum(dim='time'),
                                          xgrid=x_grid, ygrid=y_grid)
 
-                self.sig.progress_signal.emit({'prg_val': 99})
+                self.signals.progress_signal.emit({'prg_val': 99})
 
                 # emit output
-                self.sig.overall_done_signal.emit({
+                self.signals.overall_done_signal.emit({
                     "id": self.results_id,
                     "link_data": calc_data_1h,
                     "x_grid": x_grid,
@@ -432,7 +431,7 @@ class Calculation(QRunnable):
                         raise ValueError("Invalid value of output_steps")
 
                     # progress bar goes from 0 in second part
-                    self.sig.progress_signal.emit({'prg_val': 5})
+                    self.signals.progress_signal.emit({'prg_val': 5})
 
                     # calculate totals instead of intensities, if desired
                     if self.is_output_total:
@@ -441,7 +440,7 @@ class Calculation(QRunnable):
                         # overwrite values with totals per output step interval
                         calc_data_steps['R'] = calc_data_steps.R / time_ratio
 
-                    self.sig.progress_signal.emit({'prg_val': 10})
+                    self.signals.progress_signal.emit({'prg_val': 10})
 
                     print(f"[CALC ID: {self.results_id}] Interpolating spatial data for rainfall animation maps...")
 
@@ -462,10 +461,10 @@ class Calculation(QRunnable):
                                             xgrid=x_grid, ygrid=y_grid)
                         animation_rain_grids.append(grid)
 
-                        self.sig.progress_signal.emit({'prg_val': round((x / calc_data_steps.time.size) * 89) + 10})
+                        self.signals.progress_signal.emit({'prg_val': round((x / calc_data_steps.time.size) * 89) + 10})
 
                     # emit output
-                    self.sig.plots_done_signal.emit({
+                    self.signals.plots_done_signal.emit({
                         "id": self.results_id,
                         "link_data": calc_data_steps,
                         "x_grid": x_grid,
@@ -474,7 +473,7 @@ class Calculation(QRunnable):
                     })
 
             except BaseException as error:
-                self.sig.error_signal.emit({"id": self.results_id})
+                self.signals.error_signal.emit({"id": self.results_id})
                 print(f"[CALC ID: {self.results_id}] ERROR: An unexpected error occurred during spatial interpolation: "
                       f"{type(error)} {error}.")
                 print(f"[CALC ID: {self.results_id}] ERROR: Calculation thread terminated.")
