@@ -3,7 +3,8 @@ import pycomlink as pycml
 import xarray as xr
 from PyQt6.QtCore import QRunnable, QObject, QDateTime, pyqtSignal
 import time
-import input.influx_manager as influx
+
+import database.influx_manager as influx_man
 from procedures import correlation, linear_regression, algorithm
 
 
@@ -63,7 +64,7 @@ class Calculation(QRunnable):
                 if len(self.selection) < 1:
                     raise ValueError('Empty selection container.')
 
-                man = influx.InfluxManager()
+                man = influx_man.InfluxManager()
                 ips = []
                 for link in self.selection:
                     if link in self.links:

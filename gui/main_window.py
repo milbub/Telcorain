@@ -7,11 +7,11 @@ from PyQt6.QtWidgets import QMainWindow, QLabel, QProgressBar, QHBoxLayout, QWid
     QDateTimeEdit, QPushButton, QSpinBox, QTabWidget, QLineEdit, QDoubleSpinBox, QRadioButton, QCheckBox, \
     QListWidgetItem, QTableWidget, QGridLayout, QMessageBox, QFileDialog, QApplication, QComboBox
 
-import input.influx_manager as influx
-import input.sqlite_manager as sqlite
+import database.influx_manager as influx_man
+import database.sql_manager as sql_man
 import procedures.calculation as calc
-import writers.linksets_manager as setsman
-import writers.log_manager as logger
+import writers.linksets_manager as sets_man
+import writers.log_manager as log_man
 from gui.form_dialog import FormDialog
 from gui.selection_dialog import SelectionDialog
 from gui.results_widget import ResultsWidget
@@ -145,14 +145,14 @@ class MainWindow(QMainWindow):
         # ////// APP LOGIC CONSTRUCTOR \\\\\\
 
         # redirect stdout to log handler
-        sys.stdout = logger.LogManager(self.text_log)
+        sys.stdout = log_man.LogManager(self.text_log)
         print("Telcorain is starting...", flush=True)
 
         # init threadpool
         self.threadpool = QtCore.QThreadPool()
 
         # init app logic signaling
-        self.influx_signals = influx.InfluxSignals()
+        self.influx_signals = influx_man.InfluxSignals()
         self.calc_signals = calc.CalcSignals()
 
         # influxDB status signal
@@ -166,7 +166,7 @@ class MainWindow(QMainWindow):
 
         # init influxDB connection and status checker
         self.influx_status: int = 0  # 0 = unknown, 1 = ok, -1 = not available
-        influx.InfluxChecker(self.influx_signals).run()  # first connection check
+        influx_man.InfluxChecker(self.influx_signals).run()  # first connection check
 
         self.influx_timer = QTimer()  # create timer for next checks
         self.influx_timer.timeout.connect(self._pool_checker)
@@ -174,13 +174,13 @@ class MainWindow(QMainWindow):
         self.influx_timer.start(5000)
 
         # load CML definitions from SQLite database
-        self.sqlite_man = sqlite.SqliteManager()
+        self.sqlite_man = sql_man.SqliteManager()
         self.links = self.sqlite_man.load_all()
         print(f"SQLite link database file connected: {len(self.links)} microwave link's definitions loaded.")
 
         # init link sets
         self.current_selection = {}   # link channel selection flag: 0=none, 1=A, 2=B, 3=both -> dict: <link_id>: flag
-        self.sets_man = setsman.LinksetsManager(self.links)
+        self.sets_man = sets_man.LinksetsManager(self.links)
         self.lists.currentTextChanged.connect(self._linkset_selected)
 
         # add default value to list of link's list (ALL = list of all links)
@@ -485,7 +485,7 @@ class MainWindow(QMainWindow):
 
     # insert InfluxDB's status checker into threadpool and start it, called by timer
     def _pool_checker(self):
-        influx_checker = influx.InfluxChecker(self.influx_signals)
+        influx_checker = influx_man.InfluxChecker(self.influx_signals)
         self.threadpool.start(influx_checker)
 
     # adjust wet/dry rolling window length when query timestep is changed, to default multiple of 36 (good results)
