@@ -7,6 +7,9 @@ from database.mwlink_model import MwLink
 
 
 class SqlManager:
+    # Do not spam log with error messages
+    is_error_sent = False
+
     def __init__(self, config_man):
         super(SqlManager, self).__init__()
         # Load settings from config file via ConfigurationManager
@@ -16,8 +19,6 @@ class SqlManager:
         self.connection_output = None
         # Define connection state
         self.is_connected = False
-        # Try to connect
-        self.connect()
 
     def connect(self):
         try:
@@ -42,9 +43,12 @@ class SqlManager:
             )
 
             self.is_connected = True
+            SqlManager.is_error_sent = False
 
         except mariadb.Error as e:
-            print(f"Cannot connect to MariaDB Platform: {e}")
+            if not SqlManager.is_error_sent:
+                print(f"Cannot connect to MariaDB Platform: {e}")
+                SqlManager.is_error_sent = True
             self.is_connected = False
 
     def check_connection(self) -> bool:
@@ -97,10 +101,10 @@ class SqlManager:
 
                 return links
             else:
-                raise mariadb.Error('Cannot query MariaDB. Connection is not available.')
+                raise mariadb.Error('Connection is not active.')
         except mariadb.Error as e:
             # TODO: exception handling
-            print("Failed to read data from MariaDB: ", e, flush=True)
+            print(f"Failed to read data from MariaDB: {e}")
             return {}
 
 

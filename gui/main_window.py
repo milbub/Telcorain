@@ -8,7 +8,7 @@ from PyQt6.QtWidgets import QMainWindow, QLabel, QProgressBar, QHBoxLayout, QWid
     QListWidgetItem, QTableWidget, QGridLayout, QMessageBox, QFileDialog, QApplication, QComboBox
 
 from database.influx_manager import InfluxManager, InfluxChecker, InfluxSignals
-from database.sql_manager import SqlManager
+from database.sql_manager import SqlManager, SqlChecker, SqlSignals
 from writers.config_manager import ConfigManager
 from writers.linksets_manager import LinksetsManager
 from writers.log_manager import LogManager
@@ -37,7 +37,7 @@ class MainWindow(QMainWindow):
         # load UI definition from Qt XML file
         uic.loadUi("./gui/MainWindow.ui", self)
 
-        # set up statusbar
+        # set up statusbar - InfluxDB connection state
         self.status_db = QWidget()
         self.status_db_layout = QHBoxLayout()
         self.status_db_layout.setSpacing(0)
@@ -52,6 +52,24 @@ class MainWindow(QMainWindow):
         self.status_db_state.setText("Disconnected")
         self.status_db_layout.addWidget(self.status_db_state)
         self.statusBar().addPermanentWidget(self.status_db)
+
+        # set up statusbar - MariaDB connection state
+        self.status_sql = QWidget()
+        self.status_sql_layout = QHBoxLayout()
+        self.status_sql_layout.setSpacing(0)
+        self.status_sql.setLayout(self.status_sql_layout)
+        self.status_sql_label = QLabel()
+        self.status_sql_label.setText("MariaDB:")
+        self.status_sql_layout.addWidget(self.status_sql_label)
+        self.status_sql_icon_lbl = QLabel()
+        self.status_sql_icon_lbl.setPixmap(QPixmap('./gui/icons/cross_red.png'))
+        self.status_sql_layout.addWidget(self.status_sql_icon_lbl)
+        self.status_sql_state = QLabel()
+        self.status_sql_state.setText("Disconnected")
+        self.status_sql_layout.addWidget(self.status_sql_state)
+        self.statusBar().addPermanentWidget(self.status_sql)
+
+        # set up statusbar - calculation progress bar
         self.status_prg = QWidget()
         self.status_prg_layout = QHBoxLayout()
         self.status_prg.setLayout(self.status_prg_layout)
@@ -63,6 +81,7 @@ class MainWindow(QMainWindow):
         self.status_prg_bar.setMaximum(99)
         self.status_prg_layout.addWidget(self.status_prg_bar)
         self.statusBar().addPermanentWidget(self.status_prg)
+
         self.statusBar().setContentsMargins(14, 0, 14, 0)
 
         # lookup for used actions and define them
@@ -161,9 +180,11 @@ class MainWindow(QMainWindow):
         # init app logic signaling
         self.influx_signals = InfluxSignals()
         self.calc_signals = CalcSignals()
+        self.sql_signals = SqlSignals()
 
-        # influxDB status signal
+        # DBs status signals
         self.influx_signals.ping_signal.connect(self.check_influx_status)
+        self.sql_signals.ping_signal.connect(self.check_sql_status)
 
         # rainfall calculation signals
         self.calc_signals.overall_done_signal.connect(self.show_overall_results)
@@ -171,14 +192,21 @@ class MainWindow(QMainWindow):
         self.calc_signals.error_signal.connect(self.calculation_error)
         self.calc_signals.progress_signal.connect(self.progress_update)
 
-        # init influxDB connection and status checker
+        # init DBs connection and status checkers
         self.influx_status: int = 0  # 0 = unknown, 1 = ok, -1 = not available
-        InfluxChecker(self.config_man, self.influx_signals).run()  # first connection check
+        self.sql_status: int = 0  # 0 = unknown, 1 = ok, -1 = not available
+        InfluxChecker(self.config_man, self.influx_signals).run()  # first Influx connection check
+        SqlChecker(self.config_man, self.sql_signals).run()
 
         self.influx_timer = QTimer()  # create timer for next checks
-        self.influx_timer.timeout.connect(self._pool_checker)
+        self.influx_timer.timeout.connect(self._pool_influx_checker)
         # TODO: load influx timeout from config and add some time
         self.influx_timer.start(5000)
+
+        self.sql_timer = QTimer()  # create timer for next checks
+        self.sql_timer.timeout.connect(self._pool_sql_checker)
+        # TODO: load MariaDB timeout from config and add some time
+        self.sql_timer.start(5000)
 
         # load CML definitions from SQL database
         self.links = self.sql_man.load_metadata()
@@ -204,23 +232,40 @@ class MainWindow(QMainWindow):
     # influxDB's status selection logic, called from signal
     def check_influx_status(self, influx_ping: bool):
         if influx_ping and self.influx_status == 0:
-            self._db_status_changed(True)
+            self._influx_status_changed(True)
             print("InfluxDB connection has been established.", flush=True)
             self.influx_status = 1
         elif not influx_ping and self.influx_status == 0:
-            self._db_status_changed(False)
+            self._influx_status_changed(False)
             print("InfluxDB connection is not available.", flush=True)
             self.influx_status = -1
-            # TODO: show warning dialog
         elif not influx_ping and self.influx_status == 1:
-            self._db_status_changed(False)
+            self._influx_status_changed(False)
             print("InfluxDB connection has been lost.", flush=True)
             self.influx_status = -1
-            # TODO: show warning dialog
         elif influx_ping and self.influx_status == -1:
-            self._db_status_changed(True)
+            self._influx_status_changed(True)
             print("InfluxDB connection has been reestablished.", flush=True)
             self.influx_status = 1
+
+    # MariaDB's status selection logic, called from signal
+    def check_sql_status(self, sql_ping: bool):
+        if sql_ping and self.sql_status == 0:
+            self._sql_status_changed(True)
+            print("MariaDB connection has been established.", flush=True)
+            self.sql_status = 1
+        elif not sql_ping and self.sql_status == 0:
+            self._sql_status_changed(False)
+            print("MariaDB connection is not available.", flush=True)
+            self.sql_status = -1
+        elif not sql_ping and self.sql_status == 1:
+            self._sql_status_changed(False)
+            print("MariaDB connection has been lost.", flush=True)
+            self.sql_status = -1
+        elif sql_ping and self.sql_status == -1:
+            self._sql_status_changed(True)
+            print("MariaDB connection has been reestablished.", flush=True)
+            self.sql_status = 1
 
     # show overall results from calculation, called from signal
     def show_overall_results(self, meta_data: dict):
@@ -376,8 +421,8 @@ class MainWindow(QMainWindow):
             self.butt_start.setEnabled(False)
 
             # RUN calculation on worker thread from threadpool
-            # self.threadpool.start(calculation)
-            calculation.run()  # TEMP: run directly on gui thread for debugging reasons
+            self.threadpool.start(calculation)
+            # calculation.run()  # TEMP: run directly on gui thread for debugging reasons
 
             msg = "Processing..."
 
@@ -481,7 +526,7 @@ class MainWindow(QMainWindow):
         info.exec()
 
     # influxDB's status changed GUI method
-    def _db_status_changed(self, status: bool):
+    def _influx_status_changed(self, status: bool):
         if status:  # True == connected
             self.status_db_state.setText("Connected")
             self.status_db_icon_lbl.setPixmap(QPixmap('./gui/icons/check_green.png'))
@@ -489,10 +534,24 @@ class MainWindow(QMainWindow):
             self.status_db_state.setText("Disconnected")
             self.status_db_icon_lbl.setPixmap(QPixmap('./gui/icons/cross_red.png'))
 
+    # MariaDB's status changed GUI method
+    def _sql_status_changed(self, status: bool):
+        if status:  # True == connected
+            self.status_sql_state.setText("Connected")
+            self.status_sql_icon_lbl.setPixmap(QPixmap('./gui/icons/check_green.png'))
+        else:       # False == disconnected
+            self.status_sql_state.setText("Disconnected")
+            self.status_sql_icon_lbl.setPixmap(QPixmap('./gui/icons/cross_red.png'))
+
     # insert InfluxDB's status checker into threadpool and start it, called by timer
-    def _pool_checker(self):
+    def _pool_influx_checker(self):
         influx_checker = InfluxChecker(self.config_man, self.influx_signals)
         self.threadpool.start(influx_checker)
+
+    # insert MariaDB's status checker into threadpool and start it, called by timer
+    def _pool_sql_checker(self):
+        sql_checker = SqlChecker(self.config_man, self.sql_signals)
+        self.threadpool.start(sql_checker)
 
     # adjust wet/dry rolling window length when query timestep is changed, to default multiple of 36 (good results)
     def _adjust_window(self, step: int):
