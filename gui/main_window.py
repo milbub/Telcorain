@@ -180,9 +180,9 @@ class MainWindow(QMainWindow):
         # TODO: load influx timeout from config and add some time
         self.influx_timer.start(5000)
 
-        # load CML definitions from SQLite database
-        self.links = self.sql_man.load_all()
-        print(f"SQLite link database file connected: {len(self.links)} microwave link's definitions loaded.")
+        # load CML definitions from SQL database
+        self.links = self.sql_man.load_metadata()
+        print(f"{len(self.links)} microwave link's definitions loaded from MariaDB.")
 
         # init link sets
         self.sets_man = LinksetsManager(self.links)
@@ -376,7 +376,7 @@ class MainWindow(QMainWindow):
             self.butt_start.setEnabled(False)
 
             # RUN calculation on worker thread from threadpool
-            #self.threadpool.start(calculation)
+            # self.threadpool.start(calculation)
             calculation.run()  # TEMP: run directly on gui thread for debugging reasons
 
             msg = "Processing..."
@@ -581,7 +581,7 @@ class MainWindow(QMainWindow):
             row += 1
 
     def _fill_linksets(self):
-        for link_set in self.sets_man.set_names:
+        for link_set in self.sets_man.sections:
             self.lists.addItem(link_set)
 
     # destructor

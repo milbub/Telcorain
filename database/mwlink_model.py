@@ -1,8 +1,8 @@
 class MwLink:
     def __init__(self, link_id: int, name: str, tech: str, name_a: str, name_b: str, freq_a: int, freq_b: int,
-                 polarization: str, ip_a: str, ip_b: str, distance: float, latitude_a: str, longitude_a: str,
-                 latitude_b: str, longitude_b: str, dummy_latitude_a: str, dummy_longitude_a: str,
-                 dummy_latitude_b: str, dummy_longitude_b: str):
+                 polarization: str, ip_a: str, ip_b: str, distance: float, latitude_a: float, longitude_a: float,
+                 latitude_b: float, longitude_b: float, dummy_latitude_a: float, dummy_longitude_a: float,
+                 dummy_latitude_b: float, dummy_longitude_b: float):
         self.link_id = link_id
         self.name = name
         self.tech = tech
