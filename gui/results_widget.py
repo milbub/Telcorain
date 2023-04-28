@@ -165,7 +165,7 @@ class ResultsWidget(QWidget):
         self._refresh_fig(self.overall_canvas, x_grid, y_grid, rain_grid, self.overall_annotations, is_total=True)
 
         # plot link path lines
-        #self._plot_link_lines(links_calc_data, self.overall_canvas.ax)
+        self._plot_link_lines(links_calc_data, self.overall_canvas.ax)
 
         # show in overall canvas frame
         self.overall_plot_layout.addWidget(self.overall_canvas)
@@ -181,7 +181,7 @@ class ResultsWidget(QWidget):
                           is_total=self.are_results_totals)
 
         # plot link path lines
-        #self._plot_link_lines(links_calc_data, self.animation_canvas.ax)
+        self._plot_link_lines(links_calc_data, self.animation_canvas.ax)
 
         # hide notification
         self.change_no_anim_notification(False)

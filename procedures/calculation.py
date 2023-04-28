@@ -4,7 +4,7 @@ import xarray as xr
 from PyQt6.QtCore import QRunnable, QObject, QDateTime, pyqtSignal
 import time
 
-from procedures import correlation, linear_regression, algorithm
+from procedures import temperature_correlation, temperature_compensation
 
 
 class CalcSignals(QObject):
@@ -49,11 +49,11 @@ class Calculation(QRunnable):
         self.idw_dist = idw_dist
         self.schleiss_val = schleiss_val
         self.schleiss_tau = schleiss_tau
-        self.is_correlation = is_correlation
-        self.spin_correlation = spin_correlation
-        self.combo_realtime = combo_realtime
+        self.is_temp_compensation = is_correlation
+        self.temp_max_correlation = spin_correlation
+        self.realtime_timewindow = combo_realtime
         self.is_historic = is_historic
-        self.is_remove = is_remove
+        self.is_temp_unstable_remove = is_remove
 
     def run(self):
         print(f"[CALC ID: {self.results_id}] Rainfall calculation procedure started.", flush=True)
@@ -94,7 +94,7 @@ class Calculation(QRunnable):
 
                 else:
                     print("Realtime data procedure started.")
-                    influx_data = self.influx_man.query_signal_mean_realtime(ips, self.combo_realtime, self.interval)
+                    influx_data = self.influx_man.query_signal_mean_realtime(ips, self.realtime_timewindow, self.interval)
 
                 diff = len(ips) - len(influx_data)
 
@@ -126,7 +126,7 @@ class Calculation(QRunnable):
             except BaseException as error:
                 self.signals.error_signal.emit({"id": self.results_id})
                 print(f"[CALC ID: {self.results_id}] ERROR: An unexpected error occurred during InfluxDB query: "
-                      f"{type(error)}.")
+                      f"{type(error)} {error}.")
                 print(f"[CALC ID: {self.results_id}] ERROR: Calculation thread terminated.")
                 return
 
@@ -138,7 +138,7 @@ class Calculation(QRunnable):
             try:
 
                 link_count = len(self.selection)
-                curr_link = 0
+                current_link = 0
 
                 for link in self.selection:
                     if self.selection[link] == 0:
@@ -245,8 +245,8 @@ class Calculation(QRunnable):
 
                     calc_data.append(xr.concat(link_channels, dim="channel_id"))
 
-                    self.signals.progress_signal.emit({'prg_val': round((curr_link / link_count) * 17) + 18})
-                    curr_link += 1
+                    self.signals.progress_signal.emit({'prg_val': round((current_link / link_count) * 17) + 18})
+                    current_link += 1
 
             except BaseException as error:
                 self.signals.error_signal.emit({"id": self.results_id})
@@ -262,7 +262,7 @@ class Calculation(QRunnable):
 
                 print(f"[CALC ID: {self.results_id}] Smoothing signal data...")
                 link_count = len(calc_data)
-                curr_link = 0
+                current_link = 0
                 count = 0
 
                 # Creating array to remove high-correlation links (class correlation.py)
@@ -294,31 +294,32 @@ class Calculation(QRunnable):
                                                                                               max_gap='5min')
                     link['temperature_tx'] = link.temperature_tx.astype(float).fillna(0.0)
 
-                    self.signals.progress_signal.emit({'prg_val': round((curr_link / link_count) * 15) + 35})
-                    curr_link += 1
+                    self.signals.progress_signal.emit({'prg_val': round((current_link / link_count) * 15) + 35})
+                    current_link += 1
                     count += 1
 
                     """
-                    # Correlation - remove links if the correlation exceeds the specified threshold
-                    # Linear_regression - replaces the original trsl with the corrected ones
-                    # Algorithm - combination of the previous two
+                    # Temperature_Correlation - remove links if the correlation exceeds the specified threshold
+                    # Temperature_Regression - replaces the original trsl with the corrected ones
+                    # Temperature_Compensation - combination of the previous two
 
-                    #linear_regression.Linear_regression.compensation(self, link)
+                    # temperature_regression.compensation(self, link)
                     """
 
-                    if self.is_remove:
+                    if self.is_temp_unstable_remove:
                         print("Remove-link procedure started.")
-                        correlation.Correlation.pearson_correlation(self, count, ips, curr_link, link_todelete, link,
-                                                                    self.spin_correlation)
+                        temperature_correlation.pearson_correlation(count, ips, current_link, link_todelete, link,
+                                                                    self.temp_max_correlation)
 
-                    if self.is_correlation:
+                    if self.is_temp_compensation:
                         print("Compensation algorithm procedure started.")
-                        algorithm.Algorithm.algorithm(self, count, ips, curr_link, link, self.spin_correlation)
+                        temperature_compensation.compensation(count, ips, current_link, link, self.temp_max_correlation)
 
                     """
-                    # 'curr link += 1' serves to accurately list the 'count' and ip address of CML unit when the 'algorithm.py' or 'correlation.py' is called
+                    'current_link += 1' serves to accurately list the 'count' and ip address of CML unit
+                     when the 'temperature_compensation.py' or 'temperature_correlation.py' is called
                     """
-                    curr_link += 1
+                    current_link += 1
 
                 # Run the removal of high correlation links (class correlation.py)
                 for link in link_todelete:
@@ -326,7 +327,7 @@ class Calculation(QRunnable):
 
                 # process each link -> get intensity R value for each link:
                 print(f"[CALC ID: {self.results_id}] Computing rain values...")
-                curr_link = 0
+                current_link = 0
 
                 for link in calc_data:
                     # determine wet periods
@@ -355,15 +356,15 @@ class Calculation(QRunnable):
                     link['R'] = pycml.processing.k_R_relation.calc_R_from_A(A=link.A, L_km=float(link.length),
                                                                             f_GHz=link.frequency, pol=link.polarization)
 
-                    self.signals.progress_signal.emit({'prg_val': round((curr_link / link_count) * 40) + 50})
-                    curr_link += 1
+                    self.signals.progress_signal.emit({'prg_val': round((current_link / link_count) * 40) + 50})
+                    current_link += 1
 
             except BaseException as error:
                 self.signals.error_signal.emit({"id": self.results_id})
                 print(f"[CALC ID: {self.results_id}] ERROR: An unexpected error occurred during rain calculation: "
                       f"{type(error)} {error}.")
                 print(
-                    f"[CALC ID: {self.results_id}] ERROR: Last processed microwave link dataset: {calc_data[curr_link]}")
+                    f"[CALC ID: {self.results_id}] ERROR: Last processed microwave link dataset: {calc_data[current_link]}")
                 print(f"[CALC ID: {self.results_id}] ERROR: Calculation thread terminated.")
                 return
 
@@ -488,7 +489,7 @@ class Calculation(QRunnable):
 
     # noinspection PyMethodMayBeStatic
 
-    def _fill_channel_dataset(self, curr_link, flux_data, tx_ip, rx_ip, channel_id, freq,
+    def _fill_channel_dataset(self, current_link, flux_data, tx_ip, rx_ip, channel_id, freq,
                               tx_zeros: bool = False, is_empty_channel: bool = False) -> xr.Dataset:
         # get times from the Rx power array => since Rx unit should be always available, rx_ip can be used
         times = []
@@ -536,19 +537,19 @@ class Calculation(QRunnable):
             coords={
                 "time": times,
                 "channel_id": channel_id,
-                "cml_id": curr_link.link_id,
-                "site_a_latitude": curr_link.latitude_a,
-                "site_b_latitude": curr_link.latitude_b,
-                "site_a_longitude": curr_link.longitude_a,
-                "site_b_longitude": curr_link.longitude_b,
+                "cml_id": current_link.link_id,
+                "site_a_latitude": current_link.latitude_a,
+                "site_b_latitude": current_link.latitude_b,
+                "site_a_longitude": current_link.longitude_a,
+                "site_b_longitude": current_link.longitude_b,
                 "frequency": freq / 1000,
-                "polarization": curr_link.polarization,
-                "length": curr_link.distance,
+                "polarization": current_link.polarization,
+                "length": current_link.distance,
                 "dummy_channel": dummy,
-                "dummy_a_latitude": curr_link.dummy_latitude_a,
-                "dummy_b_latitude": curr_link.dummy_latitude_b,
-                "dummy_a_longitude": curr_link.dummy_longitude_a,
-                "dummy_b_longitude": curr_link.dummy_longitude_b,
+                "dummy_a_latitude": current_link.dummy_latitude_a,
+                "dummy_b_latitude": current_link.dummy_latitude_b,
+                "dummy_a_longitude": current_link.dummy_longitude_a,
+                "dummy_b_longitude": current_link.dummy_longitude_b,
             },
         )
         return channel

@@ -13,8 +13,8 @@ class InfluxManager:
         self.qapi = self.client.query_api()
 
         # TODO: load value from settings
-        # self.bucket1 = "mws"
-        # self.bucket2 = "realtime_cbl"
+        self.bucket1 = "mws"
+        self.bucket2 = "realtime_cbl"
 
     def check_connection(self) -> bool:
         return self.client.ping()
@@ -22,8 +22,6 @@ class InfluxManager:
     # query influxDB for CMLs defined in 'ips' as list of their ip addresses
     # return their values in list of xarrays
     def query_signal_mean(self, ips: list, start: QDateTime, end: QDateTime, interval: int) -> dict:
-        self.bucket1 = "mws"
-
         # convert params to query substrings
         start_str = start.toString("yyyy-MM-ddTHH:mm:ss.000Z")  # RFC 3339
         end_str = end.toString("yyyy-MM-ddTHH:mm:ss.000Z")  # RFC 3339
@@ -69,12 +67,9 @@ class InfluxManager:
                     else:
                         data[ip][record.get_field()][record.get_time()] = record.get_value()
 
-        # print(f"Data z Influxu History")
         return data
 
     def query_signal_mean_realtime(self, ips: list, combo_realtime: QComboBox, interval: int) -> dict:
-        self.bucket2 = "realtime_cbl"
-
         delta_map = {
             "Past 1h": timedelta(hours=1),
             "Past 3h": timedelta(hours=3),
@@ -144,7 +139,6 @@ class InfluxManager:
                     else:
                         data[ip][field_name][record.get_time()] = record.get_value()
 
-        # print(f"Data z Influxu RealTime")
         return data
 
 
