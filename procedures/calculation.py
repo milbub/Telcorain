@@ -299,11 +299,9 @@ class Calculation(QRunnable):
                     count += 1
 
                     """
-                    # Temperature_Correlation - remove links if the correlation exceeds the specified threshold
-                    # Temperature_Regression - replaces the original trsl with the corrected ones
-                    # Temperature_Compensation - combination of the previous two
-
-                    # temperature_regression.compensation(self, link)
+                    # temperature_correlation  - remove links if the correlation exceeds the specified threshold
+                    # temperature_compensation - as correlation, but also replaces the original trsl with the corrected
+                                                 one, according to the created tempreture compensation algorithm
                     """
 
                     if self.is_temp_unstable_remove:
