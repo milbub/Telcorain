@@ -1,7 +1,7 @@
 import sys
 
 from PyQt6 import uic, QtGui, QtCore
-from PyQt6.QtCore import QTimer
+from PyQt6.QtCore import QTimer, QObject
 from PyQt6.QtGui import QPixmap, QAction
 from PyQt6.QtWidgets import QMainWindow, QLabel, QProgressBar, QHBoxLayout, QWidget, QTextEdit, QListWidget, \
     QDateTimeEdit, QPushButton, QSpinBox, QTabWidget, QLineEdit, QDoubleSpinBox, QRadioButton, QCheckBox, \
@@ -82,50 +82,54 @@ class MainWindow(QMainWindow):
         self.status_prg_layout.addWidget(self.status_prg_bar)
         self.statusBar().addPermanentWidget(self.status_prg)
 
+        # set spacing for status bar
         self.statusBar().setContentsMargins(14, 0, 14, 0)
 
         # lookup for used actions and define them
-        self.exit_action = self.findChild(QAction, "actionExit")
+        self.exit_action: QObject = self.findChild(QAction, "actionExit")
         self.exit_action.triggered.connect(QApplication.quit)
 
         # lookup for used widgets and define them
-        self.text_log = self.findChild(QTextEdit, "textLog")
-        self.lists = self.findChild(QListWidget, "listLists")
-        self.selection_table = self.findChild(QTableWidget, "tableSelection")
-        self.butt_new_set = self.findChild(QPushButton, "buttLstNew")
-        self.butt_edit_set = self.findChild(QPushButton, "buttLstEdit")
-        self.butt_copy_set = self.findChild(QPushButton, "buttLstCopy")
-        self.butt_del_set = self.findChild(QPushButton, "buttLstDel")
-        self.datetime_start = self.findChild(QDateTimeEdit, "dateTimeStart")
-        self.datetime_stop = self.findChild(QDateTimeEdit, "dateTimeStop")
-        self.spin_timestep = self.findChild(QSpinBox, "spinTimestep")
-        self.butt_start = self.findChild(QPushButton, "buttStart")
-        self.butt_abort = self.findChild(QPushButton, "buttAbort")
-        self.tabs = self.findChild(QTabWidget, "tabWidget")
-        self.results_name = self.findChild(QLineEdit, "resultsNameEdit")
-        self.spin_roll_window = self.findChild(QDoubleSpinBox, "spinRollWindow")
-        self.spin_wet_dry_sd = self.findChild(QDoubleSpinBox, "spinWetDrySD")
-        self.spin_baseline_samples = self.findChild(QSpinBox, "spinBaselineSamples")
-        self.spin_output_step = self.findChild(QSpinBox, "spinOutputStep")
-        self.spin_interpol_res = self.findChild(QDoubleSpinBox, "spinInterResolution")
-        self.spin_idw_power = self.findChild(QSpinBox, "spinIdwPower")
-        self.spin_idw_near = self.findChild(QSpinBox, "spinIdwNear")
-        self.spin_idw_dist = self.findChild(QDoubleSpinBox, "spinIdwDist")
-        self.radio_output_total = self.findChild(QRadioButton, "radioOutputTotal")
-        self.box_only_overall = self.findChild(QCheckBox, "checkOnlyOverall")
-        self.path_box = self.findChild(QLineEdit, "editPath")
-        self.butt_choose_path = self.findChild(QPushButton, "buttChoosePath")
-        self.pdf_box = self.findChild(QCheckBox, "checkFilePDF")
-        self.png_box = self.findChild(QCheckBox, "checkFilePNG")
-        self.check_dummy = self.findChild(QCheckBox, "checkDummy")
-        self.spin_waa_schleiss_val = self.findChild(QDoubleSpinBox, "spinSchleissWaa")
-        self.spin_waa_schleiss_tau = self.findChild(QDoubleSpinBox, "spinSchleissTau")
-        self.is_correlation_box = self.findChild(QCheckBox, "isCorrelationBox")
-        self.correlation_spin = self.findChild(QDoubleSpinBox, "correlationSpin")
-        self.combo_realtime_box = self.findChild(QComboBox, "comboRealtime")
-        self.combo_realtime_box.setHidden(True)
-        self.radio_historic = self.findChild(QRadioButton, "radioTimeint")
-        self.is_remove_box = self.findChild(QCheckBox, "isRemoveBox")
+        self.text_log: QObject = self.findChild(QTextEdit, "textLog")
+        self.lists: QObject = self.findChild(QListWidget, "listLists")
+        self.selection_table: QObject = self.findChild(QTableWidget, "tableSelection")
+        self.butt_new_set: QObject = self.findChild(QPushButton, "buttLstNew")
+        self.butt_edit_set: QObject = self.findChild(QPushButton, "buttLstEdit")
+        self.butt_copy_set: QObject = self.findChild(QPushButton, "buttLstCopy")
+        self.butt_del_set: QObject = self.findChild(QPushButton, "buttLstDel")
+        self.datetime_start: QObject = self.findChild(QDateTimeEdit, "dateTimeStart")
+        self.datetime_stop: QObject = self.findChild(QDateTimeEdit, "dateTimeStop")
+        self.spin_timestep: QObject = self.findChild(QSpinBox, "spinTimestep")
+        self.butt_start: QObject = self.findChild(QPushButton, "buttStart")
+        self.butt_abort: QObject = self.findChild(QPushButton, "buttAbort")
+        self.tabs: QObject = self.findChild(QTabWidget, "tabWidget")
+        self.results_name: QObject = self.findChild(QLineEdit, "resultsNameEdit")
+        self.spin_roll_window: QObject = self.findChild(QDoubleSpinBox, "spinRollWindow")
+        self.spin_wet_dry_sd: QObject = self.findChild(QDoubleSpinBox, "spinWetDrySD")
+        self.spin_baseline_samples: QObject = self.findChild(QSpinBox, "spinBaselineSamples")
+        self.spin_output_step: QObject = self.findChild(QSpinBox, "spinOutputStep")
+        self.spin_interpol_res: QObject = self.findChild(QDoubleSpinBox, "spinInterResolution")
+        self.spin_idw_power: QObject = self.findChild(QSpinBox, "spinIdwPower")
+        self.spin_idw_near: QObject = self.findChild(QSpinBox, "spinIdwNear")
+        self.spin_idw_dist: QObject = self.findChild(QDoubleSpinBox, "spinIdwDist")
+        self.radio_output_total: QObject = self.findChild(QRadioButton, "radioOutputTotal")
+        self.box_only_overall: QObject = self.findChild(QCheckBox, "checkOnlyOverall")
+        self.path_box: QObject = self.findChild(QLineEdit, "editPath")
+        self.butt_choose_path: QObject = self.findChild(QPushButton, "buttChoosePath")
+        self.pdf_box: QObject = self.findChild(QCheckBox, "checkFilePDF")
+        self.png_box: QObject = self.findChild(QCheckBox, "checkFilePNG")
+        self.check_dummy: QObject = self.findChild(QCheckBox, "checkDummy")
+        self.spin_waa_schleiss_val: QObject = self.findChild(QDoubleSpinBox, "spinSchleissWaa")
+        self.spin_waa_schleiss_tau: QObject = self.findChild(QDoubleSpinBox, "spinSchleissTau")
+        self.radio_historic: QObject = self.findChild(QRadioButton, "radioHistoric")
+        self.radio_realtime: QObject = self.findChild(QRadioButton, "radioRealtime")
+        self.combo_realtime: QObject = self.findChild(QComboBox, "comboRealtime")
+        self.label_realtime: QObject = self.findChild(QLabel, "labelRealtime")
+        self.correlation_spin: QObject = self.findChild(QDoubleSpinBox, "correlationSpin")
+        self.correlation_filter_box: QObject = self.findChild(QCheckBox, "filterCMLsBox")
+        self.compensation_box: QObject = self.findChild(QCheckBox, "compensationBox")
+        self.write_output_box: QObject = self.findChild(QCheckBox, "writeOutputBox")
+        self.window_pointer_combo: QObject = self.findChild(QComboBox, "windowPointerCombo")
 
         # declare dictionary for created tabs with calculation results
         # <key: int = result ID, value: ResultsWidget>
@@ -148,7 +152,10 @@ class MainWindow(QMainWindow):
         self.butt_choose_path.clicked.connect(self.choose_path_fired)
 
         # connect other signals
-        self.spin_timestep.valueChanged.connect(self._adjust_window)
+        self.spin_timestep.valueChanged.connect(lambda a: self.spin_roll_window.setValue(a * 36 / 60))
+        self.radio_realtime.clicked.connect(lambda a: self.box_only_overall.setChecked(False))
+        self.radio_realtime.clicked.connect(lambda a: self.window_pointer_combo.setCurrentIndex(1))
+        self.radio_historic.clicked.connect(lambda a: self.write_output_box.setChecked(False))
 
         # style out link table
         self.selection_table.setColumnWidth(0, 40)
@@ -158,6 +165,10 @@ class MainWindow(QMainWindow):
         self.selection_table.setColumnWidth(4, 71)
         self.selection_table.setColumnWidth(5, 75)
         self.selection_table.setColumnWidth(6, 148)
+
+        # style out other things
+        self.combo_realtime.setHidden(True)
+        self.label_realtime.setHidden(True)
 
         # show window
         self.show()
@@ -356,11 +367,11 @@ class MainWindow(QMainWindow):
         waa_schleiss_val = self.spin_waa_schleiss_val.value()
         waa_schleiss_tau = self.spin_waa_schleiss_tau.value()
         close_func = self.close_tab_result
-        is_correlation = self.is_correlation_box.isChecked()
+        is_correlation = self.compensation_box.isChecked()
         spin_correlation = self.correlation_spin.value()
-        combo_realtime = self.combo_realtime_box.currentText()
+        combo_realtime = self.combo_realtime.currentText()
         is_historic = self.radio_historic.isChecked()
-        is_remove = self.is_remove_box.isChecked()
+        is_remove = self.correlation_filter_box.isChecked()
 
         # INPUT CHECKS:
         if time_diff < 0:   # if timediff is less than 1 hour (in msecs)
@@ -552,10 +563,6 @@ class MainWindow(QMainWindow):
     def _pool_sql_checker(self):
         sql_checker = SqlChecker(self.config_man, self.sql_signals)
         self.threadpool.start(sql_checker)
-
-    # adjust wet/dry rolling window length when query timestep is changed, to default multiple of 36 (good results)
-    def _adjust_window(self, step: int):
-        self.spin_roll_window.setValue(step * 36 / 60)
 
     def _linkset_selected(self, selection: str):
         if selection == '<ALL>':

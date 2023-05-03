@@ -25,8 +25,8 @@ class Calculation(QRunnable):
     def __init__(self, influx_man, signals: CalcSignals, results_id: int, links: dict, selection: dict, start: QDateTime,
                  end: QDateTime, interval: int, rolling_vals: int, output_step: int, is_only_overall: bool,
                  is_output_total: bool, wet_dry_deviation: float, baseline_samples: int, interpol_res, idw_pow,
-                 idw_near, idw_dist, schleiss_val, schleiss_tau, is_correlation,
-                 spin_correlation, combo_realtime, is_historic, is_remove):
+                 idw_near, idw_dist, schleiss_val, schleiss_tau, is_temp_compensated,
+                 spin_correlation, combo_realtime, is_historic, is_temp_removed):
 
         QRunnable.__init__(self)
         self.influx_man = influx_man
@@ -49,11 +49,11 @@ class Calculation(QRunnable):
         self.idw_dist = idw_dist
         self.schleiss_val = schleiss_val
         self.schleiss_tau = schleiss_tau
-        self.is_temp_compensation = is_correlation
-        self.temp_max_correlation = spin_correlation
+        self.is_temp_compensated = is_temp_compensated
+        self.correlation_threshold = spin_correlation
         self.realtime_timewindow = combo_realtime
         self.is_historic = is_historic
-        self.is_temp_unstable_remove = is_remove
+        self.is_temp_filtered = is_temp_removed
 
     def run(self):
         print(f"[CALC ID: {self.results_id}] Rainfall calculation procedure started.", flush=True)
@@ -298,14 +298,14 @@ class Calculation(QRunnable):
                                                  one, according to the created tempreture compensation algorithm
                     """
 
-                    if self.is_temp_unstable_remove:
+                    if self.is_temp_filtered:
                         print("Remove-link procedure started.")
                         temperature_correlation.pearson_correlation(count, ips, current_link, links_to_delete, link,
-                                                                    self.temp_max_correlation)
+                                                                    self.correlation_threshold)
 
-                    if self.is_temp_compensation:
+                    if self.is_temp_compensated:
                         print("Compensation algorithm procedure started.")
-                        temperature_compensation.compensation(count, ips, current_link, link, self.temp_max_correlation)
+                        temperature_compensation.compensation(count, ips, current_link, link, self.correlation_threshold)
 
                     """
                     'current_link += 1' serves to accurately list the 'count' and ip address of CML unit
@@ -485,8 +485,8 @@ class Calculation(QRunnable):
                               tx_zeros: bool = False, is_empty_channel: bool = False) -> xr.Dataset:
         # get times from the Rx power array => since Rx unit should be always available, rx_ip can be used
         times = []
-        for time in flux_data[rx_ip]["rx_power"].keys():
-            times.append(np.datetime64(time).astype("datetime64[ns]"))
+        for timestamp in flux_data[rx_ip]["rx_power"].keys():
+            times.append(np.datetime64(timestamp).astype("datetime64[ns]"))
 
         # if creating empty channel dataset, fill Rx vars with zeros =>
         # => since Rx unit should be always available, rx_ip can be used
