@@ -266,33 +266,27 @@ class Calculation(QRunnable):
                 count = 0
 
                 # Creating array to remove high-correlation links (class correlation.py)
-                link_todelete = []
+                links_to_delete = []
 
-                # interpolate NaNs in input data and filter out nonsenses out of limits
+                # interpolate NaNs in input data; filter out outliers
                 for link in calc_data:
-                    # TODO: load upper tx power from options (here it's 99 dBm)
-                    link['tsl'] = link.tsl.astype(float).where(link.tsl < 99.0)
-                    link['tsl'] = link.tsl.astype(float).interpolate_na(dim='time', method='linear', max_gap='5min')
-                    link['tsl'] = link.tsl.astype(float).fillna(0.0)
+                    # TODO: load upper tx power from options (here it's 40 dBm)
+                    link['tsl'] = link.tsl.astype(float).where(link.tsl < 40.0)
+                    link['tsl'] = link.tsl.astype(float).interpolate_na(dim='time', method='nearest', max_gap=None)
 
-                    # TODO: load bottom rx power from options (here it's -80 dBm)
-                    link['rsl'] = link.rsl.astype(float).where(link.rsl != 0.0).where(link.rsl > -80.0)
-                    link['rsl'] = link.rsl.astype(float).interpolate_na(dim='time', method='linear', max_gap='5min')
-                    link['rsl'] = link.rsl.astype(float).fillna(0.0)
+                    # TODO: load bottom rx power from options (here it's -70 dBm)
+                    link['rsl'] = link.rsl.astype(float).where(link.rsl != 0.0).where(link.rsl > -70.0)
+                    link['rsl'] = link.rsl.astype(float).interpolate_na(dim='time', method='nearest', max_gap=None)
 
                     link['trsl'] = link.tsl - link.rsl
-                    link['trsl'] = link.trsl.astype(float).interpolate_na(dim='time', method='nearest', max_gap='5min')
-                    link['trsl'] = link.trsl.astype(float).fillna(0.0)
 
                     link['temperature_rx'] = link.temperature_rx.astype(float).interpolate_na(dim='time',
                                                                                               method='linear',
-                                                                                              max_gap='5min')
-                    link['temperature_rx'] = link.temperature_rx.astype(float).fillna(0.0)
+                                                                                              max_gap=None)
 
                     link['temperature_tx'] = link.temperature_tx.astype(float).interpolate_na(dim='time',
                                                                                               method='linear',
-                                                                                              max_gap='5min')
-                    link['temperature_tx'] = link.temperature_tx.astype(float).fillna(0.0)
+                                                                                              max_gap=None)
 
                     self.signals.progress_signal.emit({'prg_val': round((current_link / link_count) * 15) + 35})
                     current_link += 1
@@ -306,7 +300,7 @@ class Calculation(QRunnable):
 
                     if self.is_temp_unstable_remove:
                         print("Remove-link procedure started.")
-                        temperature_correlation.pearson_correlation(count, ips, current_link, link_todelete, link,
+                        temperature_correlation.pearson_correlation(count, ips, current_link, links_to_delete, link,
                                                                     self.temp_max_correlation)
 
                     if self.is_temp_compensation:
@@ -320,7 +314,7 @@ class Calculation(QRunnable):
                     current_link += 1
 
                 # Run the removal of high correlation links (class correlation.py)
-                for link in link_todelete:
+                for link in links_to_delete:
                     calc_data.remove(link)
 
                 # process each link -> get intensity R value for each link:
