@@ -71,17 +71,17 @@ class InfluxManager:
 
     def query_signal_mean_realtime(self, ips: list, combo_realtime: QComboBox, interval: int) -> dict:
         delta_map = {
-            "Past 1h": timedelta(hours=1),
-            "Past 3h": timedelta(hours=3),
-            "Past 6h": timedelta(hours=6),
-            "Past 12h": timedelta(hours=12),
-            "Past 24h": timedelta(hours=24),
-            "Past 2d": timedelta(days=2),
-            "Past 7d": timedelta(days=7),
-            "Past 30d": timedelta(days=30)
+            "Past 1 h": timedelta(hours=1),
+            "Past 3 h": timedelta(hours=3),
+            "Past 6 h": timedelta(hours=6),
+            "Past 12 h": timedelta(hours=12),
+            "Past 24 h": timedelta(hours=24),
+            "Past 2 d": timedelta(days=2),
+            "Past 7 d": timedelta(days=7),
+            "Past 30 d": timedelta(days=30)
         }
 
-        end = datetime.now()
+        end = datetime.utcnow()
         delta = delta_map.get(combo_realtime)
 
         if delta is None:

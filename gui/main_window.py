@@ -6,6 +6,7 @@ from PyQt6.QtGui import QPixmap, QAction
 from PyQt6.QtWidgets import QMainWindow, QLabel, QProgressBar, QHBoxLayout, QWidget, QTextEdit, QListWidget, \
     QDateTimeEdit, QPushButton, QSpinBox, QTabWidget, QLineEdit, QDoubleSpinBox, QRadioButton, QCheckBox, \
     QListWidgetItem, QTableWidget, QGridLayout, QMessageBox, QFileDialog, QApplication, QComboBox
+from datetime import datetime
 
 from database.influx_manager import InfluxManager, InfluxChecker, InfluxSignals
 from database.sql_manager import SqlManager, SqlChecker, SqlSignals
@@ -240,6 +241,14 @@ class MainWindow(QMainWindow):
         self.path = './outputs'
         self.path_box.setText(self.path + '/<time>')
 
+        # prepare realtime calculation slot and timer
+        self.running_realtime = None
+        self.realtime_timer = QTimer()
+        self.realtime_timer.setSingleShot(True)
+        self.realtime_timer.timeout.connect(self._pool_realtime_run)
+        self.realtime_last_run: datetime = datetime.min
+        self.is_realtime_showed: bool = False
+
     # influxDB's status selection logic, called from signal
     def check_influx_status(self, influx_ping: bool):
         if influx_ping and self.influx_status == 0:
@@ -286,9 +295,12 @@ class MainWindow(QMainWindow):
                                                               meta_data["rain_grid"],
                                                               meta_data["link_data"])
 
-        # insert results tab to tab list
-        self.tabs.addTab(self.results_tabs[meta_data["id"]], self.results_icon,
-                         f"Results: {self.results_tabs[meta_data['id']].tab_name}")
+        if not self.is_realtime_showed:
+            # insert results tab to tab list
+            self.tabs.addTab(self.results_tabs[meta_data["id"]], self.results_icon,
+                             f"Results: {self.results_tabs[meta_data['id']].tab_name}")
+            if self.running_realtime is not None:
+                self.is_realtime_showed = True
 
         if meta_data["is_it_all"]:
             self.statusBar().showMessage(f"Calculation \"{self.results_tabs[meta_data['id']].tab_name}\" is complete.")
@@ -312,14 +324,28 @@ class MainWindow(QMainWindow):
                                                                       meta_data["rain_grids"],
                                                                       meta_data["link_data"])
 
-        self.statusBar().showMessage(f"Calculation \"{self.results_tabs[meta_data['id']].tab_name}\" is complete.")
-
         # return progress bar to default state
         self.status_prg_bar.setValue(0)
 
-        # restore buttons
-        self.butt_abort.setEnabled(False)
-        self.butt_start.setEnabled(True)
+        if self.running_realtime is not None:
+            timediff = datetime.now() - self.realtime_last_run
+            interval = self.results_tabs[meta_data['id']].output_step * 60
+
+            if timediff.total_seconds() < interval:
+                self.butt_abort.setEnabled(True)
+                msg = str(f"Realtime iteration #{self.running_realtime.realtime_runs} of calculation "
+                          f"\"{self.results_tabs[meta_data['id']].tab_name}\" is complete. "
+                          f"Next iteration starts in {int(interval - timediff.total_seconds())} seconds.")
+                self.realtime_timer.start(int(interval - timediff.total_seconds()) * 1000)
+            else:
+                msg = str(f"Processing realtime calculation iteration #{self.running_realtime.realtime_runs}...")
+                self._pool_realtime_run()
+
+        else:
+            self.butt_start.setEnabled(True)
+            msg = str(f"Calculation \"{self.results_tabs[meta_data['id']].tab_name}\" is complete.")
+
+        self.statusBar().showMessage(msg)
 
     # show info about error in calculation, called from signal
     def calculation_error(self, meta_data: dict):
@@ -330,7 +356,6 @@ class MainWindow(QMainWindow):
         self.status_prg_bar.setValue(0)
 
         # restore buttons
-        self.butt_abort.setEnabled(False)
         self.butt_start.setEnabled(True)
 
     # update progress bar with calculation status, called from signal
@@ -346,6 +371,7 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage(msg)
             return
 
+        # get parameters from Qt widgets
         start = self.datetime_start.dateTime()
         end = self.datetime_stop.dateTime()
         step = self.spin_timestep.value()
@@ -370,8 +396,17 @@ class MainWindow(QMainWindow):
         is_correlation = self.compensation_box.isChecked()
         spin_correlation = self.correlation_spin.value()
         combo_realtime = self.combo_realtime.currentText()
-        is_historic = self.radio_historic.isChecked()
+        is_realtime = self.radio_realtime.isChecked()
         is_remove = self.correlation_filter_box.isChecked()
+        is_output_write = self.write_output_box.isChecked()
+        is_window_centered = True if self.window_pointer_combo.currentIndex() == 0 else False
+
+        # for writing output data back into DB, we need working MariaDB connection
+        if is_output_write and self.sql_status != 1:
+            msg = "Cannot start realtime calculation, MariaDB connection is not available."
+            print(f"[WARNING] {msg}")
+            self.statusBar().showMessage(msg)
+            return
 
         # INPUT CHECKS:
         if time_diff < 0:   # if timediff is less than 1 hour (in msecs)
@@ -398,11 +433,12 @@ class MainWindow(QMainWindow):
             self.result_id += 1
 
             # create calculation instance
-            calculation = Calculation(self.influx_man, self.calc_signals, self.result_id, self.links, self.current_selection, start,
-                                      end, step, rolling_values, output_step, is_only_overall, is_output_total,
-                                      wet_dry_deviation, baseline_samples, interpol_res, idw_power, idw_near,
-                                      idw_dist, waa_schleiss_val, waa_schleiss_tau, is_correlation,
-                                      spin_correlation, combo_realtime, is_historic, is_remove)
+            calculation = Calculation(self.influx_man, self.calc_signals, self.result_id, self.links,
+                                      self.current_selection, start, end, step, rolling_values, output_step,
+                                      is_only_overall, is_output_total, wet_dry_deviation, baseline_samples,
+                                      interpol_res, idw_power, idw_near, idw_dist, waa_schleiss_val, waa_schleiss_tau,
+                                      is_correlation, spin_correlation, combo_realtime, not is_realtime, is_remove,
+                                      is_window_centered)
 
             if self.results_name.text() == "":
                 results_tab_name = "<no name>"
@@ -428,20 +464,30 @@ class MainWindow(QMainWindow):
                                                               is_only_overall, is_dummy, params)
 
             self.results_name.clear()
-            self.butt_abort.setEnabled(True)
             self.butt_start.setEnabled(False)
 
-            # RUN calculation on worker thread from threadpool
-            self.threadpool.start(calculation)
-            # calculation.run()  # TEMP: run directly on gui thread for debugging reasons
-
-            msg = "Processing..."
+            if is_realtime:
+                calculation.setAutoDelete(False)
+                self.running_realtime = calculation
+                self._pool_realtime_run()
+                msg = "Processing realtime calculation iteration..."
+            else:
+                # RUN calculation on worker thread from threadpool
+                self.threadpool.start(calculation)
+                # calculation.run()  # TEMP: run directly on gui thread for debugging reasons
+                msg = "Processing..."
 
         self.statusBar().showMessage(msg)
 
     def calculation_cancel_fired(self):
-        # TODO: implement calculation cancelling
-        pass
+        if self.running_realtime is not None:
+            self.realtime_timer.stop()
+            self.statusBar().showMessage(f"Realtime calculation has been interrupted after "
+                                         f"{self.running_realtime.realtime_runs} runs.")
+            self.running_realtime = None
+            self.is_realtime_showed = False
+            self.butt_start.setEnabled(True)
+            self.butt_abort.setEnabled(False)
 
     def new_linkset_fired(self):
         dialog = FormDialog(self, "Link Set Creation", "Please, enter a name of the new link set:")
@@ -563,6 +609,11 @@ class MainWindow(QMainWindow):
     def _pool_sql_checker(self):
         sql_checker = SqlChecker(self.config_man, self.sql_signals)
         self.threadpool.start(sql_checker)
+
+    def _pool_realtime_run(self):
+        self.butt_abort.setEnabled(False)
+        self.realtime_last_run = datetime.now()
+        self.threadpool.start(self.running_realtime)
 
     def _linkset_selected(self, selection: str):
         if selection == '<ALL>':
