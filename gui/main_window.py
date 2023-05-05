@@ -400,6 +400,12 @@ class MainWindow(QMainWindow):
         is_remove = self.correlation_filter_box.isChecked()
         is_output_write = self.write_output_box.isChecked()
         is_window_centered = True if self.window_pointer_combo.currentIndex() == 0 else False
+        retention = int(self.config_man.read_option('realtime', 'retention'))
+        precision = int(self.config_man.read_option('realtime', 'precision'))
+        X_MIN = float(self.config_man.read_option('rendering', 'X_MIN'))
+        X_MAX = float(self.config_man.read_option('rendering', 'X_MAX'))
+        Y_MIN = float(self.config_man.read_option('rendering', 'Y_MIN'))
+        Y_MAX = float(self.config_man.read_option('rendering', 'Y_MAX'))
 
         # for writing output data back into DB, we need working MariaDB connection
         if is_output_write and self.sql_status != 1:
@@ -469,6 +475,19 @@ class MainWindow(QMainWindow):
             if is_realtime:
                 calculation.setAutoDelete(False)
                 self.running_realtime = calculation
+
+                if is_output_write:
+                    params = self.sql_man.get_last_realtime()
+                    print("Realtime outputs writing activated!")
+                    print(f"Last written realtime calculation started at "
+                          f"{params['start_time'].strftime('%Y-%m-%d %H:%M:%S')} and ran with parameters: retention: "
+                          f"{(params['retention']/60):.0f} h, step: {(params['timestep']/60):.0f} min, grid resolution:"
+                          f" {(params['resolution']):.8f} °, precision: {params['precision']} decimals.")
+                    print(f"Current realtime parameters are: retention: {retention} h, step: "
+                          f"{output_step} min, grid resolution: {interpol_res:.8f} °, precision: {precision} decimals.")
+                    self.sql_man.insert_realtime(retention * 60, output_step * 60, interpol_res, precision,
+                                                 X_MIN, X_MAX, Y_MIN, Y_MAX)
+
                 self._pool_realtime_run()
                 msg = "Processing realtime calculation iteration..."
             else:

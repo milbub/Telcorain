@@ -28,7 +28,7 @@ class SqlManager:
                 host=self.settings['address'],
                 port=int(self.settings['port']),
                 database=self.settings['db_metadata'],
-                connect_timeout=int(int(self.settings['timeout'])/1000),
+                connect_timeout=int(int(self.settings['timeout']) / 1000),
                 reconnect=True
             )
 
@@ -38,7 +38,7 @@ class SqlManager:
                 host=self.settings['address'],
                 port=int(self.settings['port']),
                 database=self.settings['db_output'],
-                connect_timeout=int(int(self.settings['timeout'])/1000),
+                connect_timeout=int(int(self.settings['timeout']) / 1000),
                 reconnect=True
             )
 
@@ -69,19 +69,19 @@ class SqlManager:
                 cursor: Cursor = self.connection_metadata.cursor()
 
                 query = "SELECT links.ID, links.IP_address_A, links.IP_address_B, links.technology, " \
-                        "links.frequency_A, links.frequency_B, links.polarization, "\
-                        "sites_A.address AS address_A, "\
-                        "sites_B.address AS address_B, "\
-                        "sites_A.X_coordinate AS longitude_A, "\
-                        "sites_B.X_coordinate AS longitude_B, "\
-                        "sites_A.Y_coordinate AS latitude_A, "\
-                        "sites_B.Y_coordinate AS latitude_B, "\
-                        "sites_A.X_dummy_coordinate AS dummy_longitude_A, "\
-                        "sites_B.X_dummy_coordinate AS dummy_longitude_B, "\
-                        "sites_A.Y_dummy_coordinate AS dummy_latitude_A, "\
-                        "sites_B.Y_dummy_coordinate AS dummy_latitude_B "\
-                        "FROM links "\
-                        "JOIN sites AS sites_A ON links.site_A = sites_A.ID "\
+                        "links.frequency_A, links.frequency_B, links.polarization, " \
+                        "sites_A.address AS address_A, " \
+                        "sites_B.address AS address_B, " \
+                        "sites_A.X_coordinate AS longitude_A, " \
+                        "sites_B.X_coordinate AS longitude_B, " \
+                        "sites_A.Y_coordinate AS latitude_A, " \
+                        "sites_B.Y_coordinate AS latitude_B, " \
+                        "sites_A.X_dummy_coordinate AS dummy_longitude_A, " \
+                        "sites_B.X_dummy_coordinate AS dummy_longitude_B, " \
+                        "sites_A.Y_dummy_coordinate AS dummy_latitude_A, " \
+                        "sites_B.Y_dummy_coordinate AS dummy_latitude_B " \
+                        "FROM links " \
+                        "JOIN sites AS sites_A ON links.site_A = sites_A.ID " \
                         "JOIN sites AS sites_B ON links.site_B = sites_B.ID;"
 
                 cursor.execute(query)
@@ -91,7 +91,6 @@ class SqlManager:
                 for (ID, IP_address_A, IP_address_B, technology, frequency_A, frequency_B, polarization,
                      address_A, address_B, longitude_A, longitude_B, latitude_A, latitude_B,
                      dummy_longitude_A, dummy_longitude_B, dummy_latitude_A, dummy_latitude_B) in cursor:
-
                     link_length = calc_distance(latitude_A, longitude_A, latitude_B, longitude_B)
                     link = MwLink(ID, address_A + ' <--> ' + address_B, technology, address_A, address_B, frequency_A,
                                   frequency_B, polarization, IP_address_A, IP_address_B, link_length,
@@ -106,6 +105,63 @@ class SqlManager:
             # TODO: exception handling
             print(f"Failed to read data from MariaDB: {e}")
             return {}
+
+    def get_last_realtime(self) -> dict:
+        try:
+            if self.check_connection():
+                cursor: Cursor = self.connection_metadata.cursor()
+
+                query = "SELECT started, retention, timestep, resolution, `precision`, X_MIN, X_MAX, Y_MIN, Y_MAX " \
+                        "FROM telcorain_output.realtime_parameters " \
+                        "ORDER BY started DESC " \
+                        "LIMIT 1;"
+
+                cursor.execute(query)
+
+                realtime_params = {}
+
+                for (started, retention, timestep, resolution, precision, X_MIN, X_MAX, Y_MIN, Y_MAX) in cursor:
+                    realtime_params['start_time'] = started
+                    realtime_params['retention'] = retention
+                    realtime_params['timestep'] = timestep
+                    realtime_params['resolution'] = resolution
+                    realtime_params['precision'] = precision
+                    realtime_params['X_MIN'] = X_MIN
+                    realtime_params['X_MAX'] = X_MAX
+                    realtime_params['Y_MIN'] = Y_MIN
+                    realtime_params['Y_MAX'] = Y_MAX
+
+                return realtime_params
+            else:
+                raise mariadb.Error('Connection is not active.')
+        except mariadb.Error as e:
+            # TODO: exception handling
+            print(f"Failed to read data from MariaDB: {e}")
+            return {}
+
+    def insert_realtime(self, retention: int, timestep: int, resolution: float, precision: int,
+                        X_MIN: float, X_MAX: float, Y_MIN: float, Y_MAX: float):
+        try:
+            if self.check_connection():
+                cursor: Cursor = self.connection_metadata.cursor()
+
+                query = "INSERT INTO telcorain_output.realtime_parameters " \
+                        "(retention, timestep, resolution, `precision`, X_MIN, X_MAX, Y_MIN, Y_MAX) " \
+                        "VALUES (?, ?, ?, ?, ?, ?, ?, ?);"
+
+                cursor.execute(query, (retention, timestep, resolution, precision, X_MIN, X_MAX, Y_MIN, Y_MAX))
+                self.connection_metadata.commit()
+
+            else:
+                raise mariadb.Error('Connection is not active.')
+        except mariadb.Error as e:
+            # TODO: exception handling
+            print(f"Failed to insert data into MariaDB: {e}")
+            return {}
+
+    def __del__(self):
+        self.connection_metadata.close()
+        self.connection_output.close()
 
 
 class SqlChecker(SqlManager, QRunnable):
