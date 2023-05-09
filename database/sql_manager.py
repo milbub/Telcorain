@@ -15,29 +15,18 @@ class SqlManager:
         # Load settings from config file via ConfigurationManager
         self.settings = config_man.load_sql_config()
         # Init empty connections
-        self.connection_metadata = None
-        self.connection_output = None
+        self.connection = None
         # Define connection state
         self.is_connected = False
 
     def connect(self):
         try:
-            self.connection_metadata = mariadb.connect(
+            self.connection = mariadb.connect(
                 user=self.settings['user'],
                 password=self.settings['pass'],
                 host=self.settings['address'],
                 port=int(self.settings['port']),
                 database=self.settings['db_metadata'],
-                connect_timeout=int(int(self.settings['timeout']) / 1000),
-                reconnect=True
-            )
-
-            self.connection_output = mariadb.connect(
-                user=self.settings['user'],
-                password=self.settings['pass'],
-                host=self.settings['address'],
-                port=int(self.settings['port']),
-                database=self.settings['db_output'],
                 connect_timeout=int(int(self.settings['timeout']) / 1000),
                 reconnect=True
             )
@@ -54,8 +43,7 @@ class SqlManager:
     def check_connection(self) -> bool:
         if self.is_connected:
             try:
-                self.connection_metadata.ping()
-                self.connection_output.ping()
+                self.connection.ping()
                 return True
             except mariadb.InterfaceError:
                 return False
@@ -66,7 +54,7 @@ class SqlManager:
     def load_metadata(self) -> dict:
         try:
             if self.check_connection():
-                cursor: Cursor = self.connection_metadata.cursor()
+                cursor: Cursor = self.connection.cursor()
 
                 query = "SELECT links.ID, links.IP_address_A, links.IP_address_B, links.technology, " \
                         "links.frequency_A, links.frequency_B, links.polarization, " \
@@ -109,10 +97,10 @@ class SqlManager:
     def get_last_realtime(self) -> dict:
         try:
             if self.check_connection():
-                cursor: Cursor = self.connection_metadata.cursor()
+                cursor: Cursor = self.connection.cursor()
 
                 query = "SELECT started, retention, timestep, resolution, `precision`, X_MIN, X_MAX, Y_MIN, Y_MAX " \
-                        "FROM telcorain_output.realtime_parameters " \
+                        f"FROM {self.settings['db_output']}.realtime_parameters " \
                         "ORDER BY started DESC " \
                         "LIMIT 1;"
 
@@ -143,15 +131,14 @@ class SqlManager:
                         X_MIN: float, X_MAX: float, Y_MIN: float, Y_MAX: float):
         try:
             if self.check_connection():
-                cursor: Cursor = self.connection_metadata.cursor()
+                cursor: Cursor = self.connection.cursor()
 
-                query = "INSERT INTO telcorain_output.realtime_parameters " \
+                query = f"INSERT INTO {self.settings['db_output']}.realtime_parameters " \
                         "(retention, timestep, resolution, `precision`, X_MIN, X_MAX, Y_MIN, Y_MAX) " \
                         "VALUES (?, ?, ?, ?, ?, ?, ?, ?);"
 
                 cursor.execute(query, (retention, timestep, resolution, precision, X_MIN, X_MAX, Y_MIN, Y_MAX))
-                self.connection_metadata.commit()
-
+                self.connection.commit()
             else:
                 raise mariadb.Error('Connection is not active.')
         except mariadb.Error as e:
@@ -160,8 +147,7 @@ class SqlManager:
             return {}
 
     def __del__(self):
-        self.connection_metadata.close()
-        self.connection_output.close()
+        self.connection.close()
 
 
 class SqlChecker(SqlManager, QRunnable):
