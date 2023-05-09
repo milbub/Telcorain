@@ -435,6 +435,9 @@ class MainWindow(QMainWindow):
         elif output_step < step:
             msg = f"Output frame interval cannot be shorter than initial data resolution."
             print(f"[WARNING] {msg}")
+        elif (len(str(interpol_res).split(".")[1]) > precision) and is_output_write:
+            msg = f"When realtime calculation outputs write is active, resolution cannot be higher than set precision."
+            print(f"[WARNING] {msg}")
         else:
             self.result_id += 1
 
