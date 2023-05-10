@@ -208,14 +208,20 @@ class MainWindow(QMainWindow):
         # init DBs connection and status checkers
         self.influx_status: int = 0  # 0 = unknown, 1 = ok, -1 = not available
         self.sql_status: int = 0  # 0 = unknown, 1 = ok, -1 = not available
-        InfluxChecker(self.config_man, self.influx_signals).run()  # first Influx connection check
-        SqlChecker(self.config_man, self.sql_signals).run()
+        #InfluxChecker(self.config_man, self.influx_signals).run()  # first Influx connection check
+        #SqlChecker(self.config_man, self.sql_signals).run()
 
+        self.influx_checker = InfluxChecker(self.config_man, self.influx_signals)
+        self.influx_checker.setAutoDelete(False)
+        self._pool_influx_checker()
         self.influx_timer = QTimer()  # create timer for next checks
         self.influx_timer.timeout.connect(self._pool_influx_checker)
         # TODO: load influx timeout from config and add some time
         self.influx_timer.start(5000)
 
+        self.sql_checker = SqlChecker(self.config_man, self.sql_signals)
+        self.sql_checker.setAutoDelete(False)
+        self._pool_sql_checker()
         self.sql_timer = QTimer()  # create timer for next checks
         self.sql_timer.timeout.connect(self._pool_sql_checker)
         # TODO: load MariaDB timeout from config and add some time
@@ -639,13 +645,11 @@ class MainWindow(QMainWindow):
 
     # insert InfluxDB's status checker into threadpool and start it, called by timer
     def _pool_influx_checker(self):
-        influx_checker = InfluxChecker(self.config_man, self.influx_signals)
-        self.threadpool.start(influx_checker)
+        self.threadpool.start(self.influx_checker)
 
     # insert MariaDB's status checker into threadpool and start it, called by timer
     def _pool_sql_checker(self):
-        sql_checker = SqlChecker(self.config_man, self.sql_signals)
-        self.threadpool.start(sql_checker)
+        self.threadpool.start(self.sql_checker)
 
     def _pool_realtime_run(self):
         self.butt_abort.setEnabled(False)

@@ -70,6 +70,7 @@ class RealtimeWriter:
                 self.influx_man.write_points(points_to_write, self.influx_man.BUCKET_OUT_GRID)
                 self.sql_man.insert_raingrid(datetime.utcfromtimestamp(dt64_to_unixtime(time.values)),
                                              calc_dataset.isel(time=grid).cml_id.values.tolist())
+            del points_to_write
             points_to_write = []
             grid += 1
 

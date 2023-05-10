@@ -173,6 +173,9 @@ class ResultsWidget(QWidget):
 
     # called from signal
     def render_first_animation_fig(self, x_grid, y_grid, rain_grids, links_calc_data):
+        del self.animation_grids
+        del self.animation_x_grid
+        del self.animation_y_grid
         self.animation_grids = rain_grids
         self.animation_x_grid = x_grid
         self.animation_y_grid = y_grid
