@@ -391,8 +391,8 @@ class Calculation(QRunnable):
                                                                             max_distance=self.idw_dist)
 
             # calculate coordinate grids with defined area boundaries
-            x_coords = np.arange(self.X_MIN - self.interpol_res, self.X_MAX + self.interpol_res, self.interpol_res)
-            y_coords = np.arange(self.Y_MIN - self.interpol_res, self.Y_MAX + self.interpol_res, self.interpol_res)
+            x_coords = np.arange(self.X_MIN, self.X_MAX, self.interpol_res)
+            y_coords = np.arange(self.Y_MIN, self.Y_MAX, self.interpol_res)
             x_grid, y_grid = np.meshgrid(x_coords, y_coords)
 
             rain_grid = interpolator(x=calc_data_1h.lon_center, y=calc_data_1h.lat_center,

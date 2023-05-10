@@ -1,6 +1,7 @@
 from PyQt6.QtCore import QRunnable, pyqtSignal, QObject, QDateTime
 from PyQt6.QtWidgets import QComboBox
 from influxdb_client import InfluxDBClient
+from influxdb_client.domain.write_precision import WritePrecision
 from datetime import datetime, timedelta
 
 
@@ -11,10 +12,12 @@ class InfluxManager:
         # create influx client with parameters from config file
         self.client = InfluxDBClient.from_config_file(config_man.config_path)
         self.qapi = self.client.query_api()
+        self.wapi = self.client.write_api()
 
-        # TODO: load value from settings
-        self.bucket1 = "mws"
-        self.bucket2 = "realtime_cbl"
+        self.BUCKET_OLD_DATA = config_man.read_option('influx2', 'bucket_old_data')
+        self.BUCKET_NEW_DATA = config_man.read_option('influx2', 'bucket_new_data')
+        self.BUCKET_OUT_GRID = config_man.read_option('influx2', 'bucket_out_grid')
+        self.BUCKET_OUT_CML = config_man.read_option('influx2', 'bucket_out_cml')
 
     def check_connection(self) -> bool:
         return self.client.ping()
@@ -31,7 +34,7 @@ class InfluxManager:
             ips_str += f" or r[\"ip\"] == \"{ip}\""
 
         # construct flux query
-        flux = f"from(bucket: \"{self.bucket1}\")\n" + \
+        flux = f"from(bucket: \"{self.BUCKET_OLD_DATA}\")\n" + \
                f"  |> range(start: {start_str}, stop: {end_str})\n" + \
                f"  |> filter(fn: (r) => r[\"_field\"] == \"rx_power\" or r[\"_field\"] == \"tx_power\" or" \
                f" r[\"_field\"] == \"temperature\")\n" + \
@@ -99,7 +102,7 @@ class InfluxManager:
             ips_str += f" or r[\"agent_host\"] == \"{ip}\""
 
         # construct flux query
-        flux = f"from(bucket: \"{self.bucket2}\")\n" + \
+        flux = f"from(bucket: \"{self.BUCKET_NEW_DATA}\")\n" + \
                f"  |> range(start: {start_str}, stop: {end_str})\n" + \
                f"  |> filter(fn: (r) => r[\"_field\"] == \"PrijimanaUroven\" or r[\"_field\"] == \"Teplota\" or" \
                f" r[\"_field\"] == \"VysilaciVykon\" or r[\"_field\"] == \"Vysilany_Vykon\" or r[\"_field\"] == \"Signal\")\n" + \
@@ -140,6 +143,9 @@ class InfluxManager:
                         data[ip][field_name][record.get_time()] = record.get_value()
 
         return data
+
+    def write_points(self, points, bucket):
+        self.wapi.write(bucket=bucket, record=points, write_precision=WritePrecision.S)
 
 
 class InfluxChecker(InfluxManager, QRunnable):

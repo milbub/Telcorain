@@ -2,6 +2,7 @@ from PyQt6.QtCore import QRunnable, pyqtSignal, QObject
 from math import sin, cos, sqrt, atan2, radians
 from mariadb import Cursor
 import mariadb
+import json
 
 from database.mwlink_model import MwLink
 
@@ -134,10 +135,51 @@ class SqlManager:
                 cursor: Cursor = self.connection.cursor()
 
                 query = f"INSERT INTO {self.settings['db_output']}.realtime_parameters " \
-                        "(retention, timestep, resolution, `precision`, X_MIN, X_MAX, Y_MIN, Y_MAX) " \
-                        "VALUES (?, ?, ?, ?, ?, ?, ?, ?);"
+                        "(retention, timestep, resolution, `precision`, X_MIN, X_MAX, Y_MIN, Y_MAX, X_count, Y_count)" \
+                        " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);"
 
-                cursor.execute(query, (retention, timestep, resolution, precision, X_MIN, X_MAX, Y_MIN, Y_MAX))
+                x = int((X_MAX - X_MIN) / resolution + 1)
+                y = int((Y_MAX - Y_MIN) / resolution + 1)
+
+                cursor.execute(query, (retention, timestep, resolution, precision, X_MIN, X_MAX, Y_MIN, Y_MAX, x, y))
+                self.connection.commit()
+            else:
+                raise mariadb.Error('Connection is not active.')
+        except mariadb.Error as e:
+            # TODO: exception handling
+            print(f"Failed to insert data into MariaDB: {e}")
+            return {}
+
+    def get_last_raingrid(self) -> dict:
+        try:
+            if self.check_connection():
+                cursor: Cursor = self.connection.cursor()
+
+                query = f"SELECT * FROM {self.settings['db_output']}.realtime_raingrids ORDER BY time DESC LIMIT 1;"
+
+                cursor.execute(query)
+
+                last_raingrid = {}
+
+                for (time, links) in cursor:
+                    last_raingrid[time] = json.loads(links)
+
+                return last_raingrid
+            else:
+                raise mariadb.Error('Connection is not active.')
+        except mariadb.Error as e:
+            # TODO: exception handling
+            print(f"Failed to read data from MariaDB: {e}")
+            return {}
+
+    def insert_raingrid(self, time, links):
+        try:
+            if self.check_connection():
+                cursor: Cursor = self.connection.cursor()
+
+                query = f"INSERT INTO {self.settings['db_output']}.realtime_raingrids (time, links) VALUES (?, ?);"
+
+                cursor.execute(query, (time, json.dumps(links)))
                 self.connection.commit()
             else:
                 raise mariadb.Error('Connection is not active.')

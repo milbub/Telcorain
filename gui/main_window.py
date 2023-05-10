@@ -6,13 +6,14 @@ from PyQt6.QtGui import QPixmap, QAction
 from PyQt6.QtWidgets import QMainWindow, QLabel, QProgressBar, QHBoxLayout, QWidget, QTextEdit, QListWidget, \
     QDateTimeEdit, QPushButton, QSpinBox, QTabWidget, QLineEdit, QDoubleSpinBox, QRadioButton, QCheckBox, \
     QListWidgetItem, QTableWidget, QGridLayout, QMessageBox, QFileDialog, QApplication, QComboBox
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from database.influx_manager import InfluxManager, InfluxChecker, InfluxSignals
 from database.sql_manager import SqlManager, SqlChecker, SqlSignals
 from writers.config_manager import ConfigManager
 from writers.linksets_manager import LinksetsManager
 from writers.log_manager import LogManager
+from writers.realtime_writer import RealtimeWriter
 from procedures.calculation import Calculation, CalcSignals
 
 from gui.form_dialog import FormDialog
@@ -329,7 +330,7 @@ class MainWindow(QMainWindow):
 
         if self.running_realtime is not None:
             timediff = datetime.now() - self.realtime_last_run
-            interval = self.results_tabs[meta_data['id']].output_step * 60
+            interval = self.results_tabs[meta_data['id']].output_step * 60 + 10
 
             if timediff.total_seconds() < interval:
                 self.butt_abort.setEnabled(True)
@@ -468,9 +469,21 @@ class MainWindow(QMainWindow):
             }
 
             # create results widget instance
-            self.results_tabs[self.result_id] = ResultsWidget(results_tab_name, self.result_id, start, end, output_step,
-                                                              is_output_total, self.path, is_pdf, is_png, close_func,
-                                                              is_only_overall, is_dummy, params)
+            if is_output_write:
+                start_time = datetime.utcnow()
+                output_delta = timedelta(minutes=output_step)
+                since_time = start_time - output_delta
+
+                realtime_w = RealtimeWriter(self.sql_man, self.influx_man, precision, False, since_time)
+                self.results_tabs[self.result_id] = ResultsWidget(results_tab_name, self.result_id, start, end,
+                                                                  output_step, is_output_total, self.path, is_pdf,
+                                                                  is_png, close_func, is_only_overall, is_dummy, params,
+                                                                  realtime_writer=realtime_w)
+            else:
+                self.results_tabs[self.result_id] = ResultsWidget(results_tab_name, self.result_id, start, end,
+                                                                  output_step, is_output_total, self.path, is_pdf,
+                                                                  is_png, close_func, is_only_overall, is_dummy, params,
+                                                                  realtime_writer=None)
 
             self.results_name.clear()
             self.butt_start.setEnabled(False)
@@ -482,10 +495,12 @@ class MainWindow(QMainWindow):
                 if is_output_write:
                     params = self.sql_man.get_last_realtime()
                     print("Realtime outputs writing activated!")
-                    print(f"Last written realtime calculation started at "
-                          f"{params['start_time'].strftime('%Y-%m-%d %H:%M:%S')} and ran with parameters: retention: "
-                          f"{(params['retention']/60):.0f} h, step: {(params['timestep']/60):.0f} min, grid resolution:"
-                          f" {(params['resolution']):.8f} °, precision: {params['precision']} decimals.")
+                    if len(params) != 0:
+                        print(f"Last written realtime calculation started at "
+                              f"{params['start_time'].strftime('%Y-%m-%d %H:%M:%S')} and ran with parameters: "
+                              f"retention: {(params['retention']/60):.0f} h, step: {(params['timestep']/60):.0f} min, "
+                              f"grid resolution: {(params['resolution']):.8f} °, precision: {params['precision']} "
+                              f"decimals.")
                     print(f"Current realtime parameters are: retention: {retention} h, step: "
                           f"{output_step} min, grid resolution: {interpol_res:.8f} °, precision: {precision} decimals.")
                     self.sql_man.insert_realtime(retention * 60, output_step * 60, interpol_res, precision,
