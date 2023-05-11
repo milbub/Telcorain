@@ -1,4 +1,5 @@
 from datetime import datetime
+from influxdb_client import Point, WritePrecision
 import numpy as np
 
 from database.sql_manager import SqlManager
@@ -33,16 +34,39 @@ class RealtimeWriter:
         np_last_time = np.datetime64(last_time)
         np_since_time = np.datetime64(self.since_time)
 
-        # I. RAINGRIDS
+        """
+            I. RAINGRIDS INTO MARIADB:
+        """
+
         for t in range(len(calc_dataset.time) - 1):
             time = calc_dataset.time[t]
             if (time.values > np_last_time) and (self.write_historic or (time.values > np_since_time)):
-                print(f"[OUTPUT WRITE] Writing raingrid {time.values} into database...")
+                print(f"[OUTPUT WRITE: MariaDB] Writing raingrid {time.values} into database...")
                 self.sql_man.insert_raingrid(datetime.utcfromtimestamp(dt64_to_unixtime(time.values)),
                                              calc_dataset.isel(time=t).cml_id.values.tolist(),
                                              np.around(rain_grids[t], decimals=2).tolist())
 
-        print("[OUTPUT WRITE] Writing raingrids - DONE.")
+        print("[OUTPUT WRITE: MariaDB] Writing raingrids - DONE.")
 
-        # II. INDIVIDUAL CMLS
-        pass
+        """
+            II. INDIVIDUAL CMLS INTO INFLUXDB:
+        """
+
+        if not self.write_historic and (np_since_time > np_last_time):
+            compare_time = np_since_time
+        else:
+            compare_time = np_last_time
+
+        points_to_write = []
+
+        print("[OUTPUT WRITE: InfluxDB] Preparing rain values on individual CMLs for writing into database...")
+        for cml_R in calc_dataset.R.mean(dim='channel_id').where(calc_dataset.time > compare_time):
+            for t in range(len(cml_R.time) - 1):
+                points_to_write.append(Point('telcorain').tag('cml_id', int(cml_R.cml_id.values))
+                                       .field("rain_intensity", float(cml_R.values[t]))
+                                       .time(dt64_to_unixtime(cml_R.time[t].values), write_precision=WritePrecision.S))
+
+        print("[OUTPUT WRITE: InfluxDB] Writing rain values on individual CMLs into database...")
+        self.influx_man.write_points(points_to_write, self.influx_man.BUCKET_OUT_CML)
+
+        print("[OUTPUT WRITE: InfluxDB] Writing rain values on individual CMLs - DONE.")
