@@ -204,7 +204,7 @@ class ResultsWidget(QWidget):
 
         # push results into DB
         if self.realtime_writer is not None:
-            self.realtime_writer.push_results(x_grid, y_grid, rain_grids, links_calc_data)
+            self.realtime_writer.push_results(rain_grids, links_calc_data)
 
     def start_pause_fired(self):
         if self.animation_timer.isActive():

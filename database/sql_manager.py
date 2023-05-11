@@ -100,7 +100,7 @@ class SqlManager:
             if self.check_connection():
                 cursor: Cursor = self.connection.cursor()
 
-                query = "SELECT started, retention, timestep, resolution, `precision`, X_MIN, X_MAX, Y_MIN, Y_MAX " \
+                query = "SELECT started, retention, timestep, resolution, X_MIN, X_MAX, Y_MIN, Y_MAX " \
                         f"FROM {self.settings['db_output']}.realtime_parameters " \
                         "ORDER BY started DESC " \
                         "LIMIT 1;"
@@ -109,12 +109,11 @@ class SqlManager:
 
                 realtime_params = {}
 
-                for (started, retention, timestep, resolution, precision, X_MIN, X_MAX, Y_MIN, Y_MAX) in cursor:
+                for (started, retention, timestep, resolution, X_MIN, X_MAX, Y_MIN, Y_MAX) in cursor:
                     realtime_params['start_time'] = started
                     realtime_params['retention'] = retention
                     realtime_params['timestep'] = timestep
                     realtime_params['resolution'] = resolution
-                    realtime_params['precision'] = precision
                     realtime_params['X_MIN'] = X_MIN
                     realtime_params['X_MAX'] = X_MAX
                     realtime_params['Y_MIN'] = Y_MIN
@@ -128,20 +127,20 @@ class SqlManager:
             print(f"Failed to read data from MariaDB: {e}")
             return {}
 
-    def insert_realtime(self, retention: int, timestep: int, resolution: float, precision: int,
+    def insert_realtime(self, retention: int, timestep: int, resolution: float,
                         X_MIN: float, X_MAX: float, Y_MIN: float, Y_MAX: float):
         try:
             if self.check_connection():
                 cursor: Cursor = self.connection.cursor()
 
                 query = f"INSERT INTO {self.settings['db_output']}.realtime_parameters " \
-                        "(retention, timestep, resolution, `precision`, X_MIN, X_MAX, Y_MIN, Y_MAX, X_count, Y_count)" \
-                        " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);"
+                        "(retention, timestep, resolution, X_MIN, X_MAX, Y_MIN, Y_MAX, X_count, Y_count)" \
+                        " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);"
 
                 x = int((X_MAX - X_MIN) / resolution + 1)
                 y = int((Y_MAX - Y_MIN) / resolution + 1)
 
-                cursor.execute(query, (retention, timestep, resolution, precision, X_MIN, X_MAX, Y_MIN, Y_MAX, x, y))
+                cursor.execute(query, (retention, timestep, resolution, X_MIN, X_MAX, Y_MIN, Y_MAX, x, y))
                 self.connection.commit()
             else:
                 raise mariadb.Error('Connection is not active.')
@@ -155,7 +154,8 @@ class SqlManager:
             if self.check_connection():
                 cursor: Cursor = self.connection.cursor()
 
-                query = f"SELECT * FROM {self.settings['db_output']}.realtime_raingrids ORDER BY time DESC LIMIT 1;"
+                query = f"SELECT time, links FROM {self.settings['db_output']}.realtime_raingrids " \
+                        f"ORDER BY time DESC LIMIT 1;"
 
                 cursor.execute(query)
 
@@ -172,14 +172,15 @@ class SqlManager:
             print(f"Failed to read data from MariaDB: {e}")
             return {}
 
-    def insert_raingrid(self, time, links):
+    def insert_raingrid(self, time, links, grid):
         try:
             if self.check_connection():
                 cursor: Cursor = self.connection.cursor()
 
-                query = f"INSERT INTO {self.settings['db_output']}.realtime_raingrids (time, links) VALUES (?, ?);"
+                query = f"INSERT INTO {self.settings['db_output']}.realtime_raingrids (time, links, grid)" \
+                        f" VALUES (?, ?, ?);"
 
-                cursor.execute(query, (time, json.dumps(links)))
+                cursor.execute(query, (time, json.dumps(links), json.dumps(grid)))
                 self.connection.commit()
             else:
                 raise mariadb.Error('Connection is not active.')

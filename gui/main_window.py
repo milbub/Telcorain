@@ -208,12 +208,10 @@ class MainWindow(QMainWindow):
         # init DBs connection and status checkers
         self.influx_status: int = 0  # 0 = unknown, 1 = ok, -1 = not available
         self.sql_status: int = 0  # 0 = unknown, 1 = ok, -1 = not available
-        #InfluxChecker(self.config_man, self.influx_signals).run()  # first Influx connection check
-        #SqlChecker(self.config_man, self.sql_signals).run()
 
         self.influx_checker = InfluxChecker(self.config_man, self.influx_signals)
         self.influx_checker.setAutoDelete(False)
-        self._pool_influx_checker()
+        self._pool_influx_checker()   # first Influx connection check
         self.influx_timer = QTimer()  # create timer for next checks
         self.influx_timer.timeout.connect(self._pool_influx_checker)
         # TODO: load influx timeout from config and add some time
@@ -221,7 +219,7 @@ class MainWindow(QMainWindow):
 
         self.sql_checker = SqlChecker(self.config_man, self.sql_signals)
         self.sql_checker.setAutoDelete(False)
-        self._pool_sql_checker()
+        self._pool_sql_checker()   # first MariaDB connection check
         self.sql_timer = QTimer()  # create timer for next checks
         self.sql_timer.timeout.connect(self._pool_sql_checker)
         # TODO: load MariaDB timeout from config and add some time
@@ -408,7 +406,6 @@ class MainWindow(QMainWindow):
         is_output_write = self.write_output_box.isChecked()
         is_window_centered = True if self.window_pointer_combo.currentIndex() == 0 else False
         retention = int(self.config_man.read_option('realtime', 'retention'))
-        precision = int(self.config_man.read_option('realtime', 'precision'))
         X_MIN = float(self.config_man.read_option('rendering', 'X_MIN'))
         X_MAX = float(self.config_man.read_option('rendering', 'X_MAX'))
         Y_MIN = float(self.config_man.read_option('rendering', 'Y_MIN'))
@@ -441,9 +438,6 @@ class MainWindow(QMainWindow):
             print(f"[WARNING] {msg}")
         elif output_step < step:
             msg = f"Output frame interval cannot be shorter than initial data resolution."
-            print(f"[WARNING] {msg}")
-        elif (len(str(interpol_res).split(".")[1]) > precision) and is_output_write:
-            msg = f"When realtime calculation outputs write is active, resolution cannot be higher than set precision."
             print(f"[WARNING] {msg}")
         else:
             self.result_id += 1
@@ -480,7 +474,7 @@ class MainWindow(QMainWindow):
                 output_delta = timedelta(minutes=output_step)
                 since_time = start_time - output_delta
 
-                realtime_w = RealtimeWriter(self.sql_man, self.influx_man, precision, False, since_time)
+                realtime_w = RealtimeWriter(self.sql_man, self.influx_man, False, since_time)
                 self.results_tabs[self.result_id] = ResultsWidget(results_tab_name, self.result_id, start, end,
                                                                   output_step, is_output_total, self.path, is_pdf,
                                                                   is_png, close_func, is_only_overall, is_dummy, params,
@@ -505,11 +499,10 @@ class MainWindow(QMainWindow):
                         print(f"Last written realtime calculation started at "
                               f"{params['start_time'].strftime('%Y-%m-%d %H:%M:%S')} and ran with parameters: "
                               f"retention: {(params['retention']/60):.0f} h, step: {(params['timestep']/60):.0f} min, "
-                              f"grid resolution: {(params['resolution']):.8f} °, precision: {params['precision']} "
-                              f"decimals.")
+                              f"grid resolution: {(params['resolution']):.8f} °.")
                     print(f"Current realtime parameters are: retention: {retention} h, step: "
-                          f"{output_step} min, grid resolution: {interpol_res:.8f} °, precision: {precision} decimals.")
-                    self.sql_man.insert_realtime(retention * 60, output_step * 60, interpol_res, precision,
+                          f"{output_step} min, grid resolution: {interpol_res:.8f} °.")
+                    self.sql_man.insert_realtime(retention * 60, output_step * 60, interpol_res,
                                                  X_MIN, X_MAX, Y_MIN, Y_MAX)
 
                 self._pool_realtime_run()

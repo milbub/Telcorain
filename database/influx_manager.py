@@ -16,7 +16,6 @@ class InfluxManager:
 
         self.BUCKET_OLD_DATA = config_man.read_option('influx2', 'bucket_old_data')
         self.BUCKET_NEW_DATA = config_man.read_option('influx2', 'bucket_new_data')
-        self.BUCKET_OUT_GRID = config_man.read_option('influx2', 'bucket_out_grid')
         self.BUCKET_OUT_CML = config_man.read_option('influx2', 'bucket_out_cml')
 
     def check_connection(self) -> bool:
