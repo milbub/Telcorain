@@ -1,18 +1,22 @@
 from PyQt6.QtCore import QRunnable, pyqtSignal, QObject, QDateTime
 from PyQt6.QtWidgets import QComboBox
 from influxdb_client import InfluxDBClient
+from influxdb_client.domain.write_precision import WritePrecision
 from datetime import datetime, timedelta
 
 
 class InfluxManager:
-    def __init__(self):
-        # create influx client with parameters from config file
-        self.client = InfluxDBClient.from_config_file("config.ini")
-        self.qapi = self.client.query_api()
+    def __init__(self, config_man):
+        super(InfluxManager, self).__init__()
 
-        # TODO: load value from settings
-        # self.bucket1 = "mws"
-        # self.bucket2 = "realtime_cbl"
+        # create influx client with parameters from config file
+        self.client = InfluxDBClient.from_config_file(config_man.config_path)
+        self.qapi = self.client.query_api()
+        self.wapi = self.client.write_api()
+
+        self.BUCKET_OLD_DATA = config_man.read_option('influx2', 'bucket_old_data')
+        self.BUCKET_NEW_DATA = config_man.read_option('influx2', 'bucket_new_data')
+        self.BUCKET_OUT_CML = config_man.read_option('influx2', 'bucket_out_cml')
 
     def check_connection(self) -> bool:
         return self.client.ping()
@@ -20,8 +24,6 @@ class InfluxManager:
     # query influxDB for CMLs defined in 'ips' as list of their ip addresses
     # return their values in list of xarrays
     def query_signal_mean(self, ips: list, start: QDateTime, end: QDateTime, interval: int) -> dict:
-        self.bucket1 = "mws"
-
         # convert params to query substrings
         start_str = start.toString("yyyy-MM-ddTHH:mm:ss.000Z")  # RFC 3339
         end_str = end.toString("yyyy-MM-ddTHH:mm:ss.000Z")  # RFC 3339
@@ -31,7 +33,7 @@ class InfluxManager:
             ips_str += f" or r[\"ip\"] == \"{ip}\""
 
         # construct flux query
-        flux = f"from(bucket: \"{self.bucket1}\")\n" + \
+        flux = f"from(bucket: \"{self.BUCKET_OLD_DATA}\")\n" + \
                f"  |> range(start: {start_str}, stop: {end_str})\n" + \
                f"  |> filter(fn: (r) => r[\"_field\"] == \"rx_power\" or r[\"_field\"] == \"tx_power\" or" \
                f" r[\"_field\"] == \"temperature\")\n" + \
@@ -67,24 +69,21 @@ class InfluxManager:
                     else:
                         data[ip][record.get_field()][record.get_time()] = record.get_value()
 
-        # print(f"Data z Influxu History")
         return data
 
     def query_signal_mean_realtime(self, ips: list, combo_realtime: QComboBox, interval: int) -> dict:
-        self.bucket2 = "realtime_cbl"
-
         delta_map = {
-            "Past 1h": timedelta(hours=1),
-            "Past 3h": timedelta(hours=3),
-            "Past 6h": timedelta(hours=6),
-            "Past 12h": timedelta(hours=12),
-            "Past 24h": timedelta(hours=24),
-            "Past 2d": timedelta(days=2),
-            "Past 7d": timedelta(days=7),
-            "Past 30d": timedelta(days=30)
+            "Past 1 h": timedelta(hours=1),
+            "Past 3 h": timedelta(hours=3),
+            "Past 6 h": timedelta(hours=6),
+            "Past 12 h": timedelta(hours=12),
+            "Past 24 h": timedelta(hours=24),
+            "Past 2 d": timedelta(days=2),
+            "Past 7 d": timedelta(days=7),
+            "Past 30 d": timedelta(days=30)
         }
 
-        end = datetime.now()
+        end = datetime.utcnow()
         delta = delta_map.get(combo_realtime)
 
         if delta is None:
@@ -102,7 +101,7 @@ class InfluxManager:
             ips_str += f" or r[\"agent_host\"] == \"{ip}\""
 
         # construct flux query
-        flux = f"from(bucket: \"{self.bucket2}\")\n" + \
+        flux = f"from(bucket: \"{self.BUCKET_NEW_DATA}\")\n" + \
                f"  |> range(start: {start_str}, stop: {end_str})\n" + \
                f"  |> filter(fn: (r) => r[\"_field\"] == \"PrijimanaUroven\" or r[\"_field\"] == \"Teplota\" or" \
                f" r[\"_field\"] == \"VysilaciVykon\" or r[\"_field\"] == \"Vysilany_Vykon\" or r[\"_field\"] == \"Signal\")\n" + \
@@ -142,16 +141,17 @@ class InfluxManager:
                     else:
                         data[ip][field_name][record.get_time()] = record.get_value()
 
-        # print(f"Data z Influxu RealTime")
         return data
 
+    def write_points(self, points, bucket):
+        self.wapi.write(bucket=bucket, record=points, write_precision=WritePrecision.S)
 
-class InfluxChecker(QRunnable, InfluxManager):
+
+class InfluxChecker(InfluxManager, QRunnable):
     # subclass for use in threadpool, for connection testing
     # emits 'ping_signal' from 'InfluxSignal' class passed as 'signals' parameter
-    def __init__(self, signals: QObject):
-        QRunnable.__init__(self)
-        InfluxManager.__init__(self)
+    def __init__(self, config_man, signals: QObject):
+        super(InfluxChecker, self).__init__(config_man)
         self.sig = signals
 
     def run(self):

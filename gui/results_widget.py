@@ -51,7 +51,7 @@ class ResultsWidget(QWidget):
 
     def __init__(self, tab_name: str, result_id: int, start: QDateTime, end: QDateTime, output_step: int,
                  are_results_totals: bool, figs_path: str, is_pdf: bool, is_png: bool, tab_close, is_overall: bool,
-                 is_dummy: bool, calc_params: dict):
+                 is_dummy: bool, calc_params: dict, realtime_writer):
         super(QWidget, self).__init__()
         self.tab_name = tab_name
         self.result_id = result_id
@@ -66,6 +66,7 @@ class ResultsWidget(QWidget):
         self.is_only_overall = is_overall
         self.is_dummy = is_dummy
         self.calc_params = calc_params
+        self.realtime_writer = realtime_writer
 
         # saves info
         self.figs_full_path = ''
@@ -165,13 +166,16 @@ class ResultsWidget(QWidget):
         self._refresh_fig(self.overall_canvas, x_grid, y_grid, rain_grid, self.overall_annotations, is_total=True)
 
         # plot link path lines
-        #self._plot_link_lines(links_calc_data, self.overall_canvas.ax)
+        self._plot_link_lines(links_calc_data, self.overall_canvas.ax)
 
         # show in overall canvas frame
         self.overall_plot_layout.addWidget(self.overall_canvas)
 
     # called from signal
     def render_first_animation_fig(self, x_grid, y_grid, rain_grids, links_calc_data):
+        del self.animation_grids
+        del self.animation_x_grid
+        del self.animation_y_grid
         self.animation_grids = rain_grids
         self.animation_x_grid = x_grid
         self.animation_y_grid = y_grid
@@ -181,7 +185,7 @@ class ResultsWidget(QWidget):
                           is_total=self.are_results_totals)
 
         # plot link path lines
-        #self._plot_link_lines(links_calc_data, self.animation_canvas.ax)
+        self._plot_link_lines(links_calc_data, self.animation_canvas.ax)
 
         # hide notification
         self.change_no_anim_notification(False)
@@ -197,6 +201,10 @@ class ResultsWidget(QWidget):
 
         # unlock animation controls
         self._set_enabled_controls(True)
+
+        # push results into DB
+        if self.realtime_writer is not None:
+            self.realtime_writer.push_results(rain_grids, links_calc_data)
 
     def start_pause_fired(self):
         if self.animation_timer.isActive():
