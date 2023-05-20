@@ -350,6 +350,7 @@ class MainWindow(QMainWindow):
             self.butt_start.setEnabled(True)
             msg = str(f"Calculation \"{self.results_tabs[meta_data['id']].tab_name}\" is complete.")
 
+        del meta_data
         self.statusBar().showMessage(msg)
 
     # show info about error in calculation, called from signal

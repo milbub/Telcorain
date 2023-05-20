@@ -1,3 +1,5 @@
+import datetime
+
 import numpy as np
 import pycomlink as pycml
 import xarray as xr
@@ -57,6 +59,10 @@ class Calculation(QRunnable):
         
         # run counter in case of realtime calculation
         self.realtime_runs: int = 0
+
+        # store raingrids for possible next iteration (no need for repeated generating in realtime)
+        self.rain_grids = []
+        self.last_time = np.datetime64(datetime.datetime.min)
 
     def run(self):
         self.realtime_runs += 1
@@ -256,6 +262,8 @@ class Calculation(QRunnable):
                 self.signals.progress_signal.emit({'prg_val': round((current_link / link_count) * 17) + 18})
                 current_link += 1
 
+            del influx_data
+
         except BaseException as error:
             self.signals.error_signal.emit({"id": self.results_id})
             print(f"[{log_run_id}] ERROR: An unexpected error occurred during data processing: "
@@ -434,6 +442,8 @@ class Calculation(QRunnable):
                 # progress bar goes from 0 in second part
                 self.signals.progress_signal.emit({'prg_val': 5})
 
+                del calc_data
+
                 # calculate totals instead of intensities, if desired
                 if self.is_output_total:
                     # get calc ratio
@@ -453,16 +463,23 @@ class Calculation(QRunnable):
                     calc_data_steps['lon_center'] = \
                         (calc_data_steps.site_a_longitude + calc_data_steps.site_b_longitude) / 2
 
-                animation_rain_grids = []
-
+                grids_to_del = 0
                 # interpolate each frame
                 for x in range(calc_data_steps.time.size):
-                    grid = interpolator(x=calc_data_steps.lon_center, y=calc_data_steps.lat_center,
-                                        z=calc_data_steps.R.mean(dim='channel_id').isel(time=x),
-                                        xgrid=x_grid, ygrid=y_grid)
-                    animation_rain_grids.append(grid)
+                    if calc_data_steps.time[x].values > self.last_time:
+                        grid = interpolator(x=calc_data_steps.lon_center, y=calc_data_steps.lat_center,
+                                            z=calc_data_steps.R.mean(dim='channel_id').isel(time=x),
+                                            xgrid=x_grid, ygrid=y_grid)
+                        self.rain_grids.append(grid)
+                        self.last_time = calc_data_steps.time[x].values
+
+                        if self.realtime_runs > 1:
+                            grids_to_del += 1
 
                     self.signals.progress_signal.emit({'prg_val': round((x / calc_data_steps.time.size) * 89) + 10})
+
+                for x in range(grids_to_del):
+                    del self.rain_grids[x]
 
                 # emit output
                 self.signals.plots_done_signal.emit({
@@ -470,8 +487,12 @@ class Calculation(QRunnable):
                     "link_data": calc_data_steps,
                     "x_grid": x_grid,
                     "y_grid": y_grid,
-                    "rain_grids": animation_rain_grids,
+                    "rain_grids": self.rain_grids,
                 })
+
+                del calc_data_steps
+                if calc_data_1h is not None:
+                    del calc_data_1h
 
         except BaseException as error:
             self.signals.error_signal.emit({"id": self.results_id})

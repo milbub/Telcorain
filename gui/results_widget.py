@@ -1,6 +1,6 @@
 import os
+import gc
 import webbrowser
-from datetime import datetime, timedelta
 import matplotlib
 from PyQt6 import uic, QtCore
 from PyQt6.QtCore import QDateTime, QTimer
@@ -205,6 +205,10 @@ class ResultsWidget(QWidget):
         # push results into DB
         if self.realtime_writer is not None:
             self.realtime_writer.push_results(rain_grids, links_calc_data)
+
+        del rain_grids
+        del links_calc_data
+        gc.collect()
 
     def start_pause_fired(self):
         if self.animation_timer.isActive():
