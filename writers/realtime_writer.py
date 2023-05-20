@@ -38,7 +38,7 @@ class RealtimeWriter:
             I. RAINGRIDS INTO MARIADB:
         """
 
-        for t in range(len(calc_dataset.time) - 1):
+        for t in range(len(calc_dataset.time)):
             time = calc_dataset.time[t]
             if (time.values > np_last_time) and (self.write_historic or (time.values > np_since_time)):
                 print(f"[OUTPUT WRITE: MariaDB] Writing raingrid {time.values} into database...")
@@ -46,6 +46,7 @@ class RealtimeWriter:
                                              calc_dataset.isel(time=t).cml_id.values.tolist(),
                                              np.around(rain_grids[t], decimals=2).tolist())
 
+        del rain_grids
         print("[OUTPUT WRITE: MariaDB] Writing raingrids - DONE.")
 
         """
@@ -69,4 +70,5 @@ class RealtimeWriter:
         print("[OUTPUT WRITE: InfluxDB] Writing rain values on individual CMLs into database...")
         self.influx_man.write_points(points_to_write, self.influx_man.BUCKET_OUT_CML)
 
+        del calc_dataset
         print("[OUTPUT WRITE: InfluxDB] Writing rain values on individual CMLs - DONE.")

@@ -3,6 +3,7 @@ from PyQt6.QtWidgets import QComboBox
 from influxdb_client import InfluxDBClient
 from influxdb_client.domain.write_precision import WritePrecision
 from datetime import datetime, timedelta
+import math
 
 
 class InfluxManager:
@@ -24,9 +25,13 @@ class InfluxManager:
     # query influxDB for CMLs defined in 'ips' as list of their ip addresses
     # return their values in list of xarrays
     def query_signal_mean(self, ips: list, start: QDateTime, end: QDateTime, interval: int) -> dict:
+        # modify boundary times to be multiples of input time interval
+        start.addSecs(((math.ceil(start.time().minute() / interval) * interval) - start.time().minute()) * 60)
+        end.addSecs(((end.time().minute() - (end.time().minute() % interval)) - end.time().minute()) * 60)
+
         # convert params to query substrings
-        start_str = start.toString("yyyy-MM-ddTHH:mm:ss.000Z")  # RFC 3339
-        end_str = end.toString("yyyy-MM-ddTHH:mm:ss.000Z")  # RFC 3339
+        start_str = start.toString("yyyy-MM-ddTHH:mm:00.000Z")  # RFC 3339
+        end_str = end.toString("yyyy-MM-ddTHH:mm:00.000Z")  # RFC 3339
         interval_str = f"{interval * 60}s"  # time in seconds
         ips_str = f"r[\"ip\"] == \"{ips[0]}\""  # IP addresses in query format
         for ip in ips[1:]:
@@ -91,9 +96,15 @@ class InfluxManager:
 
         start = end - delta
 
+        # modify boundary times to be multiples of input time interval
+        start_c = timedelta(minutes=((math.ceil(start.time().minute / interval) * interval) - start.time().minute))
+        start = start + start_c
+        end_c = timedelta(minutes=(end.time().minute - (end.time().minute - (end.time().minute % interval))))
+        end = end - end_c
+
         # convert params to query substrings
-        start_str = start.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"  # RFC 3339
-        end_str = end.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"  # RFC 3339
+        start_str = start.strftime("%Y-%m-%dT%H:%M:00.000Z")  # RFC 3339
+        end_str = end.strftime("%Y-%m-%dT%H:%M:00.000Z")  # RFC 3339
 
         interval_str = f"{interval * 60}s"  # time in seconds
         ips_str = f"r[\"agent_host\"] == \"{ips[0]}\""  # IP addresses in query format
