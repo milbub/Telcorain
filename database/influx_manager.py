@@ -1,3 +1,5 @@
+import time
+
 from PyQt6.QtCore import QRunnable, pyqtSignal, QObject, QDateTime
 from PyQt6.QtWidgets import QComboBox
 from influxdb_client import InfluxDBClient
@@ -26,8 +28,8 @@ class InfluxManager:
     # return their values in list of xarrays
     def query_signal_mean(self, ips: list, start: QDateTime, end: QDateTime, interval: int) -> dict:
         # modify boundary times to be multiples of input time interval
-        start.addSecs(((math.ceil(start.time().minute() / interval) * interval) - start.time().minute()) * 60)
-        end.addSecs(((end.time().minute() - (end.time().minute() % interval)) - end.time().minute()) * 60)
+        start.addSecs(((math.ceil((start.time().minute() + 0.1) / interval) * interval) - start.time().minute()) * 60)
+        end.addSecs((-1 * (end.time().minute() % interval)) * 60)
 
         # convert params to query substrings
         start_str = start.toString("yyyy-MM-ddTHH:mm:00.000Z")  # RFC 3339
@@ -97,9 +99,9 @@ class InfluxManager:
         start = end - delta
 
         # modify boundary times to be multiples of input time interval
-        start_c = timedelta(minutes=((math.ceil(start.time().minute / interval) * interval) - start.time().minute))
+        start_c = timedelta(minutes=((math.ceil((start.time().minute + 0.1) / interval) * interval) - start.time().minute))
         start = start + start_c
-        end_c = timedelta(minutes=(end.time().minute - (end.time().minute - (end.time().minute % interval))))
+        end_c = timedelta(minutes=(end.time().minute % interval))
         end = end - end_c
 
         # convert params to query substrings

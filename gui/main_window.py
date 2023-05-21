@@ -440,6 +440,9 @@ class MainWindow(QMainWindow):
         elif output_step < step:
             msg = f"Output frame interval cannot be shorter than initial data resolution."
             print(f"[WARNING] {msg}")
+        elif step > 59:
+            msg = f"Input time interval cannot be longer than 59 minutes."
+            print(f"[WARNING] {msg}")
         else:
             self.result_id += 1
 
