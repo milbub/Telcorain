@@ -61,14 +61,23 @@ class RealtimeWriter:
         points_to_write = []
 
         print("[OUTPUT WRITE: InfluxDB] Preparing rain values on individual CMLs for writing into database...")
-        for cml_R in calc_dataset.R.mean(dim='channel_id').where(calc_dataset.time > compare_time):
-            for t in range(len(cml_R.time) - 1):
-                points_to_write.append(Point('telcorain').tag('cml_id', int(cml_R.cml_id.values))
-                                       .field("rain_intensity", float(cml_R.values[t]))
-                                       .time(dt64_to_unixtime(cml_R.time[t].values), write_precision=WritePrecision.S))
+
+        filtered = calc_dataset.where(calc_dataset.time > compare_time).dropna(dim='time', how='all')
+        cmls_count = filtered.cml_id.size
+        times_count = filtered.time.size
+
+        if (cmls_count > 0) and (times_count > 0):
+            for cml in range(cmls_count):
+                for time in range(times_count):
+                    points_to_write.append(Point('telcorain')
+                                           .tag('cml_id', int(filtered.isel(cml_id=cml).cml_id))
+                                           .field("rain_intensity", float(filtered.isel(cml_id=cml).
+                                                                          R.mean(dim='channel_id').isel(time=time)))
+                                           .time(dt64_to_unixtime(filtered.isel(time=time).time.values),
+                                                 write_precision=WritePrecision.S))
 
         print("[OUTPUT WRITE: InfluxDB] Writing rain values on individual CMLs into database...")
         self.influx_man.write_points(points_to_write, self.influx_man.BUCKET_OUT_CML)
 
-        del calc_dataset
         print("[OUTPUT WRITE: InfluxDB] Writing rain values on individual CMLs - DONE.")
+        del calc_dataset
