@@ -276,6 +276,12 @@ class Calculation(QRunnable):
             # Creating array to remove high-correlation links (class correlation.py)
             links_to_delete = []
 
+            if self.is_temp_filtered:
+                print(f"[{log_run_id}] Remove-link procedure started.")
+
+            if self.is_temp_compensated:
+                print(f"[{log_run_id}] Compensation algorithm procedure started.")
+
             # interpolate NaNs in input data; filter out outliers
             for link in calc_data:
                 # TODO: load upper tx power from options (here it's 40 dBm)
@@ -307,12 +313,12 @@ class Calculation(QRunnable):
                 """
 
                 if self.is_temp_filtered:
-                    print(f"[{log_run_id}] Remove-link procedure started.")
+                    #print(f"[{log_run_id}] Remove-link procedure started.")
                     temperature_correlation.pearson_correlation(count, ips, current_link, links_to_delete, link,
                                                                 self.correlation_threshold)
 
                 if self.is_temp_compensated:
-                    print(f"[{log_run_id}] Compensation algorithm procedure started.")
+                    #print(f"[{log_run_id}] Compensation algorithm procedure started.")
                     temperature_compensation.compensation(count, ips, current_link, link, self.correlation_threshold)
 
                 """
@@ -517,7 +523,7 @@ class Calculation(QRunnable):
         # in case of Tx power zeros, we don't have data of Tx unit available in flux_data =>
         # => get array length from Temperature array of rx_ip unit, since it should be always available
         if tx_zeros:
-            temperature_tx = np.zeros((len(flux_data[rx_ip]["temperature"]),), dtype=float)
+            temperature_tx = np.zeros((len(flux_data[tx_ip]["temperature"]),), dtype=float)
         else:
             temperature_tx = [*flux_data[tx_ip]["temperature"].values()]
 

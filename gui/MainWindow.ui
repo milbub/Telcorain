@@ -219,7 +219,7 @@
              </property>
              <property name="dateTime">
               <datetime>
-               <hour>6</hour>
+               <hour>14</hour>
                <minute>0</minute>
                <second>0</second>
                <year>2022</year>
@@ -236,21 +236,21 @@
              </property>
              <property name="time">
               <time>
-               <hour>6</hour>
+               <hour>14</hour>
                <minute>0</minute>
                <second>0</second>
               </time>
              </property>
              <property name="maximumTime">
               <time>
-               <hour>23</hour>
+               <hour>22</hour>
                <minute>59</minute>
                <second>59</second>
               </time>
              </property>
              <property name="minimumTime">
               <time>
-               <hour>0</hour>
+               <hour>23</hour>
                <minute>0</minute>
                <second>0</second>
               </time>
@@ -286,38 +286,38 @@
              </property>
              <property name="dateTime">
               <datetime>
-               <hour>18</hour>
+               <hour>2</hour>
                <minute>0</minute>
                <second>0</second>
                <year>2022</year>
                <month>6</month>
-               <day>24</day>
+               <day>25</day>
               </datetime>
              </property>
              <property name="date">
               <date>
                <year>2022</year>
                <month>6</month>
-               <day>24</day>
+               <day>25</day>
               </date>
              </property>
              <property name="time">
               <time>
-               <hour>18</hour>
+               <hour>2</hour>
                <minute>0</minute>
                <second>0</second>
               </time>
              </property>
              <property name="maximumTime">
               <time>
-               <hour>23</hour>
+               <hour>22</hour>
                <minute>59</minute>
                <second>59</second>
               </time>
              </property>
              <property name="minimumTime">
               <time>
-               <hour>0</hour>
+               <hour>23</hour>
                <minute>0</minute>
                <second>0</second>
               </time>
@@ -2217,7 +2217,7 @@
      <x>0</x>
      <y>0</y>
      <width>1262</width>
-     <height>21</height>
+     <height>26</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
