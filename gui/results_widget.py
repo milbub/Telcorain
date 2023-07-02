@@ -128,6 +128,7 @@ class ResultsWidget(QWidget):
         self.animation_grids = []
         self.animation_x_grid = None
         self.animation_y_grid = None
+        self.is_displayed = False
 
         # init animation counter
         self.animation_counter = 0
@@ -191,7 +192,9 @@ class ResultsWidget(QWidget):
         self.change_no_anim_notification(False)
 
         # show in animation canvas frame
-        self.main_plot_layout.addWidget(self.animation_canvas)
+        if not self.is_displayed:
+            self.main_plot_layout.addWidget(self.animation_canvas)
+            self.is_displayed = True
 
         # update time
         self._update_animation_time()
