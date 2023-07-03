@@ -7,7 +7,7 @@ class FormDialog(QDialog):
         super().__init__(parent)
 
         # load UI definition from Qt XML file
-        uic.loadUi("./gui/FormDialog.ui", self)
+        uic.loadUi("./app/gui/FormDialog.ui", self)
 
         self.question_label = self.findChild(QLabel, "labelQuestion")
         self.answer_box = self.findChild(QLineEdit, "editAnswer")

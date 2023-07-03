@@ -9,7 +9,7 @@ class SelectionDialog(QDialog):
         self.selection = selection
 
         # load UI definition from Qt XML file
-        uic.loadUi("./gui/SelectionDialog.ui", self)
+        uic.loadUi("./app/gui/SelectionDialog.ui", self)
 
         self.table = self.findChild(QTableWidget, "tableSelection")
         self.butt_box = self.findChild(QDialogButtonBox, "buttonBox")

@@ -1,5 +1,5 @@
 from PyQt6.QtWidgets import QApplication
-import gui.main_window as mw
+import app.main_window as mw
 import sys
 import warnings
 

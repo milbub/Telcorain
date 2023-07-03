@@ -73,7 +73,7 @@ class ResultsWidget(QWidget):
         self.figs_save_info = {-1: False}   # -1 = overall fig, then 0+ corresponds with animation counter
 
         # load UI definition from Qt XML file
-        uic.loadUi("./gui/ResultsWidget.ui", self)
+        uic.loadUi("./app/gui/ResultsWidget.ui", self)
 
         # lookup for used widgets and define them
         self.overall_plot_layout = self.findChild(QGridLayout, "layoutOverallPlot")

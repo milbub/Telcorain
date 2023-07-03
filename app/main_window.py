@@ -16,9 +16,9 @@ from writers.log_manager import LogManager
 from writers.realtime_writer import RealtimeWriter
 from procedures.calculation import Calculation, CalcSignals
 
-from gui.form_dialog import FormDialog
-from gui.selection_dialog import SelectionDialog
-from gui.results_widget import ResultsWidget
+from app.form_dialog import FormDialog
+from app.selection_dialog import SelectionDialog
+from app.results_widget import ResultsWidget
 
 
 # TODO: move Control Tab elements into separate widget. Currently, this class contains main logic + Control Tab widgets.
@@ -31,13 +31,13 @@ class MainWindow(QMainWindow):
 
         # set up window icon
         self.app_icon = QtGui.QIcon()
-        self.app_icon.addFile('./gui/icons/app_16x16.png', QtCore.QSize(16, 16))
-        self.app_icon.addFile('./gui/icons/app_32x32.png', QtCore.QSize(32, 32))
-        self.app_icon.addFile('./gui/icons/app_96x96.png', QtCore.QSize(48, 48))
+        self.app_icon.addFile('./app/gui/icons/app_16x16.png', QtCore.QSize(16, 16))
+        self.app_icon.addFile('./app/gui/icons/app_32x32.png', QtCore.QSize(32, 32))
+        self.app_icon.addFile('./app/gui/icons/app_96x96.png', QtCore.QSize(48, 48))
         self.setWindowIcon(self.app_icon)
 
         # load UI definition from Qt XML file
-        uic.loadUi("./gui/MainWindow.ui", self)
+        uic.loadUi("./app/gui/MainWindow.ui", self)
 
         # set up statusbar - InfluxDB connection state
         self.status_db = QWidget()
@@ -48,7 +48,7 @@ class MainWindow(QMainWindow):
         self.status_db_label.setText("InfluxDB:")
         self.status_db_layout.addWidget(self.status_db_label)
         self.status_db_icon_lbl = QLabel()
-        self.status_db_icon_lbl.setPixmap(QPixmap('./gui/icons/cross_red.png'))
+        self.status_db_icon_lbl.setPixmap(QPixmap('./app/gui/icons/cross_red.png'))
         self.status_db_layout.addWidget(self.status_db_icon_lbl)
         self.status_db_state = QLabel()
         self.status_db_state.setText("Disconnected")
@@ -64,7 +64,7 @@ class MainWindow(QMainWindow):
         self.status_sql_label.setText("MariaDB:")
         self.status_sql_layout.addWidget(self.status_sql_label)
         self.status_sql_icon_lbl = QLabel()
-        self.status_sql_icon_lbl.setPixmap(QPixmap('./gui/icons/cross_red.png'))
+        self.status_sql_icon_lbl.setPixmap(QPixmap('./app/gui/icons/cross_red.png'))
         self.status_sql_layout.addWidget(self.status_sql_icon_lbl)
         self.status_sql_state = QLabel()
         self.status_sql_state.setText("Disconnected")
@@ -142,7 +142,7 @@ class MainWindow(QMainWindow):
 
         # icon for results tabs
         self.results_icon = QtGui.QIcon()
-        self.results_icon.addFile('./gui/icons/explore.png', QtCore.QSize(16, 16))
+        self.results_icon.addFile('./app/gui/icons/explore.png', QtCore.QSize(16, 16))
 
         # connect buttons
         self.butt_start.clicked.connect(self.calculation_fired)
@@ -626,19 +626,19 @@ class MainWindow(QMainWindow):
     def _influx_status_changed(self, status: bool):
         if status:  # True == connected
             self.status_db_state.setText("Connected")
-            self.status_db_icon_lbl.setPixmap(QPixmap('./gui/icons/check_green.png'))
+            self.status_db_icon_lbl.setPixmap(QPixmap('./app/gui/icons/check_green.png'))
         else:       # False == disconnected
             self.status_db_state.setText("Disconnected")
-            self.status_db_icon_lbl.setPixmap(QPixmap('./gui/icons/cross_red.png'))
+            self.status_db_icon_lbl.setPixmap(QPixmap('./app/gui/icons/cross_red.png'))
 
     # MariaDB's status changed GUI method
     def _sql_status_changed(self, status: bool):
         if status:  # True == connected
             self.status_sql_state.setText("Connected")
-            self.status_sql_icon_lbl.setPixmap(QPixmap('./gui/icons/check_green.png'))
+            self.status_sql_icon_lbl.setPixmap(QPixmap('./app/gui/icons/check_green.png'))
         else:       # False == disconnected
             self.status_sql_state.setText("Disconnected")
-            self.status_sql_icon_lbl.setPixmap(QPixmap('./gui/icons/cross_red.png'))
+            self.status_sql_icon_lbl.setPixmap(QPixmap('./app/gui/icons/cross_red.png'))
 
     # insert InfluxDB's status checker into threadpool and start it, called by timer
     def _pool_influx_checker(self):
