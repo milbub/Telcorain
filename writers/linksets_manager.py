@@ -9,13 +9,13 @@ class LinksetsManager:
         self.sets_path = './linksets.ini'
 
         self.linksets = configparser.ConfigParser()
-        self.set_names = []
+        self.sections = []
 
         if exists(self.sets_path):
             self.linksets.read(self.sets_path, encoding='utf-8')
-            self.set_names = self.linksets.sections()
+            self.sections = self.linksets.sections()
 
-        # ////// SQLite -> ini file synchronization \\\\\\
+        # ////// SQL DB -> ini file synchronization \\\\\\
 
         # check listed links in link sets and remove old/deleted/invalid links
         if len(self.linksets['DEFAULT']) > 0:
@@ -29,7 +29,7 @@ class LinksetsManager:
                 for link_id in links_for_del:
                     self.linksets['DEFAULT'].pop(link_id)
 
-                for link_set in self.set_names:
+                for link_set in self.sections:
                     for link_id in links_for_del:
                         self.linksets[link_set].pop(link_id)
 
@@ -43,7 +43,7 @@ class LinksetsManager:
 
     def create_set(self, name: str):
         self.linksets[name] = {}
-        self.set_names.append(name)
+        self.sections.append(name)
 
         for link_id in self.linksets['DEFAULT']:
             self.linksets[name][link_id] = '0'
@@ -52,7 +52,7 @@ class LinksetsManager:
 
     def copy_set(self, origin_name: str, new_name: str):
         self.linksets[new_name] = {}
-        self.set_names.append(new_name)
+        self.sections.append(new_name)
 
         for link_id in self.linksets[origin_name]:
             if self.linksets[origin_name][link_id] != 3:

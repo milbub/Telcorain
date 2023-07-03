@@ -24,7 +24,7 @@ class LogManager:
             message = current_time + message
 
             if self.buffer == "":
-                self.buffer += message
+                self.buffer = message
             else:
                 self.buffer += '\n' + message
 

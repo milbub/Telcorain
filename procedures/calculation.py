@@ -1,9 +1,11 @@
+import datetime
+
 import numpy as np
 import pycomlink as pycml
 import xarray as xr
 from PyQt6.QtCore import QRunnable, QObject, QDateTime, pyqtSignal
 
-import input.influx_manager as influx
+from procedures import temperature_correlation, temperature_compensation
 
 
 class CalcSignals(QObject):
@@ -21,12 +23,15 @@ class Calculation(QRunnable):
     Y_MIN = 49.91505682
     Y_MAX = 50.22841327
 
-    def __init__(self, signals: CalcSignals, results_id: int, links: dict, selection: dict, start: QDateTime,
+    def __init__(self, influx_man, signals: CalcSignals, results_id: int, links: dict, selection: dict, start: QDateTime,
                  end: QDateTime, interval: int, rolling_vals: int, output_step: int, is_only_overall: bool,
                  is_output_total: bool, wet_dry_deviation: float, baseline_samples: int, interpol_res, idw_pow,
-                 idw_near, idw_dist, schleiss_val, schleiss_tau):
+                 idw_near, idw_dist, schleiss_val, schleiss_tau, is_temp_compensated,
+                 spin_correlation, combo_realtime, is_historic, is_temp_removed, is_window_centered):
+
         QRunnable.__init__(self)
-        self.sig = signals
+        self.influx_man = influx_man
+        self.signals = signals
         self.results_id = results_id
         self.links = links
         self.selection = selection
@@ -45,17 +50,34 @@ class Calculation(QRunnable):
         self.idw_dist = idw_dist
         self.schleiss_val = schleiss_val
         self.schleiss_tau = schleiss_tau
+        self.is_temp_compensated = is_temp_compensated
+        self.correlation_threshold = spin_correlation
+        self.realtime_timewindow = combo_realtime
+        self.is_historic = is_historic
+        self.is_temp_filtered = is_temp_removed
+        self.centered = is_window_centered
+        
+        # run counter in case of realtime calculation
+        self.realtime_runs: int = 0
+
+        # store raingrids for possible next iteration (no need for repeated generating in realtime)
+        self.rain_grids = []
+        self.last_time = np.datetime64(datetime.datetime.min)
 
     def run(self):
-        print(f"[CALC ID: {self.results_id}] Rainfall calculation procedure started.", flush=True)
+        self.realtime_runs += 1
+        if self.is_historic:
+            log_run_id = "CALC ID: " + str(self.results_id)
+        else:
+            log_run_id = "CALC ID: " + str(self.results_id) + ", RUN: " + str(self.realtime_runs)
+            
+        print(f"[{log_run_id}] Rainfall calculation procedure started.", flush=True)
 
         # ////// DATA ACQUISITION \\\\\\
-
         try:
             if len(self.selection) < 1:
                 raise ValueError('Empty selection container.')
 
-            man = influx.InfluxManager()
             ips = []
             for link in self.selection:
                 if link in self.links:
@@ -76,43 +98,50 @@ class Calculation(QRunnable):
                         ips.append(self.links[link].ip_a)
                         ips.append(self.links[link].ip_b)
 
-            self.sig.progress_signal.emit({'prg_val': 5})
-            print(f"[CALC ID: {self.results_id}] Querying InfluxDB for selected microwave links data...", flush=True)
+            self.signals.progress_signal.emit({'prg_val': 5})
+            print(f"[{log_run_id}] Querying InfluxDB for selected microwave links data...", flush=True)
 
-            influx_data = man.query_signal_mean(ips, self.start, self.end, self.interval)
+            # Notify we are doing historic calculation
+            if self.is_historic:
+                print(f"[{log_run_id}] Historic data procedure started.", flush=True)
+                influx_data = self.influx_man.query_signal_mean(ips, self.start, self.end, self.interval)
+            # In other case, realtime calculation is being done
+            else:
+                print(f"[{log_run_id}] Realtime data procedure started.", flush=True)
+                influx_data = self.influx_man.query_signal_mean_realtime(ips, self.realtime_timewindow, self.interval)
 
             diff = len(ips) - len(influx_data)
 
-            self.sig.progress_signal.emit({'prg_val': 15})
-            print(f"[CALC ID: {self.results_id}] Querying done. Got data of {len(influx_data)} units,"
+            self.signals.progress_signal.emit({'prg_val': 15})
+            print(f"[{log_run_id}] Querying done. Got data of {len(influx_data)} units,"
                   f" of total {len(ips)} selected units.")
 
             missing_links = []
             if diff > 0:
-                print(f"[CALC ID: {self.results_id}] {diff} units are not available in selected time window:")
+                print(f"[{log_run_id}] {diff} units are not available in selected time window:")
                 for ip in ips:
                     if ip not in influx_data:
                         for link in self.links:
                             if self.links[link].ip_a == ip:
-                                print(f"[CALC ID: {self.results_id}] Link: {self.links[link].link_id}; "
+                                print(f"[{log_run_id}] Link: {self.links[link].link_id}; "
                                       f"Tech: {self.links[link].tech}; SIDE A: {self.links[link].name_a}; "
                                       f"IP: {self.links[link].ip_a}")
                                 missing_links.append(link)
                                 break
                             elif self.links[link].ip_b == ip:
-                                print(f"[CALC ID: {self.results_id}] Link: {self.links[link].link_id}; "
+                                print(f"[{log_run_id}] Link: {self.links[link].link_id}; "
                                       f"Tech: {self.links[link].tech}; SIDE B: {self.links[link].name_b}; "
                                       f"IP: {self.links[link].ip_b}")
                                 missing_links.append(link)
                                 break
 
-            self.sig.progress_signal.emit({'prg_val': 18})
+            self.signals.progress_signal.emit({'prg_val': 18})
 
         except BaseException as error:
-            self.sig.error_signal.emit({"id": self.results_id})
-            print(f"[CALC ID: {self.results_id}] ERROR: An unexpected error occurred during InfluxDB query: "
-                  f"{type(error)}.")
-            print(f"[CALC ID: {self.results_id}] ERROR: Calculation thread terminated.")
+            self.signals.error_signal.emit({"id": self.results_id})
+            print(f"[{log_run_id}] ERROR: An unexpected error occurred during InfluxDB query: "
+                  f"{type(error)} {error}.")
+            print(f"[{log_run_id}] ERROR: Calculation thread terminated.")
             return
 
         # ////// PARSE INTO XARRAY, RESOLVE TX POWER ASSIGNMENT TO CORRECT CHANNEL \\\\\\
@@ -123,7 +152,7 @@ class Calculation(QRunnable):
         try:
 
             link_count = len(self.selection)
-            curr_link = 0
+            current_link = 0
 
             for link in self.selection:
                 if self.selection[link] == 0:
@@ -136,16 +165,16 @@ class Calculation(QRunnable):
                 is_b_in = self.links[link].ip_b in influx_data
 
                 # TODO: load from options list of constant Tx power devices
-                is_constant_tx_power = self.links[link].tech in ("1s10", "ip20G", )
+                is_constant_tx_power = self.links[link].tech in ("1s10", "ip20G",)
                 # TODO: load from options list of bugged techs with missing Tx zeros in InfluxDB
-                is_tx_power_bugged = self.links[link].tech in ("ip10", )
+                is_tx_power_bugged = self.links[link].tech in ("ip10",)
 
                 # skip links, where data of one unit (or both) are not available
                 # but constant Tx power devices are exceptions
                 if not (is_a_in and is_b_in):
                     if not ((is_a_in != is_b_in) and is_constant_tx_power):
                         if link not in missing_links:
-                            print(f"[CALC ID: {self.results_id}] INFO: Skipping link ID: {link}. "
+                            print(f"[{log_run_id}] INFO: Skipping link ID: {link}. "
                                   f"No unit data available.", flush=True)
                         # skip link
                         continue
@@ -156,13 +185,13 @@ class Calculation(QRunnable):
                     tx_zeros_b = True
                     tx_zeros_a = True
                 elif ("tx_power" not in influx_data[self.links[link].ip_a]) or \
-                     ("tx_power" not in influx_data[self.links[link].ip_b]):
+                        ("tx_power" not in influx_data[self.links[link].ip_b]):
                     # sadly, some devices of certain techs are badly exported from original source, and they are
                     # missing Tx zero values in InfluxDB, so this hack needs to be done
                     # (for other techs, there is no certainty, if original Tx value was zero in fact, or it's a NMS
                     # error and these values are missing, so it's better to skip that links)
                     if is_tx_power_bugged:
-                        print(f"[CALC ID: {self.results_id}] INFO: Link ID: {link}. "
+                        print(f"[{log_run_id}] INFO: Link ID: {link}. "
                               f"No Tx Power data available. Link technology \"{self.links[link].tech}\" is on "
                               f"exception list -> filling Tx data with zeros.", flush=True)
                         if "tx_power" not in influx_data[self.links[link].ip_b]:
@@ -170,7 +199,7 @@ class Calculation(QRunnable):
                         if "tx_power" not in influx_data[self.links[link].ip_a]:
                             tx_zeros_a = True
                     else:
-                        print(f"[CALC ID: {self.results_id}] INFO: Skipping link ID: {link}. "
+                        print(f"[{log_run_id}] INFO: Skipping link ID: {link}. "
                               f"No Tx Power data available.", flush=True)
                         # skip link
                         continue
@@ -185,9 +214,9 @@ class Calculation(QRunnable):
                 # Side/unit A (channel B to A)
                 if (self.selection[link] in (1, 3)) and (self.links[link].ip_a in influx_data):
                     if not tx_zeros_b:
-                        if len(influx_data[self.links[link].ip_a]["rx_power"])\
+                        if len(influx_data[self.links[link].ip_a]["rx_power"]) \
                                 != len(influx_data[self.links[link].ip_b]["tx_power"]):
-                            print(f"[CALC ID: {self.results_id}] WARNING: Skipping link ID: {link}. "
+                            print(f"[{log_run_id}] WARNING: Skipping link ID: {link}. "
                                   f"Non-coherent Rx/Tx data on channel A(rx)_B(tx).", flush=True)
                             continue
 
@@ -201,15 +230,16 @@ class Calculation(QRunnable):
                     if (self.selection[link] == 1) or not is_b_in:
                         channel_b = self._fill_channel_dataset(self.links[link], influx_data, self.links[link].ip_a,
                                                                self.links[link].ip_a, 'B(rx)_A(tx)',
-                                                               self.links[link].freq_a, tx_zeros_b, rx_zeros=True)
+                                                               self.links[link].freq_a, tx_zeros_b,
+                                                               is_empty_channel=True)
                         link_channels.append(channel_b)
 
                 # Side/unit B (channel A to B)
                 if (self.selection[link] in (2, 3)) and (self.links[link].ip_b in influx_data):
                     if not tx_zeros_a:
-                        if len(influx_data[self.links[link].ip_b]["rx_power"])\
+                        if len(influx_data[self.links[link].ip_b]["rx_power"]) \
                                 != len(influx_data[self.links[link].ip_a]["tx_power"]):
-                            print(f"[CALC ID: {self.results_id}] WARNING: Skipping link ID: {link}. "
+                            print(f"[{log_run_id}] WARNING: Skipping link ID: {link}. "
                                   f"Non-coherent Rx/Tx data on channel B(rx)_A(tx).", flush=True)
                             continue
 
@@ -223,54 +253,93 @@ class Calculation(QRunnable):
                     if (self.selection[link] == 2) or not is_a_in:
                         channel_a = self._fill_channel_dataset(self.links[link], influx_data, self.links[link].ip_b,
                                                                self.links[link].ip_b, 'A(rx)_B(tx)',
-                                                               self.links[link].freq_b, tx_zeros_b, rx_zeros=True)
+                                                               self.links[link].freq_b, tx_zeros_b,
+                                                               is_empty_channel=True)
                         link_channels.append(channel_a)
 
                 calc_data.append(xr.concat(link_channels, dim="channel_id"))
 
-                self.sig.progress_signal.emit({'prg_val': round((curr_link / link_count) * 17) + 18})
-                curr_link += 1
+                self.signals.progress_signal.emit({'prg_val': round((current_link / link_count) * 17) + 18})
+                current_link += 1
+
+            del influx_data
 
         except BaseException as error:
-            self.sig.error_signal.emit({"id": self.results_id})
-            print(f"[CALC ID: {self.results_id}] ERROR: An unexpected error occurred during data processing: "
+            self.signals.error_signal.emit({"id": self.results_id})
+            print(f"[{log_run_id}] ERROR: An unexpected error occurred during data processing: "
                   f"{type(error)} {error}.")
-            print(f"[CALC ID: {self.results_id}] ERROR: Last processed microwave link ID: {link}")
-            print(f"[CALC ID: {self.results_id}] ERROR: Calculation thread terminated.")
+            print(f"[{log_run_id}] ERROR: Last processed microwave link ID: {link}")
+            print(f"[{log_run_id}] ERROR: Calculation thread terminated.")
             return
 
         # ////// RAINFALL CALCULATION \\\\\\
 
         try:
 
-            print(f"[CALC ID: {self.results_id}] Smoothing signal data...")
+            print(f"[{log_run_id}] Smoothing signal data...")
             link_count = len(calc_data)
-            curr_link = 0
+            current_link = 0
+            count = 0
 
-            # interpolate NaNs in input data and filter out nonsenses out of limits
+            # Creating array to remove high-correlation links (class correlation.py)
+            links_to_delete = []
+
+            # interpolate NaNs in input data; filter out outliers
             for link in calc_data:
-                # TODO: load upper tx power from options (here it's 99 dBm)
-                link['tsl'] = link.tsl.astype(float).where(link.tsl < 99.0)
-                link['tsl'] = link.tsl.astype(float).interpolate_na(dim='time', method='linear', max_gap='5min')
-                # TODO: load bottom rx power from options (here it's -80 dBm)
-                link['rsl'] = link.rsl.astype(float).where(link.rsl != 0.0).where(link.rsl > -80.0)
-                link['rsl'] = link.rsl.astype(float).interpolate_na(dim='time', method='linear', max_gap='5min')
+                # TODO: load upper tx power from options (here it's 40 dBm)
+                link['tsl'] = link.tsl.astype(float).where(link.tsl < 40.0)
+                link['tsl'] = link.tsl.astype(float).interpolate_na(dim='time', method='nearest', max_gap=None)
+
+                # TODO: load bottom rx power from options (here it's -70 dBm)
+                link['rsl'] = link.rsl.astype(float).where(link.rsl != 0.0).where(link.rsl > -70.0)
+                link['rsl'] = link.rsl.astype(float).interpolate_na(dim='time', method='nearest', max_gap=None)
 
                 link['trsl'] = link.tsl - link.rsl
-                link['trsl'] = link.trsl.astype(float).interpolate_na(dim='time', method='nearest', max_gap='5min')
-                link['trsl'] = link.trsl.astype(float).fillna(0.0)
 
-                self.sig.progress_signal.emit({'prg_val': round((curr_link / link_count) * 15) + 35})
-                curr_link += 1
+                link['temperature_rx'] = link.temperature_rx.astype(float).interpolate_na(dim='time',
+                                                                                          method='linear',
+                                                                                          max_gap=None)
+
+                link['temperature_tx'] = link.temperature_tx.astype(float).interpolate_na(dim='time',
+                                                                                          method='linear',
+                                                                                          max_gap=None)
+
+                self.signals.progress_signal.emit({'prg_val': round((current_link / link_count) * 15) + 35})
+                current_link += 1
+                count += 1
+
+                """
+                # temperature_correlation  - remove links if the correlation exceeds the specified threshold
+                # temperature_compensation - as correlation, but also replaces the original trsl with the corrected
+                                             one, according to the created tempreture compensation algorithm
+                """
+
+                if self.is_temp_filtered:
+                    print(f"[{log_run_id}] Remove-link procedure started.")
+                    temperature_correlation.pearson_correlation(count, ips, current_link, links_to_delete, link,
+                                                                self.correlation_threshold)
+
+                if self.is_temp_compensated:
+                    print(f"[{log_run_id}] Compensation algorithm procedure started.")
+                    temperature_compensation.compensation(count, ips, current_link, link, self.correlation_threshold)
+
+                """
+                'current_link += 1' serves to accurately list the 'count' and ip address of CML unit
+                 when the 'temperature_compensation.py' or 'temperature_correlation.py' is called
+                """
+                current_link += 1
+
+            # Run the removal of high correlation links (class correlation.py)
+            for link in links_to_delete:
+                calc_data.remove(link)
 
             # process each link -> get intensity R value for each link:
-            print(f"[CALC ID: {self.results_id}] Computing rain values...")
-            curr_link = 0
+            print(f"[{log_run_id}] Computing rain values...")
+            current_link = 0
 
             for link in calc_data:
-
                 # determine wet periods
-                link['wet'] = link.trsl.rolling(time=self.rolling_vals, center=True).std(skipna=False) > \
+                link['wet'] = link.trsl.rolling(time=self.rolling_vals, center=self.centered).std(skipna=False) > \
                               self.wet_dry_deviation
 
                 # calculate ratio of wet periods
@@ -282,8 +351,10 @@ class Calculation(QRunnable):
 
                 # calculate wet antenna attenuation
                 link['waa'] = pycml.processing.wet_antenna.waa_schleiss_2013(rsl=link.trsl, baseline=link.baseline,
-                                                                             wet=link.wet, waa_max=self.schleiss_val,
-                                                                             delta_t=60 / ((60 / self.interval) * 60),
+                                                                             wet=link.wet,
+                                                                             waa_max=self.schleiss_val,
+                                                                             delta_t=60 / (
+                                                                                         (60 / self.interval) * 60),
                                                                              tau=self.schleiss_tau)
 
                 # calculate final rain attenuation
@@ -293,31 +364,31 @@ class Calculation(QRunnable):
                 link['R'] = pycml.processing.k_R_relation.calc_R_from_A(A=link.A, L_km=float(link.length),
                                                                         f_GHz=link.frequency, pol=link.polarization)
 
-                self.sig.progress_signal.emit({'prg_val': round((curr_link / link_count) * 40) + 50})
-                curr_link += 1
+                self.signals.progress_signal.emit({'prg_val': round((current_link / link_count) * 40) + 50})
+                current_link += 1
 
         except BaseException as error:
-            self.sig.error_signal.emit({"id": self.results_id})
-            print(f"[CALC ID: {self.results_id}] ERROR: An unexpected error occurred during rain calculation: "
+            self.signals.error_signal.emit({"id": self.results_id})
+            print(f"[{log_run_id}] ERROR: An unexpected error occurred during rain calculation: "
                   f"{type(error)} {error}.")
-            print(f"[CALC ID: {self.results_id}] ERROR: Last processed microwave link dataset: {calc_data[curr_link]}")
-            print(f"[CALC ID: {self.results_id}] ERROR: Calculation thread terminated.")
+            print(
+                f"[{log_run_id}] ERROR: Last processed microwave link dataset: {calc_data[current_link]}")
+            print(f"[{log_run_id}] ERROR: Calculation thread terminated.")
             return
 
         # ////// RESAMPLE AND SPATIAL INTERPOLATION \\\\\\
-
         try:
 
             # ***** FIRST PART: Calculate overall rainfall total map ******
-            print(f"[CALC ID: {self.results_id}] Resampling rain values for rainfall overall map...")
+            print(f"[{log_run_id}] Resampling rain values for rainfall overall map...")
 
             # resample values to 1h means
             calc_data_1h = xr.concat(objs=[cml.R.resample(time='1h', label='right').mean() for cml in calc_data],
                                      dim='cml_id').to_dataset()
 
-            self.sig.progress_signal.emit({'prg_val': 93})
+            self.signals.progress_signal.emit({'prg_val': 93})
 
-            print(f"[CALC ID: {self.results_id}] Interpolating spatial data for rainfall overall map...")
+            print(f"[{log_run_id}] Interpolating spatial data for rainfall overall map...")
 
             # central points of the links are considered in interpolation algorithms
             calc_data_1h['lat_center'] = (calc_data_1h.site_a_latitude + calc_data_1h.site_b_latitude) / 2
@@ -328,18 +399,18 @@ class Calculation(QRunnable):
                                                                             max_distance=self.idw_dist)
 
             # calculate coordinate grids with defined area boundaries
-            x_coords = np.arange(self.X_MIN - self.interpol_res, self.X_MAX + self.interpol_res, self.interpol_res)
-            y_coords = np.arange(self.Y_MIN - self.interpol_res, self.Y_MAX + self.interpol_res, self.interpol_res)
+            x_coords = np.arange(self.X_MIN, self.X_MAX, self.interpol_res)
+            y_coords = np.arange(self.Y_MIN, self.Y_MAX, self.interpol_res)
             x_grid, y_grid = np.meshgrid(x_coords, y_coords)
 
             rain_grid = interpolator(x=calc_data_1h.lon_center, y=calc_data_1h.lat_center,
                                      z=calc_data_1h.R.mean(dim='channel_id').sum(dim='time'),
                                      xgrid=x_grid, ygrid=y_grid)
 
-            self.sig.progress_signal.emit({'prg_val': 99})
+            self.signals.progress_signal.emit({'prg_val': 99})
 
             # emit output
-            self.sig.overall_done_signal.emit({
+            self.signals.overall_done_signal.emit({
                 "id": self.results_id,
                 "link_data": calc_data_1h,
                 "x_grid": x_grid,
@@ -353,33 +424,36 @@ class Calculation(QRunnable):
             # continue only if is it desired, else end
             if not self.is_only_overall:
 
-                print(f"[CALC ID: {self.results_id}] Resampling data for rainfall animation maps...")
+                print(f"[{log_run_id}] Resampling data for rainfall animation maps...")
 
                 # resample data to desired resolution, if needed
-                if self.output_step == 60:   # if case of one hour steps, use already existing resamples
+                if self.output_step == 60:  # if case of one hour steps, use already existing resamples
                     calc_data_steps = calc_data_1h
                 elif self.output_step > self.interval:
                     calc_data_steps = xr.concat(
-                        objs=[cml.R.resample(time=f'{self.output_step}m', label='right').mean() for cml in calc_data],
+                        objs=[cml.R.resample(time=f'{self.output_step}m', label='right').mean() for cml in
+                              calc_data],
                         dim='cml_id').to_dataset()
-                elif self.output_step == self.interval:   # in case of same intervals, no resample needed
+                elif self.output_step == self.interval:  # in case of same intervals, no resample needed
                     calc_data_steps = xr.concat(calc_data, dim='cml_id')
                 else:
                     raise ValueError("Invalid value of output_steps")
 
                 # progress bar goes from 0 in second part
-                self.sig.progress_signal.emit({'prg_val': 5})
+                self.signals.progress_signal.emit({'prg_val': 5})
+
+                del calc_data
 
                 # calculate totals instead of intensities, if desired
                 if self.is_output_total:
                     # get calc ratio
-                    time_ratio = 60 / self.output_step   # 60 = 1 hour, since rain intensity is measured in mm/hour
+                    time_ratio = 60 / self.output_step  # 60 = 1 hour, since rain intensity is measured in mm/hour
                     # overwrite values with totals per output step interval
                     calc_data_steps['R'] = calc_data_steps.R / time_ratio
 
-                self.sig.progress_signal.emit({'prg_val': 10})
+                self.signals.progress_signal.emit({'prg_val': 10})
 
-                print(f"[CALC ID: {self.results_id}] Interpolating spatial data for rainfall animation maps...")
+                print(f"[{log_run_id}] Interpolating spatial data for rainfall animation maps...")
 
                 # if output step is 60, it's already done
                 if self.output_step != 60:
@@ -389,78 +463,109 @@ class Calculation(QRunnable):
                     calc_data_steps['lon_center'] = \
                         (calc_data_steps.site_a_longitude + calc_data_steps.site_b_longitude) / 2
 
-                animation_rain_grids = []
-
+                grids_to_del = 0
                 # interpolate each frame
                 for x in range(calc_data_steps.time.size):
-                    grid = interpolator(x=calc_data_steps.lon_center, y=calc_data_steps.lat_center,
-                                        z=calc_data_steps.R.mean(dim='channel_id').isel(time=x),
-                                        xgrid=x_grid, ygrid=y_grid)
-                    animation_rain_grids.append(grid)
+                    if calc_data_steps.time[x].values > self.last_time:
+                        grid = interpolator(x=calc_data_steps.lon_center, y=calc_data_steps.lat_center,
+                                            z=calc_data_steps.R.mean(dim='channel_id').isel(time=x),
+                                            xgrid=x_grid, ygrid=y_grid)
+                        self.rain_grids.append(grid)
+                        self.last_time = calc_data_steps.time[x].values
 
-                    self.sig.progress_signal.emit({'prg_val': round((x / calc_data_steps.time.size) * 89) + 10})
+                        if self.realtime_runs > 1:
+                            grids_to_del += 1
+
+                    self.signals.progress_signal.emit({'prg_val': round((x / calc_data_steps.time.size) * 89) + 10})
+
+                for x in range(grids_to_del):
+                    del self.rain_grids[x]
 
                 # emit output
-                self.sig.plots_done_signal.emit({
+                self.signals.plots_done_signal.emit({
                     "id": self.results_id,
                     "link_data": calc_data_steps,
                     "x_grid": x_grid,
                     "y_grid": y_grid,
-                    "rain_grids": animation_rain_grids,
+                    "rain_grids": self.rain_grids,
                 })
 
+                del calc_data_steps
+                if calc_data_1h is not None:
+                    del calc_data_1h
+
         except BaseException as error:
-            self.sig.error_signal.emit({"id": self.results_id})
-            print(f"[CALC ID: {self.results_id}] ERROR: An unexpected error occurred during spatial interpolation: "
+            self.signals.error_signal.emit({"id": self.results_id})
+            print(f"[{log_run_id}] ERROR: An unexpected error occurred during spatial interpolation: "
                   f"{type(error)} {error}.")
-            print(f"[CALC ID: {self.results_id}] ERROR: Calculation thread terminated.")
+            print(f"[{log_run_id}] ERROR: Calculation thread terminated.")
             return
 
-        print(f"[CALC ID: {self.results_id}] Rainfall calculation procedure ended.", flush=True)
+        print(f"[{log_run_id}] Rainfall calculation procedure ended.", flush=True)
 
     # noinspection PyMethodMayBeStatic
-    def _fill_channel_dataset(self, curr_link, flux_data, tx_ip, rx_ip, channel_id, freq,
-                              tx_zeros: bool = False, rx_zeros: bool = False) -> xr.Dataset:
-        # get times from the Rx power array, since these data should be always available
-        times = []
-        for time in flux_data[rx_ip]["rx_power"].keys():
-            times.append(np.datetime64(time).astype("datetime64[ns]"))
 
-        # if creating empty channel dataset, fill Rx vars with zeros
-        if rx_zeros:
+    def _fill_channel_dataset(self, current_link, flux_data, tx_ip, rx_ip, channel_id, freq,
+                              tx_zeros: bool = False, is_empty_channel: bool = False) -> xr.Dataset:
+        # get times from the Rx power array => since Rx unit should be always available, rx_ip can be used
+        times = []
+        for timestamp in flux_data[rx_ip]["rx_power"].keys():
+            times.append(np.datetime64(timestamp).astype("datetime64[ns]"))
+
+        # if creating empty channel dataset, fill Rx vars with zeros =>
+        # => since Rx unit should be always available, rx_ip can be used
+        if is_empty_channel:
             rsl = np.zeros((len(flux_data[rx_ip]["rx_power"]),), dtype=float)
             dummy = True
         else:
             rsl = [*flux_data[rx_ip]["rx_power"].values()]
             dummy = False
 
-        # in case of Tx power zeros, get array length from Rx array since it should be always available
+        # in case of Tx power zeros, we don't have data of Tx unit available in flux_data =>
+        # => get array length from Rx array of rx_ip unit, since it should be always available
         if tx_zeros:
             tsl = np.zeros((len(flux_data[rx_ip]["rx_power"]),), dtype=float)
         else:
             tsl = [*flux_data[tx_ip]["tx_power"].values()]
 
+        # if creating empty channel dataset, fill Temperature_Rx vars with zeros
+        # since Rx unit should be always available, rx_ip can be used
+        if is_empty_channel:
+            temperature_rx = np.zeros((len(flux_data[rx_ip]["temperature"]),), dtype=float)
+        else:
+            temperature_rx = [*flux_data[rx_ip]["temperature"].values()]
+
+        # in case of Tx power zeros, we don't have data of Tx unit available in flux_data =>
+        # => get array length from Temperature array of rx_ip unit, since it should be always available
+        if tx_zeros:
+            temperature_tx = np.zeros((len(flux_data[rx_ip]["temperature"]),), dtype=float)
+        else:
+            temperature_tx = [*flux_data[tx_ip]["temperature"].values()]
+
         channel = xr.Dataset(
             data_vars={
                 "tsl": ("time", tsl),
                 "rsl": ("time", rsl),
+                "temperature_rx": ("time", temperature_rx),
+                "temperature_tx": ("time", temperature_tx),
+
             },
             coords={
                 "time": times,
                 "channel_id": channel_id,
-                "cml_id": curr_link.link_id,
-                "site_a_latitude": curr_link.latitude_a,
-                "site_b_latitude": curr_link.latitude_b,
-                "site_a_longitude": curr_link.longitude_a,
-                "site_b_longitude": curr_link.longitude_b,
+                "cml_id": current_link.link_id,
+                "site_a_latitude": current_link.latitude_a,
+                "site_b_latitude": current_link.latitude_b,
+                "site_a_longitude": current_link.longitude_a,
+                "site_b_longitude": current_link.longitude_b,
                 "frequency": freq / 1000,
-                "polarization": curr_link.polarization,
-                "length": curr_link.distance,
+                "polarization": current_link.polarization,
+                "length": current_link.distance,
                 "dummy_channel": dummy,
-                "dummy_a_latitude": curr_link.dummy_latitude_a,
-                "dummy_b_latitude": curr_link.dummy_latitude_b,
-                "dummy_a_longitude": curr_link.dummy_longitude_a,
-                "dummy_b_longitude": curr_link.dummy_longitude_b,
+                "dummy_a_latitude": current_link.dummy_latitude_a,
+                "dummy_b_latitude": current_link.dummy_latitude_b,
+                "dummy_a_longitude": current_link.dummy_longitude_a,
+                "dummy_b_longitude": current_link.dummy_longitude_b,
             },
         )
         return channel

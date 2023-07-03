@@ -1,17 +1,21 @@
 import sys
 
 from PyQt6 import uic, QtGui, QtCore
-from PyQt6.QtCore import QTimer
+from PyQt6.QtCore import QTimer, QObject
 from PyQt6.QtGui import QPixmap, QAction
 from PyQt6.QtWidgets import QMainWindow, QLabel, QProgressBar, QHBoxLayout, QWidget, QTextEdit, QListWidget, \
     QDateTimeEdit, QPushButton, QSpinBox, QTabWidget, QLineEdit, QDoubleSpinBox, QRadioButton, QCheckBox, \
-    QListWidgetItem, QTableWidget, QGridLayout, QMessageBox, QFileDialog, QApplication
+    QListWidgetItem, QTableWidget, QGridLayout, QMessageBox, QFileDialog, QApplication, QComboBox
+from datetime import datetime, timedelta
 
-import input.influx_manager as influx
-import input.sqlite_manager as sqlite
-import procedures.calculation as calc
-import writers.linksets_manager as setsman
-import writers.log_manager as logger
+from database.influx_manager import InfluxManager, InfluxChecker, InfluxSignals
+from database.sql_manager import SqlManager, SqlChecker, SqlSignals
+from writers.config_manager import ConfigManager
+from writers.linksets_manager import LinksetsManager
+from writers.log_manager import LogManager
+from writers.realtime_writer import RealtimeWriter
+from procedures.calculation import Calculation, CalcSignals
+
 from gui.form_dialog import FormDialog
 from gui.selection_dialog import SelectionDialog
 from gui.results_widget import ResultsWidget
@@ -35,7 +39,7 @@ class MainWindow(QMainWindow):
         # load UI definition from Qt XML file
         uic.loadUi("./gui/MainWindow.ui", self)
 
-        # set up statusbar
+        # set up statusbar - InfluxDB connection state
         self.status_db = QWidget()
         self.status_db_layout = QHBoxLayout()
         self.status_db_layout.setSpacing(0)
@@ -50,6 +54,24 @@ class MainWindow(QMainWindow):
         self.status_db_state.setText("Disconnected")
         self.status_db_layout.addWidget(self.status_db_state)
         self.statusBar().addPermanentWidget(self.status_db)
+
+        # set up statusbar - MariaDB connection state
+        self.status_sql = QWidget()
+        self.status_sql_layout = QHBoxLayout()
+        self.status_sql_layout.setSpacing(0)
+        self.status_sql.setLayout(self.status_sql_layout)
+        self.status_sql_label = QLabel()
+        self.status_sql_label.setText("MariaDB:")
+        self.status_sql_layout.addWidget(self.status_sql_label)
+        self.status_sql_icon_lbl = QLabel()
+        self.status_sql_icon_lbl.setPixmap(QPixmap('./gui/icons/cross_red.png'))
+        self.status_sql_layout.addWidget(self.status_sql_icon_lbl)
+        self.status_sql_state = QLabel()
+        self.status_sql_state.setText("Disconnected")
+        self.status_sql_layout.addWidget(self.status_sql_state)
+        self.statusBar().addPermanentWidget(self.status_sql)
+
+        # set up statusbar - calculation progress bar
         self.status_prg = QWidget()
         self.status_prg_layout = QHBoxLayout()
         self.status_prg.setLayout(self.status_prg_layout)
@@ -61,44 +83,55 @@ class MainWindow(QMainWindow):
         self.status_prg_bar.setMaximum(99)
         self.status_prg_layout.addWidget(self.status_prg_bar)
         self.statusBar().addPermanentWidget(self.status_prg)
+
+        # set spacing for status bar
         self.statusBar().setContentsMargins(14, 0, 14, 0)
 
         # lookup for used actions and define them
-        self.exit_action = self.findChild(QAction, "actionExit")
+        self.exit_action: QObject = self.findChild(QAction, "actionExit")
         self.exit_action.triggered.connect(QApplication.quit)
 
         # lookup for used widgets and define them
-        self.text_log = self.findChild(QTextEdit, "textLog")
-        self.lists = self.findChild(QListWidget, "listLists")
-        self.selection_table = self.findChild(QTableWidget, "tableSelection")
-        self.butt_new_set = self.findChild(QPushButton, "buttLstNew")
-        self.butt_edit_set = self.findChild(QPushButton, "buttLstEdit")
-        self.butt_copy_set = self.findChild(QPushButton, "buttLstCopy")
-        self.butt_del_set = self.findChild(QPushButton, "buttLstDel")
-        self.datetime_start = self.findChild(QDateTimeEdit, "dateTimeStart")
-        self.datetime_stop = self.findChild(QDateTimeEdit, "dateTimeStop")
-        self.spin_timestep = self.findChild(QSpinBox, "spinTimestep")
-        self.butt_start = self.findChild(QPushButton, "buttStart")
-        self.butt_abort = self.findChild(QPushButton, "buttAbort")
-        self.tabs = self.findChild(QTabWidget, "tabWidget")
-        self.results_name = self.findChild(QLineEdit, "resultsNameEdit")
-        self.spin_roll_window = self.findChild(QDoubleSpinBox, "spinRollWindow")
-        self.spin_wet_dry_sd = self.findChild(QDoubleSpinBox, "spinWetDrySD")
-        self.spin_baseline_samples = self.findChild(QSpinBox, "spinBaselineSamples")
-        self.spin_output_step = self.findChild(QSpinBox, "spinOutputStep")
-        self.spin_interpol_res = self.findChild(QDoubleSpinBox, "spinInterResolution")
-        self.spin_idw_power = self.findChild(QSpinBox, "spinIdwPower")
-        self.spin_idw_near = self.findChild(QSpinBox, "spinIdwNear")
-        self.spin_idw_dist = self.findChild(QDoubleSpinBox, "spinIdwDist")
-        self.radio_output_total = self.findChild(QRadioButton, "radioOutputTotal")
-        self.box_only_overall = self.findChild(QCheckBox, "checkOnlyOverall")
-        self.path_box = self.findChild(QLineEdit, "editPath")
-        self.butt_choose_path = self.findChild(QPushButton, "buttChoosePath")
-        self.pdf_box = self.findChild(QCheckBox, "checkFilePDF")
-        self.png_box = self.findChild(QCheckBox, "checkFilePNG")
-        self.check_dummy = self.findChild(QCheckBox, "checkDummy")
-        self.spin_waa_schleiss_val = self.findChild(QDoubleSpinBox, "spinSchleissWaa")
-        self.spin_waa_schleiss_tau = self.findChild(QDoubleSpinBox, "spinSchleissTau")
+        self.text_log: QObject = self.findChild(QTextEdit, "textLog")
+        self.lists: QObject = self.findChild(QListWidget, "listLists")
+        self.selection_table: QObject = self.findChild(QTableWidget, "tableSelection")
+        self.butt_new_set: QObject = self.findChild(QPushButton, "buttLstNew")
+        self.butt_edit_set: QObject = self.findChild(QPushButton, "buttLstEdit")
+        self.butt_copy_set: QObject = self.findChild(QPushButton, "buttLstCopy")
+        self.butt_del_set: QObject = self.findChild(QPushButton, "buttLstDel")
+        self.datetime_start: QObject = self.findChild(QDateTimeEdit, "dateTimeStart")
+        self.datetime_stop: QObject = self.findChild(QDateTimeEdit, "dateTimeStop")
+        self.spin_timestep: QObject = self.findChild(QSpinBox, "spinTimestep")
+        self.butt_start: QObject = self.findChild(QPushButton, "buttStart")
+        self.butt_abort: QObject = self.findChild(QPushButton, "buttAbort")
+        self.tabs: QObject = self.findChild(QTabWidget, "tabWidget")
+        self.results_name: QObject = self.findChild(QLineEdit, "resultsNameEdit")
+        self.spin_roll_window: QObject = self.findChild(QDoubleSpinBox, "spinRollWindow")
+        self.spin_wet_dry_sd: QObject = self.findChild(QDoubleSpinBox, "spinWetDrySD")
+        self.spin_baseline_samples: QObject = self.findChild(QSpinBox, "spinBaselineSamples")
+        self.spin_output_step: QObject = self.findChild(QSpinBox, "spinOutputStep")
+        self.spin_interpol_res: QObject = self.findChild(QDoubleSpinBox, "spinInterResolution")
+        self.spin_idw_power: QObject = self.findChild(QSpinBox, "spinIdwPower")
+        self.spin_idw_near: QObject = self.findChild(QSpinBox, "spinIdwNear")
+        self.spin_idw_dist: QObject = self.findChild(QDoubleSpinBox, "spinIdwDist")
+        self.radio_output_total: QObject = self.findChild(QRadioButton, "radioOutputTotal")
+        self.box_only_overall: QObject = self.findChild(QCheckBox, "checkOnlyOverall")
+        self.path_box: QObject = self.findChild(QLineEdit, "editPath")
+        self.butt_choose_path: QObject = self.findChild(QPushButton, "buttChoosePath")
+        self.pdf_box: QObject = self.findChild(QCheckBox, "checkFilePDF")
+        self.png_box: QObject = self.findChild(QCheckBox, "checkFilePNG")
+        self.check_dummy: QObject = self.findChild(QCheckBox, "checkDummy")
+        self.spin_waa_schleiss_val: QObject = self.findChild(QDoubleSpinBox, "spinSchleissWaa")
+        self.spin_waa_schleiss_tau: QObject = self.findChild(QDoubleSpinBox, "spinSchleissTau")
+        self.radio_historic: QObject = self.findChild(QRadioButton, "radioHistoric")
+        self.radio_realtime: QObject = self.findChild(QRadioButton, "radioRealtime")
+        self.combo_realtime: QObject = self.findChild(QComboBox, "comboRealtime")
+        self.label_realtime: QObject = self.findChild(QLabel, "labelRealtime")
+        self.correlation_spin: QObject = self.findChild(QDoubleSpinBox, "correlationSpin")
+        self.correlation_filter_box: QObject = self.findChild(QCheckBox, "filterCMLsBox")
+        self.compensation_box: QObject = self.findChild(QCheckBox, "compensationBox")
+        self.write_output_box: QObject = self.findChild(QCheckBox, "writeOutputBox")
+        self.window_pointer_combo: QObject = self.findChild(QComboBox, "windowPointerCombo")
 
         # declare dictionary for created tabs with calculation results
         # <key: int = result ID, value: ResultsWidget>
@@ -121,7 +154,10 @@ class MainWindow(QMainWindow):
         self.butt_choose_path.clicked.connect(self.choose_path_fired)
 
         # connect other signals
-        self.spin_timestep.valueChanged.connect(self._adjust_window)
+        self.spin_timestep.valueChanged.connect(lambda a: self.spin_roll_window.setValue(a * 36 / 60))
+        self.radio_realtime.clicked.connect(lambda a: self.box_only_overall.setChecked(False))
+        self.radio_realtime.clicked.connect(lambda a: self.window_pointer_combo.setCurrentIndex(1))
+        self.radio_historic.clicked.connect(lambda a: self.write_output_box.setChecked(False))
 
         # style out link table
         self.selection_table.setColumnWidth(0, 40)
@@ -132,24 +168,36 @@ class MainWindow(QMainWindow):
         self.selection_table.setColumnWidth(5, 75)
         self.selection_table.setColumnWidth(6, 148)
 
+        # style out other things
+        self.combo_realtime.setHidden(True)
+        self.label_realtime.setHidden(True)
+
         # show window
         self.show()
 
         # ////// APP LOGIC CONSTRUCTOR \\\\\\
 
+        # init core managers
+        self.config_man = ConfigManager()
+        self.log_man = LogManager(self.text_log)
+        self.sql_man = SqlManager(self.config_man)
+        self.influx_man = InfluxManager(self.config_man)
+
         # redirect stdout to log handler
-        sys.stdout = logger.LogManager(self.text_log)
+        sys.stdout = self.log_man
         print("Telcorain is starting...", flush=True)
 
         # init threadpool
         self.threadpool = QtCore.QThreadPool()
 
         # init app logic signaling
-        self.influx_signals = influx.InfluxSignals()
-        self.calc_signals = calc.CalcSignals()
+        self.influx_signals = InfluxSignals()
+        self.calc_signals = CalcSignals()
+        self.sql_signals = SqlSignals()
 
-        # influxDB status signal
+        # DBs status signals
         self.influx_signals.ping_signal.connect(self.check_influx_status)
+        self.sql_signals.ping_signal.connect(self.check_sql_status)
 
         # rainfall calculation signals
         self.calc_signals.overall_done_signal.connect(self.show_overall_results)
@@ -157,23 +205,33 @@ class MainWindow(QMainWindow):
         self.calc_signals.error_signal.connect(self.calculation_error)
         self.calc_signals.progress_signal.connect(self.progress_update)
 
-        # init influxDB connection and status checker
+        # init DBs connection and status checkers
         self.influx_status: int = 0  # 0 = unknown, 1 = ok, -1 = not available
-        influx.InfluxChecker(self.influx_signals).run()  # first connection check
+        self.sql_status: int = 0  # 0 = unknown, 1 = ok, -1 = not available
 
+        self.influx_checker = InfluxChecker(self.config_man, self.influx_signals)
+        self.influx_checker.setAutoDelete(False)
+        self._pool_influx_checker()   # first Influx connection check
         self.influx_timer = QTimer()  # create timer for next checks
-        self.influx_timer.timeout.connect(self._pool_checker)
+        self.influx_timer.timeout.connect(self._pool_influx_checker)
         # TODO: load influx timeout from config and add some time
         self.influx_timer.start(5000)
 
-        # load CML definitions from SQLite database
-        self.sqlite_man = sqlite.SqliteManager()
-        self.links = self.sqlite_man.load_all()
-        print(f"SQLite link database file connected: {len(self.links)} microwave link's definitions loaded.")
+        self.sql_checker = SqlChecker(self.config_man, self.sql_signals)
+        self.sql_checker.setAutoDelete(False)
+        self._pool_sql_checker()   # first MariaDB connection check
+        self.sql_timer = QTimer()  # create timer for next checks
+        self.sql_timer.timeout.connect(self._pool_sql_checker)
+        # TODO: load MariaDB timeout from config and add some time
+        self.sql_timer.start(5000)
+
+        # load CML definitions from SQL database
+        self.links = self.sql_man.load_metadata()
+        print(f"{len(self.links)} microwave link's definitions loaded from MariaDB.")
 
         # init link sets
+        self.sets_man = LinksetsManager(self.links)
         self.current_selection = {}   # link channel selection flag: 0=none, 1=A, 2=B, 3=both -> dict: <link_id>: flag
-        self.sets_man = setsman.LinksetsManager(self.links)
         self.lists.currentTextChanged.connect(self._linkset_selected)
 
         # add default value to list of link's list (ALL = list of all links)
@@ -188,26 +246,51 @@ class MainWindow(QMainWindow):
         self.path = './outputs'
         self.path_box.setText(self.path + '/<time>')
 
+        # prepare realtime calculation slot and timer
+        self.running_realtime = None
+        self.realtime_timer = QTimer()
+        self.realtime_timer.setSingleShot(True)
+        self.realtime_timer.timeout.connect(self._pool_realtime_run)
+        self.realtime_last_run: datetime = datetime.min
+        self.is_realtime_showed: bool = False
+
     # influxDB's status selection logic, called from signal
     def check_influx_status(self, influx_ping: bool):
         if influx_ping and self.influx_status == 0:
-            self._db_status_changed(True)
+            self._influx_status_changed(True)
             print("InfluxDB connection has been established.", flush=True)
             self.influx_status = 1
         elif not influx_ping and self.influx_status == 0:
-            self._db_status_changed(False)
+            self._influx_status_changed(False)
             print("InfluxDB connection is not available.", flush=True)
             self.influx_status = -1
-            # TODO: show warning dialog
         elif not influx_ping and self.influx_status == 1:
-            self._db_status_changed(False)
+            self._influx_status_changed(False)
             print("InfluxDB connection has been lost.", flush=True)
             self.influx_status = -1
-            # TODO: show warning dialog
         elif influx_ping and self.influx_status == -1:
-            self._db_status_changed(True)
+            self._influx_status_changed(True)
             print("InfluxDB connection has been reestablished.", flush=True)
             self.influx_status = 1
+
+    # MariaDB's status selection logic, called from signal
+    def check_sql_status(self, sql_ping: bool):
+        if sql_ping and self.sql_status == 0:
+            self._sql_status_changed(True)
+            print("MariaDB connection has been established.", flush=True)
+            self.sql_status = 1
+        elif not sql_ping and self.sql_status == 0:
+            self._sql_status_changed(False)
+            print("MariaDB connection is not available.", flush=True)
+            self.sql_status = -1
+        elif not sql_ping and self.sql_status == 1:
+            self._sql_status_changed(False)
+            print("MariaDB connection has been lost.", flush=True)
+            self.sql_status = -1
+        elif sql_ping and self.sql_status == -1:
+            self._sql_status_changed(True)
+            print("MariaDB connection has been reestablished.", flush=True)
+            self.sql_status = 1
 
     # show overall results from calculation, called from signal
     def show_overall_results(self, meta_data: dict):
@@ -217,9 +300,12 @@ class MainWindow(QMainWindow):
                                                               meta_data["rain_grid"],
                                                               meta_data["link_data"])
 
-        # insert results tab to tab list
-        self.tabs.addTab(self.results_tabs[meta_data["id"]], self.results_icon,
-                         f"Results: {self.results_tabs[meta_data['id']].tab_name}")
+        if not self.is_realtime_showed:
+            # insert results tab to tab list
+            self.tabs.addTab(self.results_tabs[meta_data["id"]], self.results_icon,
+                             f"Results: {self.results_tabs[meta_data['id']].tab_name}")
+            if self.running_realtime is not None:
+                self.is_realtime_showed = True
 
         if meta_data["is_it_all"]:
             self.statusBar().showMessage(f"Calculation \"{self.results_tabs[meta_data['id']].tab_name}\" is complete.")
@@ -243,14 +329,29 @@ class MainWindow(QMainWindow):
                                                                       meta_data["rain_grids"],
                                                                       meta_data["link_data"])
 
-        self.statusBar().showMessage(f"Calculation \"{self.results_tabs[meta_data['id']].tab_name}\" is complete.")
-
         # return progress bar to default state
         self.status_prg_bar.setValue(0)
 
-        # restore buttons
-        self.butt_abort.setEnabled(False)
-        self.butt_start.setEnabled(True)
+        if self.running_realtime is not None:
+            timediff = datetime.now() - self.realtime_last_run
+            interval = self.results_tabs[meta_data['id']].output_step * 60 + 10
+
+            if timediff.total_seconds() < interval:
+                self.butt_abort.setEnabled(True)
+                msg = str(f"Realtime iteration #{self.running_realtime.realtime_runs} of calculation "
+                          f"\"{self.results_tabs[meta_data['id']].tab_name}\" is complete. "
+                          f"Next iteration starts in {int(interval - timediff.total_seconds())} seconds.")
+                self.realtime_timer.start(int(interval - timediff.total_seconds()) * 1000)
+            else:
+                msg = str(f"Processing realtime calculation iteration #{self.running_realtime.realtime_runs}...")
+                self._pool_realtime_run()
+
+        else:
+            self.butt_start.setEnabled(True)
+            msg = str(f"Calculation \"{self.results_tabs[meta_data['id']].tab_name}\" is complete.")
+
+        del meta_data
+        self.statusBar().showMessage(msg)
 
     # show info about error in calculation, called from signal
     def calculation_error(self, meta_data: dict):
@@ -261,7 +362,6 @@ class MainWindow(QMainWindow):
         self.status_prg_bar.setValue(0)
 
         # restore buttons
-        self.butt_abort.setEnabled(False)
         self.butt_start.setEnabled(True)
 
     # update progress bar with calculation status, called from signal
@@ -277,6 +377,7 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage(msg)
             return
 
+        # get parameters from Qt widgets
         start = self.datetime_start.dateTime()
         end = self.datetime_stop.dateTime()
         step = self.spin_timestep.value()
@@ -298,6 +399,25 @@ class MainWindow(QMainWindow):
         waa_schleiss_val = self.spin_waa_schleiss_val.value()
         waa_schleiss_tau = self.spin_waa_schleiss_tau.value()
         close_func = self.close_tab_result
+        is_correlation = self.compensation_box.isChecked()
+        spin_correlation = self.correlation_spin.value()
+        combo_realtime = self.combo_realtime.currentText()
+        is_realtime = self.radio_realtime.isChecked()
+        is_remove = self.correlation_filter_box.isChecked()
+        is_output_write = self.write_output_box.isChecked()
+        is_window_centered = True if self.window_pointer_combo.currentIndex() == 0 else False
+        retention = int(self.config_man.read_option('realtime', 'retention'))
+        X_MIN = float(self.config_man.read_option('rendering', 'X_MIN'))
+        X_MAX = float(self.config_man.read_option('rendering', 'X_MAX'))
+        Y_MIN = float(self.config_man.read_option('rendering', 'Y_MIN'))
+        Y_MAX = float(self.config_man.read_option('rendering', 'Y_MAX'))
+
+        # for writing output data back into DB, we need working MariaDB connection
+        if is_output_write and self.sql_status != 1:
+            msg = "Cannot start realtime calculation, MariaDB connection is not available."
+            print(f"[WARNING] {msg}")
+            self.statusBar().showMessage(msg)
+            return
 
         # INPUT CHECKS:
         if time_diff < 0:   # if timediff is less than 1 hour (in msecs)
@@ -320,14 +440,19 @@ class MainWindow(QMainWindow):
         elif output_step < step:
             msg = f"Output frame interval cannot be shorter than initial data resolution."
             print(f"[WARNING] {msg}")
+        elif step > 59:
+            msg = f"Input time interval cannot be longer than 59 minutes."
+            print(f"[WARNING] {msg}")
         else:
             self.result_id += 1
 
             # create calculation instance
-            calculation = calc.Calculation(self.calc_signals, self.result_id, self.links, self.current_selection, start,
-                                           end, step, rolling_values, output_step, is_only_overall, is_output_total,
-                                           wet_dry_deviation, baseline_samples, interpol_res, idw_power, idw_near,
-                                           idw_dist, waa_schleiss_val, waa_schleiss_tau)
+            calculation = Calculation(self.influx_man, self.calc_signals, self.result_id, self.links,
+                                      self.current_selection, start, end, step, rolling_values, output_step,
+                                      is_only_overall, is_output_total, wet_dry_deviation, baseline_samples,
+                                      interpol_res, idw_power, idw_near, idw_dist, waa_schleiss_val, waa_schleiss_tau,
+                                      is_correlation, spin_correlation, combo_realtime, not is_realtime, is_remove,
+                                      is_window_centered)
 
             if self.results_name.text() == "":
                 results_tab_name = "<no name>"
@@ -348,25 +473,61 @@ class MainWindow(QMainWindow):
             }
 
             # create results widget instance
-            self.results_tabs[self.result_id] = ResultsWidget(results_tab_name, self.result_id, start, end, output_step,
-                                                              is_output_total, self.path, is_pdf, is_png, close_func,
-                                                              is_only_overall, is_dummy, params)
+            if is_output_write:
+                start_time = datetime.utcnow()
+                output_delta = timedelta(minutes=output_step)
+                since_time = start_time - output_delta
+
+                realtime_w = RealtimeWriter(self.sql_man, self.influx_man, False, since_time)
+                self.results_tabs[self.result_id] = ResultsWidget(results_tab_name, self.result_id, start, end,
+                                                                  output_step, is_output_total, self.path, is_pdf,
+                                                                  is_png, close_func, is_only_overall, is_dummy, params,
+                                                                  realtime_writer=realtime_w)
+            else:
+                self.results_tabs[self.result_id] = ResultsWidget(results_tab_name, self.result_id, start, end,
+                                                                  output_step, is_output_total, self.path, is_pdf,
+                                                                  is_png, close_func, is_only_overall, is_dummy, params,
+                                                                  realtime_writer=None)
 
             self.results_name.clear()
-            self.butt_abort.setEnabled(True)
             self.butt_start.setEnabled(False)
 
-            # RUN calculation on worker thread from threadpool
-            self.threadpool.start(calculation)
-            # calculation.run()  # TEMP: run directly on gui thread for debugging reasons
+            if is_realtime:
+                calculation.setAutoDelete(False)
+                self.running_realtime = calculation
 
-            msg = "Processing..."
+                if is_output_write:
+                    params = self.sql_man.get_last_realtime()
+                    print("Realtime outputs writing activated!")
+                    if len(params) != 0:
+                        print(f"Last written realtime calculation started at "
+                              f"{params['start_time'].strftime('%Y-%m-%d %H:%M:%S')} and ran with parameters: "
+                              f"retention: {(params['retention']/60):.0f} h, step: {(params['timestep']/60):.0f} min, "
+                              f"grid resolution: {(params['resolution']):.8f} °.")
+                    print(f"Current realtime parameters are: retention: {retention} h, step: "
+                          f"{output_step} min, grid resolution: {interpol_res:.8f} °.")
+                    self.sql_man.insert_realtime(retention * 60, output_step * 60, interpol_res,
+                                                 X_MIN, X_MAX, Y_MIN, Y_MAX)
+
+                self._pool_realtime_run()
+                msg = "Processing realtime calculation iteration..."
+            else:
+                # RUN calculation on worker thread from threadpool
+                self.threadpool.start(calculation)
+                # calculation.run()  # TEMP: run directly on gui thread for debugging reasons
+                msg = "Processing..."
 
         self.statusBar().showMessage(msg)
 
     def calculation_cancel_fired(self):
-        # TODO: implement calculation cancelling
-        pass
+        if self.running_realtime is not None:
+            self.realtime_timer.stop()
+            self.statusBar().showMessage(f"Realtime calculation has been interrupted after "
+                                         f"{self.running_realtime.realtime_runs} runs.")
+            self.running_realtime = None
+            self.is_realtime_showed = False
+            self.butt_start.setEnabled(True)
+            self.butt_abort.setEnabled(False)
 
     def new_linkset_fired(self):
         dialog = FormDialog(self, "Link Set Creation", "Please, enter a name of the new link set:")
@@ -462,7 +623,7 @@ class MainWindow(QMainWindow):
         info.exec()
 
     # influxDB's status changed GUI method
-    def _db_status_changed(self, status: bool):
+    def _influx_status_changed(self, status: bool):
         if status:  # True == connected
             self.status_db_state.setText("Connected")
             self.status_db_icon_lbl.setPixmap(QPixmap('./gui/icons/check_green.png'))
@@ -470,14 +631,27 @@ class MainWindow(QMainWindow):
             self.status_db_state.setText("Disconnected")
             self.status_db_icon_lbl.setPixmap(QPixmap('./gui/icons/cross_red.png'))
 
-    # insert InfluxDB's status checker into threadpool and start it, called by timer
-    def _pool_checker(self):
-        influx_checker = influx.InfluxChecker(self.influx_signals)
-        self.threadpool.start(influx_checker)
+    # MariaDB's status changed GUI method
+    def _sql_status_changed(self, status: bool):
+        if status:  # True == connected
+            self.status_sql_state.setText("Connected")
+            self.status_sql_icon_lbl.setPixmap(QPixmap('./gui/icons/check_green.png'))
+        else:       # False == disconnected
+            self.status_sql_state.setText("Disconnected")
+            self.status_sql_icon_lbl.setPixmap(QPixmap('./gui/icons/cross_red.png'))
 
-    # adjust wet/dry rolling window length when query timestep is changed, to default multiple of 36 (good results)
-    def _adjust_window(self, step: int):
-        self.spin_roll_window.setValue(step * 36 / 60)
+    # insert InfluxDB's status checker into threadpool and start it, called by timer
+    def _pool_influx_checker(self):
+        self.threadpool.start(self.influx_checker)
+
+    # insert MariaDB's status checker into threadpool and start it, called by timer
+    def _pool_sql_checker(self):
+        self.threadpool.start(self.sql_checker)
+
+    def _pool_realtime_run(self):
+        self.butt_abort.setEnabled(False)
+        self.realtime_last_run = datetime.now()
+        self.threadpool.start(self.running_realtime)
 
     def _linkset_selected(self, selection: str):
         if selection == '<ALL>':
@@ -562,7 +736,7 @@ class MainWindow(QMainWindow):
             row += 1
 
     def _fill_linksets(self):
-        for link_set in self.sets_man.set_names:
+        for link_set in self.sets_man.sections:
             self.lists.addItem(link_set)
 
     # destructor
