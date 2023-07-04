@@ -48,7 +48,8 @@ class InfluxManager:
                f"  |> filter(fn: (r) => r[\"ip\"] =~ /{ips_str}/)\n" + \
                f"  |> aggregateWindow(every: {interval_str}, fn: mean, createEmpty: true)\n" + \
                f"  |> yield(name: \"mean\")"
-        print(f"History flux: {flux}")
+        # print(f"History flux: {flux}")
+
         # query influxDB
         results = self.qapi.query(flux)
 
@@ -120,10 +121,11 @@ class InfluxManager:
                f"  |> range(start: {start_str}, stop: {end_str})\n" + \
                f"  |> filter(fn: (r) => r[\"_field\"] == \"PrijimanaUroven\" or r[\"_field\"] == \"Teplota\" or" \
                f" r[\"_field\"] == \"VysilaciVykon\" or r[\"_field\"] == \"Vysilany_Vykon\" or r[\"_field\"] == \"Signal\")\n" + \
-               f"  |> filter(fn: (r) => r[\"ip\"] =~ /{ips_str}/)\n" + \
+               f"  |> filter(fn: (r) => r[\"agent_host\"] =~ /{ips_str}/)\n" + \
                f"  |> aggregateWindow(every: {interval_str}, fn: mean, createEmpty: true)\n" + \
                f"  |> yield(name: \"mean\")"
-        print(f"RealTime flux: {flux}")
+        # print(f"RealTime flux: {flux}")
+
         # query influxDB
         results = self.qapi.query(flux)
 
