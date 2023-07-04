@@ -35,16 +35,17 @@ class InfluxManager:
         start_str = start.toString("yyyy-MM-ddTHH:mm:00.000Z")  # RFC 3339
         end_str = end.toString("yyyy-MM-ddTHH:mm:00.000Z")  # RFC 3339
         interval_str = f"{interval * 60}s"  # time in seconds
-        ips_str = f"r[\"ip\"] == \"{ips[0]}\""  # IP addresses in query format
+
+        ips_str = f"{ips[0]}"  # IP addresses in query format
         for ip in ips[1:]:
-            ips_str += f" or r[\"ip\"] == \"{ip}\""
+            ips_str += f"|{ip}"
 
         # construct flux query
         flux = f"from(bucket: \"{self.BUCKET_OLD_DATA}\")\n" + \
                f"  |> range(start: {start_str}, stop: {end_str})\n" + \
                f"  |> filter(fn: (r) => r[\"_field\"] == \"rx_power\" or r[\"_field\"] == \"tx_power\" or" \
                f" r[\"_field\"] == \"temperature\")\n" + \
-               f"  |> filter(fn: (r) => {ips_str})\n" + \
+               f"  |> filter(fn: (r) => r[\"ip\"] =~ /{ips_str}/)\n" + \
                f"  |> aggregateWindow(every: {interval_str}, fn: mean, createEmpty: true)\n" + \
                f"  |> yield(name: \"mean\")"
         print(f"History flux: {flux}")
@@ -109,16 +110,17 @@ class InfluxManager:
         end_str = end.strftime("%Y-%m-%dT%H:%M:00.000Z")  # RFC 3339
 
         interval_str = f"{interval * 60}s"  # time in seconds
-        ips_str = f"r[\"agent_host\"] == \"{ips[0]}\""  # IP addresses in query format
+
+        ips_str = f"{ips[0]}"  # IP addresses in query format
         for ip in ips[1:]:
-            ips_str += f" or r[\"agent_host\"] == \"{ip}\""
+            ips_str += f"|{ip}"
 
         # construct flux query
         flux = f"from(bucket: \"{self.BUCKET_NEW_DATA}\")\n" + \
                f"  |> range(start: {start_str}, stop: {end_str})\n" + \
                f"  |> filter(fn: (r) => r[\"_field\"] == \"PrijimanaUroven\" or r[\"_field\"] == \"Teplota\" or" \
                f" r[\"_field\"] == \"VysilaciVykon\" or r[\"_field\"] == \"Vysilany_Vykon\" or r[\"_field\"] == \"Signal\")\n" + \
-               f"  |> filter(fn: (r) => {ips_str})\n" + \
+               f"  |> filter(fn: (r) => r[\"ip\"] =~ /{ips_str}/)\n" + \
                f"  |> aggregateWindow(every: {interval_str}, fn: mean, createEmpty: true)\n" + \
                f"  |> yield(name: \"mean\")"
         print(f"RealTime flux: {flux}")
