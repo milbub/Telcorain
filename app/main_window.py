@@ -154,7 +154,6 @@ class MainWindow(QMainWindow):
         self.butt_choose_path.clicked.connect(self.choose_path_fired)
 
         # connect other signals
-        self.spin_timestep.valueChanged.connect(lambda a: self.spin_roll_window.setValue(a * 36 / 60))
         self.radio_realtime.clicked.connect(lambda a: self.box_only_overall.setChecked(False))
         self.radio_realtime.clicked.connect(lambda a: self.window_pointer_combo.setCurrentIndex(1))
         self.radio_historic.clicked.connect(lambda a: self.write_output_box.setChecked(False))
