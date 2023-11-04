@@ -185,15 +185,15 @@ class ResultsWidget(QWidget):
         self._refresh_fig(self.animation_canvas, x_grid, y_grid, rain_grids[0], self.anim_annotations,
                           is_total=self.are_results_totals)
 
-        # plot link path lines
-        self._plot_link_lines(links_calc_data, self.animation_canvas.ax)
-
         # hide notification
         self.change_no_anim_notification(False)
 
-        # show in animation canvas frame
         if not self.is_displayed:
+            # show in animation canvas frame
             self.main_plot_layout.addWidget(self.animation_canvas)
+            # plot link path lines
+            self._plot_link_lines(links_calc_data, self.animation_canvas.ax)
+            # done, next time skip this
             self.is_displayed = True
 
         # update time
