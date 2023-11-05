@@ -57,34 +57,48 @@ class SqlManager:
             if self.check_connection():
                 cursor: Cursor = self.connection.cursor()
 
-                query = "SELECT links.ID, links.IP_address_A, links.IP_address_B, links.technology, " \
-                        "links.frequency_A, links.frequency_B, links.polarization, " \
-                        "sites_A.address AS address_A, " \
-                        "sites_B.address AS address_B, " \
-                        "sites_A.X_coordinate AS longitude_A, " \
-                        "sites_B.X_coordinate AS longitude_B, " \
-                        "sites_A.Y_coordinate AS latitude_A, " \
-                        "sites_B.Y_coordinate AS latitude_B, " \
-                        "sites_A.X_dummy_coordinate AS dummy_longitude_A, " \
-                        "sites_B.X_dummy_coordinate AS dummy_longitude_B, " \
-                        "sites_A.Y_dummy_coordinate AS dummy_latitude_A, " \
-                        "sites_B.Y_dummy_coordinate AS dummy_latitude_B " \
-                        "FROM links " \
-                        "JOIN sites AS sites_A ON links.site_A = sites_A.ID " \
-                        "JOIN sites AS sites_B ON links.site_B = sites_B.ID;"
+                query = """
+                SELECT
+                  links.ID,
+                  links.IP_address_A,
+                  links.IP_address_B,
+                  links.frequency_A,
+                  links.frequency_B,
+                  links.polarization,
+                  sites_A.address AS address_A,
+                  sites_B.address AS address_B,
+                  sites_A.X_coordinate AS longitude_A,
+                  sites_B.X_coordinate AS longitude_B,
+                  sites_A.Y_coordinate AS latitude_A,
+                  sites_B.Y_coordinate AS latitude_B,
+                  sites_A.X_dummy_coordinate AS dummy_longitude_A,
+                  sites_B.X_dummy_coordinate AS dummy_longitude_B,
+                  sites_A.Y_dummy_coordinate AS dummy_latitude_A,
+                  sites_B.Y_dummy_coordinate AS dummy_latitude_B,
+                  technologies.name AS technology_name,
+                  telcorain_influx.measurement AS technology_influx
+                FROM
+                  links
+                JOIN sites AS sites_A ON links.site_A = sites_A.ID
+                JOIN sites AS sites_B ON links.site_B = sites_B.ID
+                JOIN technologies ON links.technology = technologies.ID
+                JOIN telcorain_influx ON technologies.telcorain_influx_ID = telcorain_influx.ID;
+                """
 
                 cursor.execute(query)
 
                 links = {}
 
-                for (ID, IP_address_A, IP_address_B, technology, frequency_A, frequency_B, polarization,
-                     address_A, address_B, longitude_A, longitude_B, latitude_A, latitude_B,
-                     dummy_longitude_A, dummy_longitude_B, dummy_latitude_A, dummy_latitude_B) in cursor:
+                for (ID, IP_address_A, IP_address_B, frequency_A, frequency_B, polarization, address_A, address_B,
+                     longitude_A, longitude_B, latitude_A, latitude_B, dummy_longitude_A, dummy_longitude_B,
+                     dummy_latitude_A, dummy_latitude_B, technology_name, technology_influx) in cursor:
                     link_length = calc_distance(latitude_A, longitude_A, latitude_B, longitude_B)
-                    link = MwLink(ID, address_A + ' <--> ' + address_B, technology, address_A, address_B, frequency_A,
-                                  frequency_B, polarization, IP_address_A, IP_address_B, link_length,
+
+                    link = MwLink(ID, address_A + ' <--> ' + address_B, technology_influx, address_A, address_B,
+                                  frequency_A, frequency_B, polarization, IP_address_A, IP_address_B, link_length,
                                   latitude_A, longitude_A, latitude_B, longitude_B,
                                   dummy_latitude_A, dummy_longitude_A, dummy_latitude_B, dummy_longitude_B)
+
                     links[ID] = link
 
                 return links
