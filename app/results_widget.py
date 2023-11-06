@@ -23,7 +23,7 @@ class Canvas(FigureCanvasQTAgg):
         self.fig.subplots_adjust(left, bottom, right, top)
 
         # TODO: load path from options
-        bg_map = pyplot.imread('./maps/prague_35x35.png')
+        bg_map = pyplot.imread('./assets/prague_35x35.png')
         self.ax.imshow(bg_map, zorder=0, extent=(x_min, x_max, y_min, y_max), aspect='auto')
 
         super(Canvas, self).__init__(self.fig)
@@ -39,33 +39,20 @@ class Canvas(FigureCanvasQTAgg):
 
 
 class ResultsWidget(QWidget):
-    # TODO: load from options
-    # rendered area borders
-    X_MIN = 14.21646819
-    X_MAX = 14.70604375
-    Y_MIN = 49.91505682
-    Y_MAX = 50.22841327
-
+    # TODO: load speed from settings
     # animation speed constant, later speed control can be implemented
     ANIMATION_SPEED = 1000
 
-    def __init__(self, tab_name: str, result_id: int, start: QDateTime, end: QDateTime, output_step: int,
-                 are_results_totals: bool, figs_path: str, is_pdf: bool, is_png: bool, tab_close, is_overall: bool,
-                 is_dummy: bool, calc_params: dict, realtime_writer):
+    def __init__(self, tab_name: str, result_id: int, figs_path: str, cp: dict, realtime_writer):
         super(QWidget, self).__init__()
         self.tab_name = tab_name
         self.result_id = result_id
-        self.start = start
-        self.end = end
-        self.output_step = output_step
-        self.are_results_totals = are_results_totals
         self.figs_path = figs_path
-        self.is_pdf = is_pdf
-        self.is_png = is_png
-        self.tab_close = tab_close
-        self.is_only_overall = is_overall
-        self.is_dummy = is_dummy
-        self.calc_params = calc_params
+
+        # calculation parameters dictionary
+        self.cp = cp
+
+        # DB realtime writer handler
         self.realtime_writer = realtime_writer
 
         # saves info
@@ -108,10 +95,10 @@ class ResultsWidget(QWidget):
 
         # display info
         self.tab_name_label.setText(tab_name)
-        self.start_label.setText(self.start.toString("dd.MM.yyyy HH:mm"))
-        self.end_label.setText(self.end.toString("dd.MM.yyyy HH:mm"))
-        self.interval_label.setText(str(self.output_step) + ' minutes')
-        if are_results_totals:
+        self.start_label.setText(cp['start'].toString("dd.MM.yyyy HH:mm"))
+        self.end_label.setText(cp['end'].toString("dd.MM.yyyy HH:mm"))
+        self.interval_label.setText(str(cp['output_step']) + ' minutes')
+        if cp['is_output_total']:
             self.output_label.setText('Totals (mm)')
         else:
             self.output_label.setText('Intensity (mm/h)')
@@ -121,8 +108,8 @@ class ResultsWidget(QWidget):
         self.rain_cmap.set_under('k', alpha=0)
 
         # prepare canvases
-        self.overall_canvas = Canvas(self.X_MIN, self.X_MAX, self.Y_MIN, self.Y_MAX, dpi=75)
-        self.animation_canvas = Canvas(self.X_MIN, self.X_MAX, self.Y_MIN, self.Y_MAX, dpi=75)
+        self.overall_canvas = Canvas(cp['X_MIN'], cp['X_MAX'], cp['Y_MIN'], cp['Y_MAX'], dpi=75)
+        self.animation_canvas = Canvas(cp['X_MIN'], cp['X_MAX'], cp['Y_MIN'], cp['Y_MAX'], dpi=75)
 
         # declare animation rain grids
         self.animation_grids = []
@@ -132,7 +119,7 @@ class ResultsWidget(QWidget):
 
         # init animation counter
         self.animation_counter = 0
-        self.current_anim_time = start
+        self.current_anim_time = cp['start']
 
         # init animation slider
         self.slider_return_to_anim = False
@@ -183,7 +170,7 @@ class ResultsWidget(QWidget):
 
         # render first figure of the animation
         self._refresh_fig(self.animation_canvas, x_grid, y_grid, rain_grids[0], self.anim_annotations,
-                          is_total=self.are_results_totals)
+                          is_total=self.cp['is_output_total'])
 
         # hide notification
         self.change_no_anim_notification(False)
@@ -263,7 +250,7 @@ class ResultsWidget(QWidget):
 
         # do only when first time fired
         if not self.figs_save_info[-1]:
-            if self.is_pdf:
+            if self.cp['is_pdf']:
                 dialog = QMessageBox(self)
                 dialog.setWindowTitle("Notice")
                 dialog.setText('PDF saves take several seconds in current implementation.')
@@ -275,7 +262,8 @@ class ResultsWidget(QWidget):
             self.figs_full_path = f'{self.figs_path}/{current_time}'
             os.makedirs(self.figs_full_path, exist_ok=True)
 
-            overall_file = self.start.toString("yyyy-MM-dd_HH-mm-ss") + '_to_' + self.end.toString("yyyy-MM-dd_HH-mm-ss")
+            overall_file = self.cp['start'].toString("yyyy-MM-dd_HH-mm-ss") + '_to_' + \
+                           self.cp['end'].toString("yyyy-MM-dd_HH-mm-ss")
             self._save_figs(self.overall_canvas, overall_file, 120)
 
             self.butt_open.setEnabled(True)
@@ -283,15 +271,16 @@ class ResultsWidget(QWidget):
 
         if len(self.animation_grids) > 0:
             current_file = self.current_anim_time.toString("yyyy-MM-dd_HH-mm-ss")
-            if self.are_results_totals:
-                current_file = current_file + f'_{self.output_step}m_total'
+            ostp = self.cp['output_step']
+            if self.cp['is_output_total']:
+                current_file = current_file + f'_{ostp}m_total'
             else:
-                current_file = current_file + f'_{self.output_step}m_mean_R'
+                current_file = current_file + f'_{ostp}m_mean_R'
 
             self._save_figs(self.animation_canvas, current_file, 96)
             self.figs_save_info[self.animation_counter] = True
 
-        if not self.is_only_overall:
+        if not self.cp['is_only_overall']:
             self._set_enabled_controls(True)
 
     def open_folder_fired(self):
@@ -299,7 +288,7 @@ class ResultsWidget(QWidget):
         webbrowser.open(os.path.realpath(self.figs_full_path))
 
     def close_tab_fired(self):
-        self.tab_close(self.result_id)
+        self.cp['close_func'](self.result_id)
 
     def _update_save_button(self):
         if self.animation_counter not in self.figs_save_info:
@@ -311,21 +300,21 @@ class ResultsWidget(QWidget):
             self.butt_save.setEnabled(True)
 
     def _save_figs(self, canvas, file: str, dpi: int):
-        if self.is_png:
+        if self.cp['is_png']:
             canvas.print_figure(filename=self.figs_full_path + '/' + file + '.png', format='png',
                                 dpi=dpi, bbox_inches='tight', pad_inches=0.3)
-        if self.is_pdf:
+        if self.cp['is_pdf']:
             canvas.print_figure(filename=self.figs_full_path + '/' + file + '.pdf', format='pdf',
                                 dpi=dpi, bbox_inches='tight', pad_inches=0.3)
 
     def _update_animation_time(self):
-        self.current_anim_time = self.start.addSecs(self.output_step * (self.animation_counter + 1) * 60)
+        self.current_anim_time = self.cp['start'].addSecs(self.cp['output_step'] * (self.animation_counter + 1) * 60)
         self.label_current_fig_time.setText(self.current_anim_time.toString("dd.MM.yyyy HH:mm:ss"))
 
     def _update_animation_fig(self):
         self._refresh_fig(self.animation_canvas, self.animation_x_grid, self.animation_y_grid,
                           self.animation_grids[self.animation_counter], self.anim_annotations,
-                          is_total=self.are_results_totals)
+                          is_total=self.cp['is_output_total'])
         self.animation_canvas.draw()
 
     def _refresh_fig(self, canvas, x_grid, y_grid, rain_grid, annotations, is_total: bool = False):
@@ -354,7 +343,7 @@ class ResultsWidget(QWidget):
             annotations.append(canvas.ax.annotate(text='{:.1f}'.format(z), xy=(coords[0], coords[1]), fontsize=14))
 
     def _plot_link_lines(self, links_data, ax):
-        if self.is_dummy:
+        if self.cp['is_dummy']:
             ax.plot([links_data.dummy_a_longitude, links_data.dummy_b_longitude],
                     [links_data.dummy_a_latitude, links_data.dummy_b_latitude],
                     'k', linewidth=1)
@@ -364,8 +353,8 @@ class ResultsWidget(QWidget):
                     'k', linewidth=1)
 
     def _get_z_value(self, z_grid, x: float, y: float) -> float:
-        x_pos = round((x - self.X_MIN) * (1 / self.calc_params['resolution']))
-        y_pos = round((y - self.Y_MIN) * (1 / self.calc_params['resolution']))
+        x_pos = round((x - self.cp['X_MIN']) * (1 / self.cp['interpol_res']))
+        y_pos = round((y - self.cp['Y_MIN']) * (1 / self.cp['interpol_res']))
         return z_grid[y_pos][x_pos]
 
     def _slider_pressed(self):
@@ -396,10 +385,10 @@ class ResultsWidget(QWidget):
         self.slider.setEnabled(enabled)
 
     def _show_info(self):
-        p = self.calc_params
-        labels = [QLabel(str(p['roll'])), QLabel(str(p['sd'])), QLabel(str(p['base_smp'])),
-                  QLabel(str(p['resolution'])), QLabel(str(p['pow'])), QLabel(str(p['near'])), QLabel(str(p['dist'])),
-                  QLabel(str(p['schleiss_m'])), QLabel(str(p['schleiss_t']))]
+        labels = [QLabel(str(self.cp['rolling_hours'])), QLabel(str(self.cp['wet_dry_deviation'])),
+                  QLabel(str(self.cp['baseline_samples'])), QLabel(str(self.cp['interpol_res'])),
+                  QLabel(str(self.cp['idw_power'])), QLabel(str(self.cp['idw_near'])), QLabel(str(self.cp['idw_dist'])),
+                  QLabel(str(self.cp['waa_schleiss_val'])), QLabel(str(self.cp['waa_schleiss_tau']))]
 
         for x in range(9):
             labels[x].setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)

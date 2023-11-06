@@ -1,9 +1,10 @@
 import datetime
 
 import numpy as np
-import pycomlink as pycml
+import pycomlink.processing as pycmlp
+import pycomlink.spatial as pycmls
 import xarray as xr
-from PyQt6.QtCore import QRunnable, QObject, QDateTime, pyqtSignal
+from PyQt6.QtCore import QRunnable, QObject, pyqtSignal
 
 from procedures import temperature_correlation, temperature_compensation
 
@@ -16,18 +17,7 @@ class CalcSignals(QObject):
 
 
 class Calculation(QRunnable):
-    # TODO: load from options
-    # rendered area borders
-    X_MIN = 14.21646819
-    X_MAX = 14.70604375
-    Y_MIN = 49.91505682
-    Y_MAX = 50.22841327
-
-    def __init__(self, influx_man, signals: CalcSignals, results_id: int, links: dict, selection: dict, start: QDateTime,
-                 end: QDateTime, interval: int, rolling_vals: int, output_step: int, is_only_overall: bool,
-                 is_output_total: bool, wet_dry_deviation: float, baseline_samples: int, interpol_res, idw_pow,
-                 idw_near, idw_dist, schleiss_val, schleiss_tau, is_temp_compensated,
-                 spin_correlation, combo_realtime, is_historic, is_temp_removed, is_window_centered):
+    def __init__(self, influx_man, signals: CalcSignals, results_id: int, links: dict, selection: dict, cp: dict):
 
         QRunnable.__init__(self)
         self.influx_man = influx_man
@@ -35,27 +25,9 @@ class Calculation(QRunnable):
         self.results_id = results_id
         self.links = links
         self.selection = selection
-        self.start = start
-        self.end = end
-        self.interval = interval
-        self.rolling_vals = rolling_vals
-        self.output_step = output_step
-        self.is_only_overall = is_only_overall
-        self.is_output_total = is_output_total
-        self.wet_dry_deviation = wet_dry_deviation
-        self.baseline_samples = baseline_samples
-        self.interpol_res = interpol_res
-        self.idw_pow = idw_pow
-        self.idw_near = idw_near
-        self.idw_dist = idw_dist
-        self.schleiss_val = schleiss_val
-        self.schleiss_tau = schleiss_tau
-        self.is_temp_compensated = is_temp_compensated
-        self.correlation_threshold = spin_correlation
-        self.realtime_timewindow = combo_realtime
-        self.is_historic = is_historic
-        self.is_temp_filtered = is_temp_removed
-        self.centered = is_window_centered
+
+        # calculation parameters dictionary
+        self.cp = cp
         
         # run counter in case of realtime calculation
         self.realtime_runs: int = 0
@@ -66,10 +38,10 @@ class Calculation(QRunnable):
 
     def run(self):
         self.realtime_runs += 1
-        if self.is_historic:
-            log_run_id = "CALC ID: " + str(self.results_id)
-        else:
+        if self.cp['is_realtime']:
             log_run_id = "CALC ID: " + str(self.results_id) + ", RUN: " + str(self.realtime_runs)
+        else:
+            log_run_id = "CALC ID: " + str(self.results_id)
             
         print(f"[{log_run_id}] Rainfall calculation procedure started.", flush=True)
 
@@ -101,14 +73,15 @@ class Calculation(QRunnable):
             self.signals.progress_signal.emit({'prg_val': 5})
             print(f"[{log_run_id}] Querying InfluxDB for selected microwave links data...", flush=True)
 
-            # Notify we are doing historic calculation
-            if self.is_historic:
-                print(f"[{log_run_id}] Historic data procedure started.", flush=True)
-                influx_data = self.influx_man.query_signal_mean(ips, self.start, self.end, self.interval)
-            # In other case, realtime calculation is being done
-            else:
+            # Realtime calculation is being done
+            if self.cp['is_realtime']:
                 print(f"[{log_run_id}] Realtime data procedure started.", flush=True)
-                influx_data = self.influx_man.query_signal_mean_realtime(ips, self.realtime_timewindow, self.interval)
+                influx_data = self.influx_man.query_signal_mean_realtime(ips, self.cp['realtime_timewindow'],
+                                                                         self.cp['step'])
+            # In other case, notify we are doing historic calculation
+            else:
+                print(f"[{log_run_id}] Historic data procedure started.", flush=True)
+                influx_data = self.influx_man.query_signal_mean(ips, self.cp['start'], self.cp['end'], self.cp['step'])
 
             diff = len(ips) - len(influx_data)
 
@@ -314,14 +287,15 @@ class Calculation(QRunnable):
                                              one, according to the created tempreture compensation algorithm
                 """
 
-                if self.is_temp_filtered:
+                if self.cp['is_temp_filtered']:
                     print(f"[{log_run_id}] Remove-link procedure started.")
                     temperature_correlation.pearson_correlation(count, ips, current_link, links_to_delete, link,
-                                                                self.correlation_threshold)
+                                                                self.cp['correlation_threshold'])
 
-                if self.is_temp_compensated:
+                if self.cp['is_temp_compensated']:
                     print(f"[{log_run_id}] Compensation algorithm procedure started.")
-                    temperature_compensation.compensation(count, ips, current_link, link, self.correlation_threshold)
+                    temperature_compensation.compensation(count, ips, current_link, link,
+                                                          self.cp['correlation_threshold'])
 
                 """
                 'current_link += 1' serves to accurately list the 'count' and ip address of CML unit
@@ -339,30 +313,28 @@ class Calculation(QRunnable):
 
             for link in calc_data:
                 # determine wet periods
-                link['wet'] = link.trsl.rolling(time=self.rolling_vals, center=self.centered).std(skipna=False) > \
-                              self.wet_dry_deviation
+                link['wet'] = link.trsl.rolling(time=self.cp['rolling_values'], center=self.cp['is_window_centered'])\
+                                  .std(skipna=False) > self.cp['wet_dry_deviation']
 
                 # calculate ratio of wet periods
                 link['wet_fraction'] = (link.wet == 1).sum() / (link.wet == 0).sum()
 
                 # determine signal baseline
-                link['baseline'] = pycml.processing.baseline.baseline_constant(trsl=link.trsl, wet=link.wet,
-                                                                               n_average_last_dry=self.baseline_samples)
+                link['baseline'] = pycmlp.baseline.baseline_constant(trsl=link.trsl, wet=link.wet,
+                                                                     n_average_last_dry=self.cp['baseline_samples'])
 
                 # calculate wet antenna attenuation
-                link['waa'] = pycml.processing.wet_antenna.waa_schleiss_2013(rsl=link.trsl, baseline=link.baseline,
-                                                                             wet=link.wet,
-                                                                             waa_max=self.schleiss_val,
-                                                                             delta_t=60 / (
-                                                                                         (60 / self.interval) * 60),
-                                                                             tau=self.schleiss_tau)
+                link['waa'] = pycmlp.wet_antenna.waa_schleiss_2013(rsl=link.trsl, baseline=link.baseline, wet=link.wet,
+                                                                   waa_max=self.cp['waa_schleiss_val'],
+                                                                   delta_t=60 / ((60 / self.cp['step']) * 60),
+                                                                   tau=self.cp['waa_schleiss_tau'])
 
                 # calculate final rain attenuation
                 link['A'] = link.trsl - link.baseline - link.waa
 
                 # calculate rain intensity
-                link['R'] = pycml.processing.k_R_relation.calc_R_from_A(A=link.A, L_km=float(link.length),
-                                                                        f_GHz=link.frequency, pol=link.polarization)
+                link['R'] = pycmlp.k_R_relation.calc_R_from_A(A=link.A, L_km=float(link.length),
+                                                              f_GHz=link.frequency, pol=link.polarization)
 
                 self.signals.progress_signal.emit({'prg_val': round((current_link / link_count) * 40) + 50})
                 current_link += 1
@@ -394,13 +366,13 @@ class Calculation(QRunnable):
             calc_data_1h['lat_center'] = (calc_data_1h.site_a_latitude + calc_data_1h.site_b_latitude) / 2
             calc_data_1h['lon_center'] = (calc_data_1h.site_a_longitude + calc_data_1h.site_b_longitude) / 2
 
-            interpolator = pycml.spatial.interpolator.IdwKdtreeInterpolator(nnear=self.idw_near, p=self.idw_pow,
-                                                                            exclude_nan=True,
-                                                                            max_distance=self.idw_dist)
+            interpolator = pycmls.interpolator.IdwKdtreeInterpolator(nnear=self.cp['idw_near'], p=self.cp['idw_power'],
+                                                                     exclude_nan=True,
+                                                                     max_distance=self.cp['idw_dist'])
 
             # calculate coordinate grids with defined area boundaries
-            x_coords = np.arange(self.X_MIN, self.X_MAX, self.interpol_res)
-            y_coords = np.arange(self.Y_MIN, self.Y_MAX, self.interpol_res)
+            x_coords = np.arange(self.cp['X_MIN'], self.cp['X_MAX'], self.cp['interpol_res'])
+            y_coords = np.arange(self.cp['Y_MIN'], self.cp['Y_MAX'], self.cp['interpol_res'])
             x_grid, y_grid = np.meshgrid(x_coords, y_coords)
 
             rain_grid = interpolator(x=calc_data_1h.lon_center, y=calc_data_1h.lat_center,
@@ -416,25 +388,25 @@ class Calculation(QRunnable):
                 "x_grid": x_grid,
                 "y_grid": y_grid,
                 "rain_grid": rain_grid,
-                "is_it_all": self.is_only_overall,
+                "is_it_all": self.cp['is_only_overall'],
             })
 
             # ***** SECOND PART: Calculate individual maps for animation ******
 
             # continue only if is it desired, else end
-            if not self.is_only_overall:
+            if not self.cp['is_only_overall']:
 
                 print(f"[{log_run_id}] Resampling data for rainfall animation maps...")
 
                 # resample data to desired resolution, if needed
-                if self.output_step == 60:  # if case of one hour steps, use already existing resamples
+                if self.cp['output_step'] == 60:  # if case of one hour steps, use already existing resamples
                     calc_data_steps = calc_data_1h
-                elif self.output_step > self.interval:
+                elif self.cp['output_step'] > self.cp['step']:
+                    os = self.cp['output_step']
                     calc_data_steps = xr.concat(
-                        objs=[cml.R.resample(time=f'{self.output_step}m', label='right').mean() for cml in
-                              calc_data],
-                        dim='cml_id').to_dataset()
-                elif self.output_step == self.interval:  # in case of same intervals, no resample needed
+                        objs=[cml.R.resample(time=f'{os}m', label='right').mean() for cml in calc_data], dim='cml_id'
+                    ).to_dataset()
+                elif self.cp['output_step'] == self.cp['step']:  # in case of same intervals, no resample needed
                     calc_data_steps = xr.concat(calc_data, dim='cml_id')
                 else:
                     raise ValueError("Invalid value of output_steps")
@@ -445,9 +417,9 @@ class Calculation(QRunnable):
                 del calc_data
 
                 # calculate totals instead of intensities, if desired
-                if self.is_output_total:
+                if self.cp['is_output_total']:
                     # get calc ratio
-                    time_ratio = 60 / self.output_step  # 60 = 1 hour, since rain intensity is measured in mm/hour
+                    time_ratio = 60 / self.cp['output_step']  # 60 = 1 hour, since rain intensity is measured in mm/hour
                     # overwrite values with totals per output step interval
                     calc_data_steps['R'] = calc_data_steps.R / time_ratio
 
@@ -456,7 +428,7 @@ class Calculation(QRunnable):
                 print(f"[{log_run_id}] Interpolating spatial data for rainfall animation maps...")
 
                 # if output step is 60, it's already done
-                if self.output_step != 60:
+                if self.cp['output_step'] != 60:
                     # central points of the links are considered in interpolation algorithms
                     calc_data_steps['lat_center'] = \
                         (calc_data_steps.site_a_latitude + calc_data_steps.site_b_latitude) / 2

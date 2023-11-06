@@ -333,7 +333,7 @@ class MainWindow(QMainWindow):
 
         if self.running_realtime is not None:
             timediff = datetime.now() - self.realtime_last_run
-            interval = self.results_tabs[meta_data['id']].output_step * 60 + 10
+            interval = self.results_tabs[meta_data['id']].cp['output_step'] * 60 + 10
 
             if timediff.total_seconds() < interval:
                 self.butt_abort.setEnabled(True)
@@ -376,70 +376,38 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage(msg)
             return
 
-        # get parameters from Qt widgets
-        start = self.datetime_start.dateTime()
-        end = self.datetime_stop.dateTime()
-        step = self.spin_timestep.value()
-        time_diff = start.msecsTo(end)
-        rolling_hours = self.spin_roll_window.value()
-        rolling_values = int((rolling_hours * 60) / step)
-        wet_dry_deviation = self.spin_wet_dry_sd.value()
-        baseline_samples = self.spin_baseline_samples.value()
-        interpol_res = self.spin_interpol_res.value()
-        idw_power = self.spin_idw_power.value()
-        idw_near = self.spin_idw_near.value()
-        idw_dist = self.spin_idw_dist.value()
-        output_step = self.spin_output_step.value()
-        is_only_overall = self.box_only_overall.isChecked()
-        is_output_total = self.radio_output_total.isChecked()
-        is_pdf = self.pdf_box.isChecked()
-        is_png = self.png_box.isChecked()
-        is_dummy = self.check_dummy.isChecked()
-        waa_schleiss_val = self.spin_waa_schleiss_val.value()
-        waa_schleiss_tau = self.spin_waa_schleiss_tau.value()
-        close_func = self.close_tab_result
-        is_correlation = self.compensation_box.isChecked()
-        spin_correlation = self.correlation_spin.value()
-        combo_realtime = self.combo_realtime.currentText()
-        is_realtime = self.radio_realtime.isChecked()
-        is_remove = self.correlation_filter_box.isChecked()
-        is_output_write = self.write_output_box.isChecked()
-        is_window_centered = True if self.window_pointer_combo.currentIndex() == 0 else False
-        retention = int(self.config_man.read_option('realtime', 'retention'))
-        X_MIN = float(self.config_man.read_option('rendering', 'X_MIN'))
-        X_MAX = float(self.config_man.read_option('rendering', 'X_MAX'))
-        Y_MIN = float(self.config_man.read_option('rendering', 'Y_MIN'))
-        Y_MAX = float(self.config_man.read_option('rendering', 'Y_MAX'))
+        # create dict with calculation parameters
+        cp = self._get_calc_params()
 
         # for writing output data back into DB, we need working MariaDB connection
-        if is_output_write and self.sql_status != 1:
+        if cp['is_output_write'] and self.sql_status != 1:
             msg = "Cannot start realtime calculation, MariaDB connection is not available."
             print(f"[WARNING] {msg}")
             self.statusBar().showMessage(msg)
             return
 
         # INPUT CHECKS:
-        if time_diff < 0:   # if timediff is less than 1 hour (in msecs)
+        if cp['time_diff'] < 0:   # if timediff is less than 1 hour (in msecs)
             msg = "Bad input! Entered bigger (or same) start date than end date!"
             print(f"[WARNING] {msg}")
-        elif time_diff < 3600000:
+        elif cp['time_diff'] < 3600000:
             msg = "Bad input! Time difference between start and end times must be at least 1 hour."
             print(f"[WARNING] {msg}")
-        elif (time_diff / (step * 60000)) < 12:
+        elif (cp['time_diff'] / (cp['step'] * 60000)) < 12:
             # TODO: load magic constant 12 from options
             msg = "Bad input! Data resolution must be at least 12 times lower than input time interval length."
             print(f"[WARNING] {msg}")
-        elif rolling_values < 6:
+        elif cp['rolling_values'] < 6:
             # TODO: load magic constant 6 from options
-            msg = f"Rolling time window length must be, for these times, at least {(step * 6) / 60} hours."
+            msg = f"Rolling time window length must be, for these times, at least {(cp['step'] * 6) / 60} hours."
             print(f"[WARNING] {msg}")
-        elif (rolling_hours * 3600000) > time_diff:
+        elif (cp['rolling_hours'] * 3600000) > cp['time_diff']:
             msg = f"Rolling time window length cannot be longer than set time interval."
             print(f"[WARNING] {msg}")
-        elif output_step < step:
+        elif cp['output_step'] < cp['step']:
             msg = f"Output frame interval cannot be shorter than initial data resolution."
             print(f"[WARNING] {msg}")
-        elif step > 59:
+        elif cp['step'] > 59:
             msg = f"Input time interval cannot be longer than 59 minutes."
             print(f"[WARNING] {msg}")
         else:
@@ -447,55 +415,34 @@ class MainWindow(QMainWindow):
 
             # create calculation instance
             calculation = Calculation(self.influx_man, self.calc_signals, self.result_id, self.links,
-                                      self.current_selection, start, end, step, rolling_values, output_step,
-                                      is_only_overall, is_output_total, wet_dry_deviation, baseline_samples,
-                                      interpol_res, idw_power, idw_near, idw_dist, waa_schleiss_val, waa_schleiss_tau,
-                                      is_correlation, spin_correlation, combo_realtime, not is_realtime, is_remove,
-                                      is_window_centered)
+                                      self.current_selection, cp)
 
             if self.results_name.text() == "":
                 results_tab_name = "<no name>"
             else:
                 results_tab_name = self.results_name.text()
 
-            # pass some calc params into the results in dict
-            params = {
-                'roll': rolling_hours,
-                'sd': wet_dry_deviation,
-                'base_smp': baseline_samples,
-                'resolution': interpol_res,
-                'pow': idw_power,
-                'near': idw_near,
-                'dist': idw_dist,
-                'schleiss_m': waa_schleiss_val,
-                'schleiss_t': waa_schleiss_tau,
-            }
-
             # create results widget instance
-            if is_output_write:
+            if cp['is_output_write']:
                 start_time = datetime.utcnow()
-                output_delta = timedelta(minutes=output_step)
+                output_delta = timedelta(minutes=cp['output_step'])
                 since_time = start_time - output_delta
 
                 realtime_w = RealtimeWriter(self.sql_man, self.influx_man, False, since_time)
-                self.results_tabs[self.result_id] = ResultsWidget(results_tab_name, self.result_id, start, end,
-                                                                  output_step, is_output_total, self.path, is_pdf,
-                                                                  is_png, close_func, is_only_overall, is_dummy, params,
+                self.results_tabs[self.result_id] = ResultsWidget(results_tab_name, self.result_id, self.path, cp,
                                                                   realtime_writer=realtime_w)
             else:
-                self.results_tabs[self.result_id] = ResultsWidget(results_tab_name, self.result_id, start, end,
-                                                                  output_step, is_output_total, self.path, is_pdf,
-                                                                  is_png, close_func, is_only_overall, is_dummy, params,
+                self.results_tabs[self.result_id] = ResultsWidget(results_tab_name, self.result_id, self.path, cp,
                                                                   realtime_writer=None)
 
             self.results_name.clear()
             self.butt_start.setEnabled(False)
 
-            if is_realtime:
+            if cp['is_realtime']:
                 calculation.setAutoDelete(False)
                 self.running_realtime = calculation
 
-                if is_output_write:
+                if cp['is_output_write']:
                     params = self.sql_man.get_last_realtime()
                     print("Realtime outputs writing activated!")
                     if len(params) != 0:
@@ -503,10 +450,10 @@ class MainWindow(QMainWindow):
                               f"{params['start_time'].strftime('%Y-%m-%d %H:%M:%S')} and ran with parameters: "
                               f"retention: {(params['retention']/60):.0f} h, step: {(params['timestep']/60):.0f} min, "
                               f"grid resolution: {(params['resolution']):.8f} °.")
-                    print(f"Current realtime parameters are: retention: {retention} h, step: "
-                          f"{output_step} min, grid resolution: {interpol_res:.8f} °.")
-                    self.sql_man.insert_realtime(retention * 60, output_step * 60, interpol_res,
-                                                 X_MIN, X_MAX, Y_MIN, Y_MAX)
+                    print(f"Current realtime parameters are: retention: {cp['retention']} h, step: "
+                          f"{cp['output_step']} min, grid resolution: {cp['interpol_res']:.8f} °.")
+                    self.sql_man.insert_realtime(cp['retention'] * 60, cp['output_step'] * 60, cp['interpol_res'],
+                                                 cp['X_MIN'], cp['X_MAX'], cp['Y_MIN'], cp['Y_MAX'])
 
                 self._pool_realtime_run()
                 msg = "Processing realtime calculation iteration..."
@@ -737,6 +684,80 @@ class MainWindow(QMainWindow):
     def _fill_linksets(self):
         for link_set in self.sets_man.sections:
             self.lists.addItem(link_set)
+
+    # get parameters from Qt widgets and config manager and pass them into dictionary
+    def _get_calc_params(self) -> {}:
+        start = self.datetime_start.dateTime()
+        end = self.datetime_stop.dateTime()
+        step = self.spin_timestep.value()
+        time_diff = start.msecsTo(end)
+        rolling_hours = self.spin_roll_window.value()
+        rolling_values = int((rolling_hours * 60) / step)
+        wet_dry_deviation = self.spin_wet_dry_sd.value()
+        baseline_samples = self.spin_baseline_samples.value()
+        interpol_res = self.spin_interpol_res.value()
+        idw_power = self.spin_idw_power.value()
+        idw_near = self.spin_idw_near.value()
+        idw_dist = self.spin_idw_dist.value()
+        output_step = self.spin_output_step.value()
+        is_only_overall = self.box_only_overall.isChecked()
+        is_output_total = self.radio_output_total.isChecked()
+        is_pdf = self.pdf_box.isChecked()
+        is_png = self.png_box.isChecked()
+        is_dummy = self.check_dummy.isChecked()
+        waa_schleiss_val = self.spin_waa_schleiss_val.value()
+        waa_schleiss_tau = self.spin_waa_schleiss_tau.value()
+        close_func = self.close_tab_result
+        is_temp_compensated = self.compensation_box.isChecked()
+        correlation_threshold = self.correlation_spin.value()
+        realtime_timewindow = self.combo_realtime.currentText()
+        is_realtime = self.radio_realtime.isChecked()
+        is_temp_filtered = self.correlation_filter_box.isChecked()
+        is_output_write = self.write_output_box.isChecked()
+        is_window_centered = True if self.window_pointer_combo.currentIndex() == 0 else False
+        retention = int(self.config_man.read_option('realtime', 'retention'))
+        X_MIN = float(self.config_man.read_option('rendering', 'X_MIN'))
+        X_MAX = float(self.config_man.read_option('rendering', 'X_MAX'))
+        Y_MIN = float(self.config_man.read_option('rendering', 'Y_MIN'))
+        Y_MAX = float(self.config_man.read_option('rendering', 'Y_MAX'))
+
+        calculation_params = {
+            'start': start,
+            'end': end,
+            'step': step,
+            'time_diff': time_diff,
+            'rolling_hours': rolling_hours,
+            'rolling_values': rolling_values,
+            'wet_dry_deviation': wet_dry_deviation,
+            'baseline_samples': baseline_samples,
+            'interpol_res': interpol_res,
+            'idw_power': idw_power,
+            'idw_near': idw_near,
+            'idw_dist': idw_dist,
+            'output_step': output_step,
+            'is_only_overall': is_only_overall,
+            'is_output_total': is_output_total,
+            'is_pdf': is_pdf,
+            'is_png': is_png,
+            'is_dummy': is_dummy,
+            'waa_schleiss_val': waa_schleiss_val,
+            'waa_schleiss_tau': waa_schleiss_tau,
+            'close_func': close_func,
+            'is_temp_compensated': is_temp_compensated,
+            'correlation_threshold': correlation_threshold,
+            'realtime_timewindow': realtime_timewindow,
+            'is_realtime': is_realtime,
+            'is_temp_filtered': is_temp_filtered,
+            'is_output_write': is_output_write,
+            'is_window_centered': is_window_centered,
+            'retention': retention,
+            'X_MIN': X_MIN,
+            'X_MAX': X_MAX,
+            'Y_MIN': Y_MIN,
+            'Y_MAX': Y_MAX
+        }
+
+        return calculation_params
 
     # destructor
     def __del__(self):
