@@ -10,6 +10,11 @@ class MwLink:
         self.name_b = name_b
         self.freq_a = freq_a
         self.freq_b = freq_b
+
+        # since we can't handle cross polarization yet, let's consider them to have vertical polarization temporarily
+        if polarization == "X":
+            polarization = "V"
+
         self.polarization = polarization
         self.ip_a = ip_a
         self.ip_b = ip_b

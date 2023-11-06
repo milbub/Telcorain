@@ -82,9 +82,9 @@ class Calculation(QRunnable):
             for link in self.selection:
                 if link in self.links:
                     # TODO: add dynamic exception list of constant Tx power devices
-                    # 1S10s and IP20Gs have constant Tx power, so only one unit can be included in query
+                    # 1S10s have constant Tx power, so only one unit can be included in query
                     # otherwise, both ends needs to be included in query, due Tx power correction
-                    if self.links[link].tech in ("1s10", "ip20G"):
+                    if self.links[link].tech in "1s10":
                         if self.selection[link] == 1:
                             ips.append(self.links[link].ip_a)
                         elif self.selection[link] == 2:
@@ -165,9 +165,9 @@ class Calculation(QRunnable):
                 is_b_in = self.links[link].ip_b in influx_data
 
                 # TODO: load from options list of constant Tx power devices
-                is_constant_tx_power = self.links[link].tech in ("1s10", "ip20G",)
+                is_constant_tx_power = self.links[link].tech in ("1s10",)
                 # TODO: load from options list of bugged techs with missing Tx zeros in InfluxDB
-                is_tx_power_bugged = self.links[link].tech in ("ip10",)
+                is_tx_power_bugged = self.links[link].tech in ("ceragon_ip_10",)
 
                 # skip links, where data of one unit (or both) are not available
                 # but constant Tx power devices are exceptions
