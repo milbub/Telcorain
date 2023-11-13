@@ -292,53 +292,58 @@ class MainWindow(QMainWindow):
             self.sql_status = 1
 
     # show overall results from calculation, called from signal
-    def show_overall_results(self, meta_data: dict):
+    def show_overall_results(self, sig_calc_dict: dict):
+        # get ID results tab
+        rs_id = sig_calc_dict["id"]
+
         # plot data in results tab
-        self.results_tabs[meta_data["id"]].render_overall_fig(meta_data["x_grid"],
-                                                              meta_data["y_grid"],
-                                                              meta_data["rain_grid"],
-                                                              meta_data["link_data"])
+        self.results_tabs[rs_id].render_overall_fig(sig_calc_dict["start"], sig_calc_dict["end"],
+                                                    sig_calc_dict["x_grid"], sig_calc_dict["y_grid"],
+                                                    sig_calc_dict["rain_grid"], sig_calc_dict["calc_data"])
 
         if not self.is_realtime_showed:
             # insert results tab to tab list
-            self.tabs.addTab(self.results_tabs[meta_data["id"]], self.results_icon,
-                             f"Results: {self.results_tabs[meta_data['id']].tab_name}")
+            self.tabs.addTab(self.results_tabs[rs_id], self.results_icon,
+                             f"Results: {self.results_tabs[rs_id].tab_name}")
             if self.running_realtime is not None:
                 self.is_realtime_showed = True
 
-        if meta_data["is_it_all"]:
-            self.statusBar().showMessage(f"Calculation \"{self.results_tabs[meta_data['id']].tab_name}\" is complete.")
+        if sig_calc_dict["is_it_all"]:
+            self.statusBar().showMessage(f"Calculation \"{self.results_tabs[rs_id].tab_name}\" is complete.")
 
             # restore buttons
             self.butt_abort.setEnabled(False)
             self.butt_start.setEnabled(True)
         else:
-            self.statusBar().showMessage(f"Overall plot in calculation \"{self.results_tabs[meta_data['id']].tab_name}"
-                                         f"\" is complete. Animation figures are now interpolated...")
-            self.results_tabs[meta_data["id"]].change_no_anim_notification(still_interpolating=True)
+            self.statusBar().showMessage(f"Overall plot in calculation \"{self.results_tabs[rs_id].tab_name}\" "
+                                         f"is complete. Animation figures are now interpolated...")
+            self.results_tabs[rs_id].change_no_anim_notification(still_interpolating=True)
 
         # return progress bar to default state
         self.status_prg_bar.setValue(0)
 
     # show animation results from calculation, called from signal
-    def show_animation_results(self, meta_data: dict):
+    def show_animation_results(self, sig_calc_dict: dict):
+        # get ID results tab
+        rs_id = sig_calc_dict["id"]
+
         # show animation data in results tab
-        self.results_tabs[meta_data["id"]].render_first_animation_fig(meta_data["x_grid"],
-                                                                      meta_data["y_grid"],
-                                                                      meta_data["rain_grids"],
-                                                                      meta_data["link_data"])
+        self.results_tabs[rs_id].render_first_animation_fig(sig_calc_dict["x_grid"],
+                                                            sig_calc_dict["y_grid"],
+                                                            sig_calc_dict["rain_grids"],
+                                                            sig_calc_dict["calc_data"])
 
         # return progress bar to default state
         self.status_prg_bar.setValue(0)
 
         if self.running_realtime is not None:
             timediff = datetime.now() - self.realtime_last_run
-            interval = self.results_tabs[meta_data['id']].cp['output_step'] * 60 + 10
+            interval = self.results_tabs[rs_id].cp['output_step'] * 60 + 10
 
             if timediff.total_seconds() < interval:
                 self.butt_abort.setEnabled(True)
                 msg = str(f"Realtime iteration #{self.running_realtime.realtime_runs} of calculation "
-                          f"\"{self.results_tabs[meta_data['id']].tab_name}\" is complete. "
+                          f"\"{self.results_tabs[rs_id].tab_name}\" is complete. "
                           f"Next iteration starts in {int(interval - timediff.total_seconds())} seconds.")
                 self.realtime_timer.start(int(interval - timediff.total_seconds()) * 1000)
             else:
@@ -347,9 +352,9 @@ class MainWindow(QMainWindow):
 
         else:
             self.butt_start.setEnabled(True)
-            msg = str(f"Calculation \"{self.results_tabs[meta_data['id']].tab_name}\" is complete.")
+            msg = str(f"Calculation \"{self.results_tabs[rs_id].tab_name}\" is complete.")
 
-        del meta_data
+        del sig_calc_dict
         self.statusBar().showMessage(msg)
 
     # show info about error in calculation, called from signal

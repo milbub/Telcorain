@@ -3,7 +3,7 @@ import gc
 import webbrowser
 import matplotlib
 from PyQt6 import uic, QtCore
-from PyQt6.QtCore import QDateTime, QTimer
+from PyQt6.QtCore import QDateTime, QTimeZone, QTimer
 from PyQt6.QtWidgets import QWidget, QLabel, QGridLayout, QSlider, QPushButton, QMessageBox, QTableWidget
 from matplotlib import cm, colors, pyplot
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
@@ -93,15 +93,8 @@ class ResultsWidget(QWidget):
         self.butt_open.clicked.connect(self.open_folder_fired)
         self.butt_close.clicked.connect(self.close_tab_fired)
 
-        # display info
+        # set tab name
         self.tab_name_label.setText(tab_name)
-        self.start_label.setText(cp['start'].toString("dd.MM.yyyy HH:mm"))
-        self.end_label.setText(cp['end'].toString("dd.MM.yyyy HH:mm"))
-        self.interval_label.setText(str(cp['output_step']) + ' minutes')
-        if cp['is_output_total']:
-            self.output_label.setText('Totals (mm)')
-        else:
-            self.output_label.setText('Intensity (mm/h)')
 
         # setup colormap for plots
         self.rain_cmap = cm.get_cmap('turbo', 15)
@@ -111,15 +104,25 @@ class ResultsWidget(QWidget):
         self.overall_canvas = Canvas(cp['X_MIN'], cp['X_MAX'], cp['Y_MIN'], cp['Y_MAX'], dpi=75)
         self.animation_canvas = Canvas(cp['X_MIN'], cp['X_MAX'], cp['Y_MIN'], cp['Y_MAX'], dpi=75)
 
-        # declare animation rain grids
+        # init animation rain grids list
         self.animation_grids = []
         self.animation_x_grid = None
         self.animation_y_grid = None
+
+        # init link lines list
+        self.anim_link_lines = []
+        self.overall_link_lines = []
+
+        # we need to track if something is already displayed, so some things can be run only once
         self.is_displayed = False
 
         # init animation counter
         self.animation_counter = 0
-        self.current_anim_time = cp['start']
+        self.current_anim_time = None
+
+        # init calc start and end time vals
+        self.start_time = None
+        self.end_time = None
 
         # init animation slider
         self.slider_return_to_anim = False
@@ -131,10 +134,10 @@ class ResultsWidget(QWidget):
         self.animation_timer = QTimer()  # create timer for next checks
         self.animation_timer.timeout.connect(self.next_animation_fig)
 
-        # show calculation parameters info
-        self._show_info()
+        # fill calculation info
+        self._fill_info()
 
-        # value point coordinates (X, Y)
+        # point values coordinates (X, Y)
         # TODO: load coordinates from file, implement adding, deleting, editing, ...
         self.points = [(14.352689, 50.080843), (14.4278, 50.0692), (14.4619, 50.0758), (14.5381, 50.1233)]
         self.anim_annotations = []
@@ -149,18 +152,30 @@ class ResultsWidget(QWidget):
             self.butt_save.setEnabled(True)
 
     # called from signal
-    def render_overall_fig(self, x_grid, y_grid, rain_grid, links_calc_data):
+    def render_overall_fig(self, start, end, x_grid, y_grid, rain_grid, calc_data):
+        # set start and end times
+        self._set_times(start, end)
+
         # render rainfall total
         self._refresh_fig(self.overall_canvas, x_grid, y_grid, rain_grid, self.overall_annotations, is_total=True)
 
         # plot link path lines
-        self._plot_link_lines(links_calc_data, self.overall_canvas.ax)
+        self._plot_link_lines(calc_data, self.overall_canvas.ax, self.overall_link_lines)
 
-        # show in overall canvas frame
-        self.overall_plot_layout.addWidget(self.overall_canvas)
+        # add canvas widget only once
+        # 'is_displayed' is set to True by first run of 'render_first_animation_fig' after rendering overall fig
+        if not self.is_displayed:
+            # show in overall canvas frame
+            self.overall_plot_layout.addWidget(self.overall_canvas)
+
+        del x_grid
+        del y_grid
+        del rain_grid
+        del calc_data
+        gc.collect()
 
     # called from signal
-    def render_first_animation_fig(self, x_grid, y_grid, rain_grids, links_calc_data):
+    def render_first_animation_fig(self, x_grid, y_grid, rain_grids, calc_data):
         del self.animation_grids
         del self.animation_x_grid
         del self.animation_y_grid
@@ -172,14 +187,16 @@ class ResultsWidget(QWidget):
         self._refresh_fig(self.animation_canvas, x_grid, y_grid, rain_grids[0], self.anim_annotations,
                           is_total=self.cp['is_output_total'])
 
+        # plot link path lines
+        self._plot_link_lines(calc_data, self.animation_canvas.ax, self.anim_link_lines)
+
         # hide notification
         self.change_no_anim_notification(False)
 
+        # add canvas widget only once
         if not self.is_displayed:
             # show in animation canvas frame
             self.main_plot_layout.addWidget(self.animation_canvas)
-            # plot link path lines
-            self._plot_link_lines(links_calc_data, self.animation_canvas.ax)
             # done, next time skip this
             self.is_displayed = True
 
@@ -194,10 +211,12 @@ class ResultsWidget(QWidget):
 
         # push results into DB
         if self.realtime_writer is not None:
-            self.realtime_writer.push_results(rain_grids, links_calc_data)
+            self.realtime_writer.push_results(rain_grids, calc_data)
 
+        del x_grid
+        del y_grid
         del rain_grids
-        del links_calc_data
+        del calc_data
         gc.collect()
 
     def start_pause_fired(self):
@@ -308,7 +327,7 @@ class ResultsWidget(QWidget):
                                 dpi=dpi, bbox_inches='tight', pad_inches=0.3)
 
     def _update_animation_time(self):
-        self.current_anim_time = self.cp['start'].addSecs(self.cp['output_step'] * (self.animation_counter + 1) * 60)
+        self.current_anim_time = self.start_time.addSecs(self.cp['output_step'] * self.animation_counter * 60)
         self.label_current_fig_time.setText(self.current_anim_time.toString("dd.MM.yyyy HH:mm:ss"))
 
     def _update_animation_fig(self):
@@ -329,6 +348,7 @@ class ResultsWidget(QWidget):
             annotation.remove()
         del annotations[:]
 
+        # render raingrid as colormesh
         canvas.pc = canvas.ax.pcolormesh(x_grid, y_grid, rain_grid, norm=colors.LogNorm(vmin=0.1, vmax=100),
                                          shading='nearest', cmap=self.rain_cmap, alpha=0.75)
         if is_total:
@@ -339,18 +359,34 @@ class ResultsWidget(QWidget):
         canvas.cbar.draw_all()
 
         for coords in self.points:
+            # get 'z' value of a point from rain grid
             z = self._get_z_value(rain_grid, coords[0], coords[1])
-            annotations.append(canvas.ax.annotate(text='{:.1f}'.format(z), xy=(coords[0], coords[1]), fontsize=14))
 
-    def _plot_link_lines(self, links_data, ax):
+            # plot an annotation and keep its reference
+            a = canvas.ax.annotate(text='{:.1f}'.format(z), xy=(coords[0], coords[1]), fontsize=14)
+
+            # store an annotation reference
+            annotations.append(a)
+
+    def _plot_link_lines(self, calc_data, ax, link_lines):
+        # remove old lines from the plot
+        for line in link_lines:
+            line.remove()
+        link_lines.clear()
+        del link_lines[:]
+
+        # plot new lines and keep their references
         if self.cp['is_dummy']:
-            ax.plot([links_data.dummy_a_longitude, links_data.dummy_b_longitude],
-                    [links_data.dummy_a_latitude, links_data.dummy_b_latitude],
-                    'k', linewidth=1)
+            new_lines = ax.plot([calc_data.dummy_a_longitude, calc_data.dummy_b_longitude],
+                                [calc_data.dummy_a_latitude, calc_data.dummy_b_latitude],
+                                'k', linewidth=1)
         else:
-            ax.plot([links_data.site_a_longitude, links_data.site_b_longitude],
-                    [links_data.site_a_latitude, links_data.site_b_latitude],
-                    'k', linewidth=1)
+            new_lines = ax.plot([calc_data.site_a_longitude, calc_data.site_b_longitude],
+                                [calc_data.site_a_latitude, calc_data.site_b_latitude],
+                                'k', linewidth=1)
+
+        # store new lines references
+        link_lines.extend(new_lines)
 
     def _get_z_value(self, z_grid, x: float, y: float) -> float:
         x_pos = round((x - self.cp['X_MIN']) * (1 / self.cp['interpol_res']))
@@ -384,12 +420,31 @@ class ResultsWidget(QWidget):
         self.button_end.setEnabled(enabled)
         self.slider.setEnabled(enabled)
 
-    def _show_info(self):
-        labels = [QLabel(str(self.cp['rolling_hours'])), QLabel(str(self.cp['wet_dry_deviation'])),
-                  QLabel(str(self.cp['baseline_samples'])), QLabel(str(self.cp['interpol_res'])),
-                  QLabel(str(self.cp['idw_power'])), QLabel(str(self.cp['idw_near'])), QLabel(str(self.cp['idw_dist'])),
-                  QLabel(str(self.cp['waa_schleiss_val'])), QLabel(str(self.cp['waa_schleiss_tau']))]
+    def _fill_info(self):
+        self.interval_label.setText(str(self.cp['output_step']) + ' minutes')
+        if self.cp['is_output_total']:
+            self.output_label.setText('Totals (mm)')
+        else:
+            self.output_label.setText('Intensity (mm/h)')
+
+        table_vals = [QLabel(str(self.cp['rolling_hours'])), QLabel(str(self.cp['wet_dry_deviation'])),
+                      QLabel(str(self.cp['baseline_samples'])), QLabel(str(self.cp['interpol_res'])),
+                      QLabel(str(self.cp['idw_power'])), QLabel(str(self.cp['idw_near'])),
+                      QLabel(str(self.cp['idw_dist'])), QLabel(str(self.cp['waa_schleiss_val'])),
+                      QLabel(str(self.cp['waa_schleiss_tau']))]
 
         for x in range(9):
-            labels[x].setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-            self.table_params.setCellWidget(x, 1, labels[x])
+            table_vals[x].setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+            self.table_params.setCellWidget(x, 1, table_vals[x])
+
+    def _set_times(self, start, end):
+        unix_start = start.item() / 1000000000
+        unix_end = end.item() / 1000000000
+
+        self.start_time = QDateTime.fromSecsSinceEpoch(unix_start, QTimeZone.utc())
+        self.end_time = QDateTime.fromSecsSinceEpoch(unix_end, QTimeZone.utc())
+
+        self.current_anim_time = self.start_time
+
+        self.start_label.setText(self.start_time.toString("dd.MM.yyyy HH:mm"))
+        self.end_label.setText(self.end_time.toString("dd.MM.yyyy HH:mm"))

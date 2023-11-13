@@ -381,10 +381,21 @@ class Calculation(QRunnable):
 
             self.signals.progress_signal.emit({'prg_val': 99})
 
+            # get start and end timestamps from lists of DataArrays
+            data_start = calc_data[0].time.min()
+            data_end = calc_data[0].time.max()
+
+            for link in calc_data:
+                times = link.time.values
+                data_start = min(data_start, times.min())
+                data_end = max(data_end, times.max())
+
             # emit output
             self.signals.overall_done_signal.emit({
                 "id": self.results_id,
-                "link_data": calc_data_1h,
+                "start": data_start,
+                "end": data_end,
+                "calc_data": calc_data_1h,
                 "x_grid": x_grid,
                 "y_grid": y_grid,
                 "rain_grid": rain_grid,
@@ -456,7 +467,7 @@ class Calculation(QRunnable):
                 # emit output
                 self.signals.plots_done_signal.emit({
                     "id": self.results_id,
-                    "link_data": calc_data_steps,
+                    "calc_data": calc_data_steps,
                     "x_grid": x_grid,
                     "y_grid": y_grid,
                     "rain_grids": self.rain_grids,
