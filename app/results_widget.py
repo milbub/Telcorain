@@ -23,7 +23,7 @@ class Canvas(FigureCanvasQTAgg):
         self.fig.subplots_adjust(left, bottom, right, top)
 
         # TODO: load path from options
-        bg_map = pyplot.imread('./assets/prague_35x35.png')
+        bg_map = pyplot.imread('./assets/cz.png')
         self.ax.imshow(bg_map, zorder=0, extent=(x_min, x_max, y_min, y_max), aspect='auto')
 
         super(Canvas, self).__init__(self.fig)
