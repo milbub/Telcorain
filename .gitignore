@@ -1,0 +1,6 @@
+/venv/
+/.idea/
+/config.ini
+/linksets.ini
+/save.ini
+x-*.*
