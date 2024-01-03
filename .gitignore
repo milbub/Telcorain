@@ -1,5 +1,8 @@
 /venv/
 /.idea/
+/assets/*
+!/assets/plain_czechia.png
+/outputs/
 /config.ini
 /linksets.ini
 /save.ini
