@@ -1,6 +1,7 @@
 from PyQt6.QtCore import QRunnable, pyqtSignal, QObject
 from math import sin, cos, sqrt, atan2, radians
 from mariadb import Cursor
+from datetime import datetime
 import mariadb
 import json
 
@@ -46,7 +47,7 @@ class SqlManager:
             try:
                 self.connection.ping()
                 return True
-            except mariadb.InterfaceError:
+            except (mariadb.InterfaceError, mariadb.OperationalError):
                 return False
         else:
             self.connect()
@@ -161,7 +162,6 @@ class SqlManager:
         except mariadb.Error as e:
             # TODO: exception handling
             print(f"Failed to insert data into MariaDB: {e}")
-            return {}
 
     def get_last_raingrid(self) -> dict:
         try:
@@ -186,7 +186,7 @@ class SqlManager:
             print(f"Failed to read data from MariaDB: {e}")
             return {}
 
-    def insert_raingrid(self, time, links, grid):
+    def insert_raingrid(self, time: datetime, links: list, grid):
         try:
             if self.check_connection():
                 cursor: Cursor = self.connection.cursor()
@@ -201,7 +201,32 @@ class SqlManager:
         except mariadb.Error as e:
             # TODO: exception handling
             print(f"Failed to insert data into MariaDB: {e}")
-            return {}
+
+    def get_wetdry_calibration(self, link_id: int, link_channel: int, time: datetime, night: bool) -> float:
+        try:
+            if self.check_connection():
+                cursor: Cursor = self.connection.cursor()
+
+                query = f"SELECT sd " \
+                        f"FROM telcorain_calibration_wetdry " \
+                        f"WHERE link_ID = ? AND link_channel = ? AND night = ? " \
+                        f"ORDER BY ABS(TIMESTAMPDIFF(SECOND, time, ?)) " \
+                        f"LIMIT 1;"
+
+                cursor.execute(query, (int(link_id), int(link_channel), int(night), time))
+
+                sd = 0.0
+
+                for val in cursor:
+                    sd = val[0]
+
+                return sd
+            else:
+                raise mariadb.Error('Connection is not active.')
+        except mariadb.Error as e:
+            # TODO: exception handling
+            print(f"Failed to read data from MariaDB: {e}")
+            return 0
 
     def __del__(self):
         self.connection.close()
