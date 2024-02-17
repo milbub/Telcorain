@@ -77,13 +77,13 @@ class SqlManager:
                   sites_A.Y_dummy_coordinate AS dummy_latitude_A,
                   sites_B.Y_dummy_coordinate AS dummy_latitude_B,
                   technologies.name AS technology_name,
-                  telcorain_influx.measurement AS technology_influx
+                  technologies_influx_mapping.measurement AS technology_influx
                 FROM
                   links
                 JOIN sites AS sites_A ON links.site_A = sites_A.ID
                 JOIN sites AS sites_B ON links.site_B = sites_B.ID
                 JOIN technologies ON links.technology = technologies.ID
-                JOIN telcorain_influx ON technologies.telcorain_influx_ID = telcorain_influx.ID;
+                JOIN technologies_influx_mapping ON technologies.influx_mapping_ID = technologies_influx_mapping.ID;
                 """
 
                 cursor.execute(query)
