@@ -14,7 +14,8 @@ from writers.config_manager import ConfigManager
 from writers.linksets_manager import LinksetsManager
 from writers.log_manager import LogManager
 from writers.realtime_writer import RealtimeWriter
-from procedures.calculation import Calculation, CalcSignals
+from procedures.calculation import Calculation
+from procedures.calculation_signals import CalcSignals
 
 from app.form_dialog import FormDialog
 from app.selection_dialog import SelectionDialog

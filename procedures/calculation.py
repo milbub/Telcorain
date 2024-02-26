@@ -4,20 +4,24 @@ import numpy as np
 import lib.pycomlink.pycomlink.processing as pycmlp
 import lib.pycomlink.pycomlink.spatial as pycmls
 import xarray as xr
-from PyQt6.QtCore import QRunnable, QObject, pyqtSignal
+from PyQt6.QtCore import QRunnable
 
+from database.influx_manager import InfluxManager
+from procedures.calculation_signals import CalcSignals
+from procedures import data_loading
 from procedures import temperature_correlation, temperature_compensation
 
 
-class CalcSignals(QObject):
-    overall_done_signal = pyqtSignal(dict)
-    plots_done_signal = pyqtSignal(dict)
-    error_signal = pyqtSignal(dict)
-    progress_signal = pyqtSignal(dict)
-
-
 class Calculation(QRunnable):
-    def __init__(self, influx_man, signals: CalcSignals, results_id: int, links: dict, selection: dict, cp: dict):
+    def __init__(
+            self,
+            influx_man: InfluxManager,
+            signals: CalcSignals,
+            results_id: int,
+            links: dict,
+            selection: dict,
+            cp: dict
+    ):
 
         QRunnable.__init__(self)
         self.influx_man = influx_man
@@ -47,68 +51,14 @@ class Calculation(QRunnable):
 
         # ////// DATA ACQUISITION \\\\\\
         try:
-            if len(self.selection) < 1:
-                raise ValueError('Empty selection container.')
-
-            ips = []
-            for link in self.selection:
-                if link in self.links:
-                    # TODO: add dynamic exception list of constant Tx power devices
-                    # 1S10s have constant Tx power, so only one unit can be included in query
-                    # otherwise, both ends needs to be included in query, due Tx power correction
-                    if self.links[link].tech in "1s10":
-                        if self.selection[link] == 1:
-                            ips.append(self.links[link].ip_a)
-                        elif self.selection[link] == 2:
-                            ips.append(self.links[link].ip_b)
-                        elif self.selection[link] == 3:
-                            ips.append(self.links[link].ip_a)
-                            ips.append(self.links[link].ip_b)
-                    elif self.selection[link] == 0:
-                        continue
-                    else:
-                        ips.append(self.links[link].ip_a)
-                        ips.append(self.links[link].ip_b)
-
-            self.signals.progress_signal.emit({'prg_val': 5})
-            print(f"[{log_run_id}] Querying InfluxDB for selected microwave links data...", flush=True)
-
-            # Realtime calculation is being done
-            if self.cp['is_realtime']:
-                print(f"[{log_run_id}] Realtime data procedure started.", flush=True)
-                influx_data = self.influx_man.query_signal_mean_realtime(ips, self.cp['realtime_timewindow'],
-                                                                         self.cp['step'])
-            # In other case, notify we are doing historic calculation
-            else:
-                print(f"[{log_run_id}] Historic data procedure started.", flush=True)
-                influx_data = self.influx_man.query_signal_mean(ips, self.cp['start'], self.cp['end'], self.cp['step'])
-
-            diff = len(ips) - len(influx_data)
-
-            self.signals.progress_signal.emit({'prg_val': 15})
-            print(f"[{log_run_id}] Querying done. Got data of {len(influx_data)} units,"
-                  f" of total {len(ips)} selected units.")
-
-            missing_links = []
-            if diff > 0:
-                print(f"[{log_run_id}] {diff} units are not available in selected time window:")
-                for ip in ips:
-                    if ip not in influx_data:
-                        for link in self.links:
-                            if self.links[link].ip_a == ip:
-                                print(f"[{log_run_id}] Link: {self.links[link].link_id}; "
-                                      f"Tech: {self.links[link].tech}; SIDE A: {self.links[link].name_a}; "
-                                      f"IP: {self.links[link].ip_a}")
-                                missing_links.append(link)
-                                break
-                            elif self.links[link].ip_b == ip:
-                                print(f"[{log_run_id}] Link: {self.links[link].link_id}; "
-                                      f"Tech: {self.links[link].tech}; SIDE B: {self.links[link].name_b}; "
-                                      f"IP: {self.links[link].ip_b}")
-                                missing_links.append(link)
-                                break
-
-            self.signals.progress_signal.emit({'prg_val': 18})
+            influx_data, missing_links, ips = data_loading.load_data_from_influxdb(
+                self.influx_man,
+                self.signals,
+                self.cp,
+                self.selection,
+                self.links,
+                log_run_id
+            )
 
         except BaseException as error:
             self.signals.error_signal.emit({"id": self.results_id})
