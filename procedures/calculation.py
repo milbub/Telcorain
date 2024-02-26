@@ -1,8 +1,8 @@
 import datetime
 
 import numpy as np
-import pycomlink.processing as pycmlp
-import pycomlink.spatial as pycmls
+import lib.pycomlink.pycomlink.processing as pycmlp
+import lib.pycomlink.pycomlink.spatial as pycmls
 import xarray as xr
 from PyQt6.QtCore import QRunnable, QObject, pyqtSignal
 
