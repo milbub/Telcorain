@@ -1,0 +1,4 @@
+[submodule "lib/pycomlink"]
+	path = lib/pycomlink
+	url = git@github.com:milbub/pycomlink.git
+	branch = lib
