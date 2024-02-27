@@ -237,4 +237,4 @@ def convert_to_link_datasets(
         print(f"[{log_run_id}] ERROR: Last processed microwave link ID: {link}")
         print(f"[{log_run_id}] ERROR: Calculation thread terminated.")
 
-        raise ProcessingException()
+        raise ProcessingException("Error occured during influx data merging with metadata into xarray datasets.")

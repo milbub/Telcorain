@@ -50,26 +50,19 @@ class Calculation(QRunnable):
             
         print(f"[{log_run_id}] Rainfall calculation procedure started.", flush=True)
 
-        # ////// DATA ACQUISITION \\\\\\
         try:
+            # Gather data from InfluxDB
             influx_data, missing_links, ips = data_loading.load_data_from_influxdb(
                 self.influx_man,
                 self.signals,
                 self.cp,
                 self.selection,
                 self.links,
-                log_run_id
+                log_run_id,
+                self.results_id
             )
 
-        except BaseException as error:
-            self.signals.error_signal.emit({"id": self.results_id})
-            print(f"[{log_run_id}] ERROR: An unexpected error occurred during InfluxDB query: "
-                  f"{type(error)} {error}.")
-            print(f"[{log_run_id}] ERROR: Calculation thread terminated.")
-            return
-
-        # ////// PARSE INTO XARRAY, RESOLVE TX POWER ASSIGNMENT TO CORRECT CHANNEL \\\\\\
-        try:
+            # Merge influx data with metadata into datasets, resolve Tx power assignment to correct channel
             calc_data = data_preprocessing.convert_to_link_datasets(
                 self.signals,
                 self.selection,
@@ -80,7 +73,6 @@ class Calculation(QRunnable):
                 self.results_id
             )
             del influx_data
-
         except ProcessingException:
             return
 
