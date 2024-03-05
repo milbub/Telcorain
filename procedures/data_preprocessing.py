@@ -1,8 +1,16 @@
+from enum import Enum
+from typing import Optional
+
 import numpy as np
 import xarray as xr
 
 from procedures.calculation_signals import CalcSignals
 from procedures.exceptions import ProcessingException
+
+
+class ChannelIdentifiers(Enum):
+    CHANNEL_0 = 'A(rx)_B(tx)'  # unit B (transmit) --> unit A (receive)
+    CHANNEL_1 = 'B(rx)_A(tx)'  # unit A (transmit) --> unit B (receive)
 
 
 def _fill_channel_dataset(
@@ -78,6 +86,64 @@ def _fill_channel_dataset(
     )
 
     return channel
+
+
+def _sort_into_channels(
+        influx_data: dict,
+        links: dict,
+        link_id: int,
+        link_channel_selector: int,
+        tx_ip: str,
+        rx_ip: str,
+        tx_tx_zeros: bool,
+        tx_rx_zeros: bool,
+        tx_freq: int,
+        rx_freq: int,
+        is_opposite_included: bool,
+        channel_identifier: str,
+        log_run_id: str
+) -> Optional[list]:
+    """
+    Sorts link's data into channels and returns channels as a list of xarray datasets.
+    """
+    channels = []
+
+    if (link_channel_selector in (1, 3)) and (rx_ip in influx_data):
+        if not tx_tx_zeros:
+            if len(influx_data[rx_ip]["rx_power"]) != len(influx_data[tx_ip]["tx_power"]):
+                print(f"[{log_run_id}] WARNING: Skipping link ID: {link_id}. "
+                      f"Non-coherent Rx/Tx data on channel {channel_identifier}.", flush=True)
+                return None
+
+        channel_a = _fill_channel_dataset(
+            links[link_id],
+            influx_data,
+            tx_ip,
+            rx_ip,
+            channel_identifier,
+            tx_freq,
+            tx_tx_zeros
+        )
+        channels.append(channel_a)
+
+        # if including only this channel, create empty second channel and fill it with zeros (pycomlink
+        # functions require both channels included -> with this hack it's valid, but zeros have no effect)
+        # rx and tx freqs are switched, since it's a (dummy) opposite channel
+        if (link_channel_selector == 1) or not is_opposite_included:
+            channel_b = _fill_channel_dataset(
+                links[link_id],
+                influx_data,
+                rx_ip,
+                rx_ip,  # rx will be always available (since it's a dummy channel, it doesn't matter)
+                ChannelIdentifiers.CHANNEL_1 if channel_identifier == ChannelIdentifiers.CHANNEL_0
+                else ChannelIdentifiers.CHANNEL_0,
+                rx_freq,
+                tx_rx_zeros,
+                is_empty_channel=True
+            )
+            channels.append(channel_b)
+
+        return channels
 
 
 def convert_to_link_datasets(
@@ -157,71 +223,46 @@ def convert_to_link_datasets(
             link_channels = []
 
             # Side/unit A (channel B to A)
-            if (selected_links[link] in (1, 3)) and (links[link].ip_a in influx_data):
-                if not tx_zeros_b:
-                    if len(influx_data[links[link].ip_a]["rx_power"]) \
-                            != len(influx_data[links[link].ip_b]["tx_power"]):
-                        print(f"[{log_run_id}] WARNING: Skipping link ID: {link}. "
-                              f"Non-coherent Rx/Tx data on channel A(rx)_B(tx).", flush=True)
-                        continue
-
-                channel_a = _fill_channel_dataset(
-                    links[link],
-                    influx_data,
-                    links[link].ip_b,
-                    links[link].ip_a,
-                    'A(rx)_B(tx)',
-                    links[link].freq_b, tx_zeros_b
-                )
-                link_channels.append(channel_a)
-
-                # if including only this channel, create empty second channel and fill it with zeros (pycomlink
-                # functions require both channels included -> with this hack it's valid, but zeros have no effect)
-                if (selected_links[link] == 1) or not is_b_in:
-                    channel_b = _fill_channel_dataset(
-                        links[link],
-                        influx_data,
-                        links[link].ip_a,
-                        links[link].ip_a, 'B(rx)_A(tx)',
-                        links[link].freq_a, tx_zeros_b,
-                        is_empty_channel=True
-                    )
-                    link_channels.append(channel_b)
+            unit_a_channels = _sort_into_channels(
+                influx_data,
+                links,
+                link,
+                selected_links[link],
+                links[link].ip_b,
+                links[link].ip_a,
+                tx_zeros_b,
+                tx_zeros_a,
+                links[link].freq_b,
+                links[link].freq_a,
+                is_b_in,
+                ChannelIdentifiers.CHANNEL_0.value,
+                log_run_id
+            )
+            if unit_a_channels is not None:
+                link_channels.extend(unit_a_channels)
+            else:
+                continue
 
             # Side/unit B (channel A to B)
-            if (selected_links[link] in (2, 3)) and (links[link].ip_b in influx_data):
-                if not tx_zeros_a:
-                    if len(influx_data[links[link].ip_b]["rx_power"]) \
-                            != len(influx_data[links[link].ip_a]["tx_power"]):
-                        print(f"[{log_run_id}] WARNING: Skipping link ID: {link}. "
-                              f"Non-coherent Rx/Tx data on channel B(rx)_A(tx).", flush=True)
-                        continue
-
-                channel_b = _fill_channel_dataset(
-                    links[link],
-                    influx_data,
-                    links[link].ip_a,
-                    links[link].ip_b,
-                    'B(rx)_A(tx)',
-                    links[link].freq_a,
-                    tx_zeros_a
-                )
-                link_channels.append(channel_b)
-
-                # if including only this channel, create empty second channel and fill it with zeros (pycomlink
-                # functions require both channels included -> with this hack it's valid, but zeros have no effect)
-                if (selected_links[link] == 2) or not is_a_in:
-                    channel_a = _fill_channel_dataset(
-                        links[link],
-                        influx_data,
-                        links[link].ip_b,
-                        links[link].ip_b,
-                        'A(rx)_B(tx)',
-                        links[link].freq_b,
-                        tx_zeros_b,
-                        is_empty_channel=True
-                    )
-                    link_channels.append(channel_a)
+            unit_b_channels = _sort_into_channels(
+                influx_data,
+                links,
+                link,
+                selected_links[link],
+                links[link].ip_a,
+                links[link].ip_b,
+                tx_zeros_a,
+                tx_zeros_b,
+                links[link].freq_a,
+                links[link].freq_b,
+                is_a_in,
+                ChannelIdentifiers.CHANNEL_1.value,
+                log_run_id
+            )
+            if unit_b_channels is not None:
+                link_channels.extend(unit_b_channels)
+            else:
+                continue
 
             calc_data.append(xr.concat(link_channels, dim="channel_id"))
 
