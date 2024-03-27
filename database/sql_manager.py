@@ -1,14 +1,18 @@
-from PyQt6.QtCore import QRunnable, pyqtSignal, QObject
-from math import sin, cos, sqrt, atan2, radians
-from mariadb import Cursor
 from datetime import datetime
-import mariadb
 import json
 
-from database.mwlink_model import MwLink
+from PyQt6.QtCore import QRunnable, pyqtSignal, QObject
+from mariadb import Cursor
+import mariadb
+
+from database.models.mwlink import MwLink
+from procedures.helpers import calc_distance
 
 
 class SqlManager:
+    """
+    Class for handling MariaDB connection and database data loading/writing.
+    """
     # Do not spam log with error messages
     is_error_sent = False
 
@@ -22,6 +26,9 @@ class SqlManager:
         self.is_connected = False
 
     def connect(self):
+        """
+        Connect to MariaDB database.
+        """
         try:
             self.connection = mariadb.connect(
                 user=self.settings['user'],
@@ -43,6 +50,9 @@ class SqlManager:
             self.is_connected = False
 
     def check_connection(self) -> bool:
+        """
+        Check connection state if it is still active.
+        """
         if self.is_connected:
             try:
                 self.connection.ping()
@@ -54,6 +64,9 @@ class SqlManager:
             return self.is_connected
 
     def load_metadata(self) -> dict:
+        """
+        Load metadata of CMLs from MariaDB.
+        """
         try:
             if self.check_connection():
                 cursor: Cursor = self.connection.cursor()
@@ -111,6 +124,9 @@ class SqlManager:
             return {}
 
     def get_last_realtime(self) -> dict:
+        """
+        Get parameters of last running realtime calculation from output database.
+        """
         try:
             if self.check_connection():
                 cursor: Cursor = self.connection.cursor()
@@ -142,8 +158,19 @@ class SqlManager:
             print(f"Failed to read data from MariaDB: {e}")
             return {}
 
-    def insert_realtime(self, retention: int, timestep: int, resolution: float,
-                        X_MIN: float, X_MAX: float, Y_MIN: float, Y_MAX: float):
+    def insert_realtime(
+            self,
+            retention: int,
+            timestep: int,
+            resolution: float,
+            X_MIN: float,
+            X_MAX: float,
+            Y_MIN: float,
+            Y_MAX: float
+    ):
+        """
+        Insert realtime parameters into output database.
+        """
         try:
             if self.check_connection():
                 cursor: Cursor = self.connection.cursor()
@@ -164,6 +191,9 @@ class SqlManager:
             print(f"Failed to insert data into MariaDB: {e}")
 
     def get_last_raingrid(self) -> dict:
+        """
+        Get last raingrid from output database.
+        """
         try:
             if self.check_connection():
                 cursor: Cursor = self.connection.cursor()
@@ -187,6 +217,9 @@ class SqlManager:
             return {}
 
     def insert_raingrid(self, time: datetime, links: list, grid):
+        """
+        Insert raingrid into output database.
+        """
         try:
             if self.check_connection():
                 cursor: Cursor = self.connection.cursor()
@@ -203,6 +236,10 @@ class SqlManager:
             print(f"Failed to insert data into MariaDB: {e}")
 
     def get_wetdry_calibration(self, link_id: int, link_channel: int, time: datetime, night: bool) -> float:
+        """
+        TODO: currently not used, consider removing together with the table telcorain_calibration_wetdry
+        Get wet/dry calibration value for given link, date, and day phase (day/night).
+        """
         try:
             if self.check_connection():
                 cursor: Cursor = self.connection.cursor()
@@ -233,8 +270,10 @@ class SqlManager:
 
 
 class SqlChecker(SqlManager, QRunnable):
-    # subclass for use in threadpool, for connection testing
-    # emits 'ping_signal' from 'SqlSignal' class passed as 'signals' parameter
+    """
+    Subclass for use in threadpool, for connection testing.
+    Emits 'ping_signal' from 'SqlSignal' class passed as 'signals' parameter.
+    """
     def __init__(self, config_man, signals: QObject):
         super(SqlChecker, self).__init__(config_man)
         self.sig = signals
@@ -244,23 +283,7 @@ class SqlChecker(SqlManager, QRunnable):
 
 
 class SqlSignals(QObject):
-    # signaling class for SqlManager's threadpool subclasses
+    """
+    Signaling class for SqlManager's threadpool subclasses.
+    """
     ping_signal = pyqtSignal(bool)
-
-
-def calc_distance(lat_A, long_A, lat_B, long_B) -> float:
-    # Approximate radius of earth in km
-    r = 6373.0
-
-    lat_A = radians(lat_A)
-    long_A = radians(long_A)
-    lat_B = radians(lat_B)
-    long_B = radians(long_B)
-
-    dlon = long_B - long_A
-    dlat = lat_B - lat_A
-
-    a = sin(dlat / 2) ** 2 + cos(lat_A) * cos(lat_B) * sin(dlon / 2) ** 2
-    c = 2 * atan2(sqrt(a), sqrt(1 - a))
-
-    return r * c
