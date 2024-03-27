@@ -133,6 +133,8 @@ class MainWindow(QMainWindow):
         self.compensation_box: QObject = self.findChild(QCheckBox, "compensationBox")
         self.write_output_box: QObject = self.findChild(QCheckBox, "writeOutputBox")
         self.window_pointer_combo: QObject = self.findChild(QComboBox, "windowPointerCombo")
+        self.radio_cnn: QObject = self.findChild(QRadioButton, "radioCNN")
+        self.action_external_filter: QObject = self.findChild(QAction, "actionExternalFilterLayer")
 
         # declare dictionary for created tabs with calculation results
         # <key: int = result ID, value: ResultsWidget>
@@ -697,6 +699,8 @@ class MainWindow(QMainWindow):
         end = self.datetime_stop.dateTime()
         step = self.spin_timestep.value()
         time_diff = start.msecsTo(end)
+        is_cnn_enabled = self.radio_cnn.isChecked()
+        is_external_filter_enabled = self.action_external_filter.isChecked()
         rolling_hours = self.spin_roll_window.value()
         rolling_values = int((rolling_hours * 60) / step)
         wet_dry_deviation = self.spin_wet_dry_sd.value()
@@ -732,6 +736,8 @@ class MainWindow(QMainWindow):
             'end': end,
             'step': step,
             'time_diff': time_diff,
+            'is_cnn_enabled': is_cnn_enabled,
+            'is_external_filter_enabled': is_external_filter_enabled,
             'rolling_hours': rolling_hours,
             'rolling_values': rolling_values,
             'wet_dry_deviation': wet_dry_deviation,

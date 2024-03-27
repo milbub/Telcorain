@@ -1,16 +1,17 @@
 import datetime
 
 import numpy as np
-import lib.pycomlink.pycomlink.processing as pycmlp
-import lib.pycomlink.pycomlink.spatial as pycmls
 import xarray as xr
 from PyQt6.QtCore import QRunnable
+
+import lib.pycomlink.pycomlink.processing as pycmlp
+import lib.pycomlink.pycomlink.spatial as pycmls
+from lib.pycomlink.pycomlink.processing.wet_dry import cnn
 
 from database.influx_manager import InfluxManager
 from procedures.calculation_signals import CalcSignals
 from procedures.exceptions import ProcessingException
-from procedures import data_loading, data_preprocessing
-from procedures import temperature_correlation, temperature_compensation
+from procedures import data_loading, data_preprocessing, temperature_correlation, temperature_compensation
 
 
 class Calculation(QRunnable):
@@ -143,12 +144,27 @@ class Calculation(QRunnable):
             current_link = 0
 
             for link in calc_data:
-                # determine wet periods
-                link['wet'] = link.trsl.rolling(time=self.cp['rolling_values'], center=self.cp['is_window_centered'])\
-                                  .std(skipna=False) > self.cp['wet_dry_deviation']
+                if self.cp['is_cnn_enabled']:
+                    # determine wet periods using CNN
+                    link['wet'] = (('time',), np.zeros([link.time.size]))
+
+                    cnn_out = cnn.cnn_wet_dry(
+                        trsl_channel_1=link.isel(channel_id=0).trsl.values,
+                        trsl_channel_2=link.isel(channel_id=1).trsl.values,
+                        threshold=0.82,
+                        batch_size=128
+                    )
+
+                    link['wet'] = (('time',), np.where(np.isnan(cnn_out), link['wet'], cnn_out))
+                else:
+                    # determine wet periods using rolling standard deviation
+                    link['wet'] = link.trsl.rolling(
+                        time=self.cp['rolling_values'],
+                        center=self.cp['is_window_centered']
+                    ).std(skipna=False) > self.cp['wet_dry_deviation']
 
                 # calculate ratio of wet periods
-                link['wet_fraction'] = (link.wet == 1).sum() / (link.wet == 0).sum()
+                link['wet_fraction'] = (link.wet == 1).sum() / len(link.time)
 
                 # determine signal baseline
                 link['baseline'] = pycmlp.baseline.baseline_constant(trsl=link.trsl, wet=link.wet,
