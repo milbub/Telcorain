@@ -132,7 +132,7 @@ class SqlManager:
                 cursor: Cursor = self.connection.cursor()
 
                 query = "SELECT started, retention, timestep, resolution, X_MIN, X_MAX, Y_MIN, Y_MAX " \
-                        f"FROM {self.settings['db_output']}.realtime_parameters " \
+                        f"FROM {self.settings['db_output']}.realtime_rain_parameters " \
                         "ORDER BY started DESC " \
                         "LIMIT 1;"
 
@@ -175,7 +175,7 @@ class SqlManager:
             if self.check_connection():
                 cursor: Cursor = self.connection.cursor()
 
-                query = f"INSERT INTO {self.settings['db_output']}.realtime_parameters " \
+                query = f"INSERT INTO {self.settings['db_output']}.realtime_rain_parameters " \
                         "(retention, timestep, resolution, X_MIN, X_MAX, Y_MIN, Y_MAX, X_count, Y_count)" \
                         " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);"
 
@@ -198,7 +198,7 @@ class SqlManager:
             if self.check_connection():
                 cursor: Cursor = self.connection.cursor()
 
-                query = f"SELECT time, links FROM {self.settings['db_output']}.realtime_raingrids " \
+                query = f"SELECT time, links FROM {self.settings['db_output']}.realtime_rain_grids " \
                         f"ORDER BY time DESC LIMIT 1;"
 
                 cursor.execute(query)
@@ -224,7 +224,7 @@ class SqlManager:
             if self.check_connection():
                 cursor: Cursor = self.connection.cursor()
 
-                query = f"INSERT INTO {self.settings['db_output']}.realtime_raingrids (time, links, grid)" \
+                query = f"INSERT INTO {self.settings['db_output']}.realtime_rain_grids (time, links, grid)" \
                         f" VALUES (?, ?, ?);"
 
                 cursor.execute(query, (time, json.dumps(links), json.dumps(grid)))
