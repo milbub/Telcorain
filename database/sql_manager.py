@@ -235,6 +235,28 @@ class SqlManager:
             # TODO: exception handling
             print(f"Failed to insert data into MariaDB: {e}")
 
+    def wipeout_realtime_tables(self):
+        """
+        Truncate realtime tables in output database.
+        """
+        try:
+            if self.check_connection():
+                cursor: Cursor = self.connection.cursor()
+
+                queries = (
+                    f"TRUNCATE TABLE {self.settings['db_output']}.realtime_rain_grids;",
+                    f"TRUNCATE TABLE {self.settings['db_output']}.realtime_rain_parameters;"
+                )
+
+                for query in queries:
+                    cursor.execute(query)
+                self.connection.commit()
+            else:
+                raise mariadb.Error('Connection is not active.')
+        except mariadb.Error as e:
+            # TODO: exception handling
+            print(f"Failed to insert data into MariaDB: {e}")
+
     def get_wetdry_calibration(self, link_id: int, link_channel: int, time: datetime, night: bool) -> float:
         """
         TODO: currently not used, consider removing together with the table telcorain_calibration_wetdry
