@@ -4,12 +4,7 @@ import numpy as np
 
 from database.sql_manager import SqlManager
 from database.influx_manager import InfluxManager
-
-
-def dt64_to_unixtime(dt64):
-    unix_epoch = np.datetime64(0, 's')
-    s = np.timedelta64(1, 's')
-    return int((dt64 - unix_epoch) / s)
+from procedures.helpers import dt64_to_unixtime
 
 
 class RealtimeWriter:
