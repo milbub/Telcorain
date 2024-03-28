@@ -1,13 +1,16 @@
 import os
 import gc
 import webbrowser
+
 import matplotlib
-from PyQt6 import uic, QtCore
-from PyQt6.QtCore import QDateTime, QTimeZone, QTimer
-from PyQt6.QtWidgets import QWidget, QLabel, QGridLayout, QSlider, QPushButton, QMessageBox, QTableWidget
 from matplotlib import cm, colors, pyplot
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
+from PyQt6 import uic, QtCore
+from PyQt6.QtCore import QDateTime, QTimeZone, QTimer
+from PyQt6.QtWidgets import QWidget, QLabel, QGridLayout, QSlider, QPushButton, QMessageBox, QTableWidget
+
+from procedures.helpers import dt64_to_unixtime
 
 matplotlib.use('QtAgg')
 
@@ -123,6 +126,7 @@ class ResultsWidget(QWidget):
         # init calc start and end time vals
         self.start_time = None
         self.end_time = None
+        self.real_start_time = None
 
         # init animation slider
         self.slider_return_to_anim = False
@@ -182,6 +186,9 @@ class ResultsWidget(QWidget):
         self.animation_grids = rain_grids
         self.animation_x_grid = x_grid
         self.animation_y_grid = y_grid
+
+        # reset start and end times since real start can be different due to skipped frames
+        self._set_times(np_real_start=calc_data.isel(time=0).time.values)
 
         # render first figure of the animation
         self._refresh_fig(self.animation_canvas, x_grid, y_grid, rain_grids[0], self.anim_annotations,
@@ -327,7 +334,7 @@ class ResultsWidget(QWidget):
                                 dpi=dpi, bbox_inches='tight', pad_inches=0.3)
 
     def _update_animation_time(self):
-        self.current_anim_time = self.start_time.addSecs(self.cp['output_step'] * self.animation_counter * 60)
+        self.current_anim_time = self.real_start_time.addSecs(self.cp['output_step'] * self.animation_counter * 60)
         self.label_current_fig_time.setText(self.current_anim_time.toString("dd.MM.yyyy HH:mm:ss"))
 
     def _update_animation_fig(self):
@@ -437,14 +444,21 @@ class ResultsWidget(QWidget):
             table_vals[x].setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
             self.table_params.setCellWidget(x, 1, table_vals[x])
 
-    def _set_times(self, start, end):
-        unix_start = start.item() / 1000000000
-        unix_end = end.item() / 1000000000
+    def _set_times(self, start=None, end=None, np_real_start=None):
+        if start is not None:
+            unix_start = start.item() / 1000000000
+            self.start_time = QDateTime.fromSecsSinceEpoch(unix_start, QTimeZone.utc())
+            self.start_label.setText(self.start_time.toString("dd.MM.yyyy HH:mm"))
+            self.current_anim_time = self.start_time
 
-        self.start_time = QDateTime.fromSecsSinceEpoch(unix_start, QTimeZone.utc())
-        self.end_time = QDateTime.fromSecsSinceEpoch(unix_end, QTimeZone.utc())
+        if end is not None:
+            unix_end = end.item() / 1000000000
+            self.end_time = QDateTime.fromSecsSinceEpoch(unix_end, QTimeZone.utc())
+            self.end_label.setText(self.end_time.toString("dd.MM.yyyy HH:mm"))
 
-        self.current_anim_time = self.start_time
-
-        self.start_label.setText(self.start_time.toString("dd.MM.yyyy HH:mm"))
-        self.end_label.setText(self.end_time.toString("dd.MM.yyyy HH:mm"))
+        if np_real_start is not None:
+            unix_real_start = dt64_to_unixtime(np_real_start)
+            self.real_start_time = QDateTime.fromSecsSinceEpoch(unix_real_start, QTimeZone.utc())
+            self.current_anim_time = self.real_start_time
+        else:
+            self.real_start_time = self.start_time
