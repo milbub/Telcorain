@@ -208,6 +208,14 @@ class InfluxManager:
     def write_points(self, points, bucket):
         self.wapi.write(bucket=bucket, record=points, write_precision=WritePrecision.S)
 
+    def wipeout_output_bucket(self):
+        self.client.delete_api().delete(
+            start="1970-01-01T00:00:00Z",
+            stop="2100-01-01T00:00:00Z",
+            predicate='',
+            bucket=self.BUCKET_OUT_CML
+        )
+
 
 class InfluxChecker(InfluxManager, QRunnable):
     """

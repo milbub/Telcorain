@@ -485,6 +485,9 @@ class MainWindow(QMainWindow):
                 if cp['is_force_write']:
                     print("[DEVELOPER MODE] FORCE write activated, all calculations will be ERASED from the database.")
                     self.sql_man.wipeout_realtime_tables()
+                    print("[DEVELOPER MODE] MariaDB output tables erased.")
+                    self.influx_man.wipeout_output_bucket()
+                    print("[DEVELOPER MODE] InfluxDB output bucket erased.")
                     print("[DEVELOPER MODE] PURGE DONE. New calculation data will be written.")
 
                 self.sql_man.insert_realtime(
