@@ -7,6 +7,7 @@ from PyQt6.QtCore import QRunnable
 import lib.pycomlink.pycomlink.processing as pycmlp
 import lib.pycomlink.pycomlink.spatial as pycmls
 from lib.pycomlink.pycomlink.processing.wet_dry import cnn
+from lib.pycomlink.pycomlink.processing.wet_dry.cnn import CNN_OUTPUT_LEFT_NANS_LENGTH
 
 from database.influx_manager import InfluxManager
 from procedures.calculation_signals import CalcSignals
@@ -292,6 +293,10 @@ class Calculation(QRunnable):
                         (calc_data_steps.site_a_latitude + calc_data_steps.site_b_latitude) / 2
                     calc_data_steps['lon_center'] = \
                         (calc_data_steps.site_a_longitude + calc_data_steps.site_b_longitude) / 2
+
+                # if using CNN, skip first CNN_OUTPUT_LEFT_NANS_LENGTH time frames since they are empty
+                if self.cp['is_cnn_enabled']:
+                    calc_data_steps = calc_data_steps.isel(time=slice(CNN_OUTPUT_LEFT_NANS_LENGTH, None))
 
                 grids_to_del = 0
                 # interpolate each frame
