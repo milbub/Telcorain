@@ -164,6 +164,11 @@ class Calculation(QRunnable):
                         center=self.cp['is_window_centered']
                     ).std(skipna=False) > self.cp['wet_dry_deviation']
 
+            if self.cp['is_cnn_enabled']:
+                # remove first CNN_OUTPUT_LEFT_NANS_LENGTH time values from dataset since they are NaNs
+                calc_data = [link.isel(time=slice(CNN_OUTPUT_LEFT_NANS_LENGTH, None)) for link in calc_data]
+
+            for link in calc_data:
                 # calculate ratio of wet periods
                 link['wet_fraction'] = (link.wet == 1).sum() / len(link.time)
 
@@ -293,10 +298,6 @@ class Calculation(QRunnable):
                         (calc_data_steps.site_a_latitude + calc_data_steps.site_b_latitude) / 2
                     calc_data_steps['lon_center'] = \
                         (calc_data_steps.site_a_longitude + calc_data_steps.site_b_longitude) / 2
-
-                # if using CNN, skip first CNN_OUTPUT_LEFT_NANS_LENGTH time frames since they are empty
-                if self.cp['is_cnn_enabled']:
-                    calc_data_steps = calc_data_steps.isel(time=slice(CNN_OUTPUT_LEFT_NANS_LENGTH, None))
 
                 grids_to_del = 0
                 # interpolate each frame
