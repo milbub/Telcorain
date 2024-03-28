@@ -1,5 +1,6 @@
-import os
 import gc
+import os
+from typing import cast
 import webbrowser
 
 import matplotlib
@@ -66,25 +67,25 @@ class ResultsWidget(QWidget):
         uic.loadUi("./app/gui/ResultsWidget.ui", self)
 
         # lookup for used widgets and define them
-        self.overall_plot_layout = self.findChild(QGridLayout, "layoutOverallPlot")
-        self.main_plot_layout = self.findChild(QGridLayout, "layoutMainPlot")
-        self.tab_name_label = self.findChild(QLabel, "labelCalcName")
-        self.start_label = self.findChild(QLabel, "labelStartTime")
-        self.end_label = self.findChild(QLabel, "labelEndTime")
-        self.interval_label = self.findChild(QLabel, "labelFrameInterval")
-        self.output_label = self.findChild(QLabel, "labelOutputType")
-        self.label_no_anim_notify = self.findChild(QLabel, "labelNoAnim")
-        self.label_current_fig_time = self.findChild(QLabel, "labelCurrentFig")
-        self.slider = self.findChild(QSlider, "sliderFrames")
-        self.button_play_pause = self.findChild(QPushButton, "buttPlayPause")
-        self.button_prev = self.findChild(QPushButton, "buttPrev")
-        self.button_next = self.findChild(QPushButton, "buttNext")
-        self.button_start = self.findChild(QPushButton, "buttStart")
-        self.button_end = self.findChild(QPushButton, "buttEnd")
-        self.butt_save = self.findChild(QPushButton, "buttSave")
-        self.butt_open = self.findChild(QPushButton, "buttOpenFolder")
-        self.butt_close = self.findChild(QPushButton, "buttClose")
-        self.table_params = self.findChild(QTableWidget, "tableParams")
+        self.overall_plot_layout: QGridLayout = cast(QGridLayout, self.findChild(QGridLayout, "layoutOverallPlot"))
+        self.main_plot_layout: QGridLayout = cast(QGridLayout, self.findChild(QGridLayout, "layoutMainPlot"))
+        self.tab_name_label: QLabel = cast(QLabel, self.findChild(QLabel, "labelCalcName"))
+        self.start_label: QLabel = cast(QLabel, self.findChild(QLabel, "labelStartTime"))
+        self.end_label: QLabel = cast(QLabel, self.findChild(QLabel, "labelEndTime"))
+        self.interval_label: QLabel = cast(QLabel, self.findChild(QLabel, "labelFrameInterval"))
+        self.output_label: QLabel = cast(QLabel, self.findChild(QLabel, "labelOutputType"))
+        self.label_no_anim_notify: QLabel = cast(QLabel, self.findChild(QLabel, "labelNoAnim"))
+        self.label_current_fig_time: QLabel = cast(QLabel, self.findChild(QLabel, "labelCurrentFig"))
+        self.slider: QSlider = cast(QSlider, self.findChild(QSlider, "sliderFrames"))
+        self.button_play_pause: QPushButton = cast(QPushButton, self.findChild(QPushButton, "buttPlayPause"))
+        self.button_prev: QPushButton = cast(QPushButton, self.findChild(QPushButton, "buttPrev"))
+        self.button_next: QPushButton = cast(QPushButton, self.findChild(QPushButton, "buttNext"))
+        self.button_start: QPushButton = cast(QPushButton, self.findChild(QPushButton, "buttStart"))
+        self.button_end: QPushButton = cast(QPushButton, self.findChild(QPushButton, "buttEnd"))
+        self.butt_save: QPushButton = cast(QPushButton, self.findChild(QPushButton, "buttSave"))
+        self.butt_open: QPushButton = cast(QPushButton, self.findChild(QPushButton, "buttOpenFolder"))
+        self.butt_close: QPushButton = cast(QPushButton, self.findChild(QPushButton, "buttClose"))
+        self.table_params: QTableWidget = cast(QTableWidget, self.findChild(QTableWidget, "tableParams"))
 
         # connect buttons
         self.button_play_pause.clicked.connect(self.start_pause_fired)
