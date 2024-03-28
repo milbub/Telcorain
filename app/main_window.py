@@ -1,4 +1,5 @@
 import sys
+from datetime import datetime, timedelta
 
 from PyQt6 import uic, QtGui, QtCore
 from PyQt6.QtCore import QTimer, QObject
@@ -6,7 +7,8 @@ from PyQt6.QtGui import QPixmap, QAction
 from PyQt6.QtWidgets import QMainWindow, QLabel, QProgressBar, QHBoxLayout, QWidget, QTextEdit, QListWidget, \
     QDateTimeEdit, QPushButton, QSpinBox, QTabWidget, QLineEdit, QDoubleSpinBox, QRadioButton, QCheckBox, \
     QListWidgetItem, QTableWidget, QGridLayout, QMessageBox, QFileDialog, QApplication, QComboBox
-from datetime import datetime, timedelta
+
+from lib.pycomlink.pycomlink.processing.wet_dry.cnn import CNN_OUTPUT_LEFT_NANS_LENGTH
 
 from database.influx_manager import InfluxManager, InfluxChecker, InfluxSignals
 from database.sql_manager import SqlManager, SqlChecker, SqlSignals
@@ -423,6 +425,11 @@ class MainWindow(QMainWindow):
             print(f"[WARNING] {msg}")
         elif cp['step'] > 59:
             msg = f"Input time interval cannot be longer than 59 minutes."
+            print(f"[WARNING] {msg}")
+        elif cp['is_cnn_enabled'] and \
+                ((cp['start'].secsTo(cp['end']) / 60) / cp['step']) <= CNN_OUTPUT_LEFT_NANS_LENGTH:
+            msg = f"When using CNN with {cp['step']}m resolution, " \
+                  f"input time interval must be at least {(CNN_OUTPUT_LEFT_NANS_LENGTH * cp['step']) / 60} hours long."
             print(f"[WARNING] {msg}")
         else:
             self.result_id += 1
