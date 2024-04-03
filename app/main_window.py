@@ -782,6 +782,21 @@ class MainWindow(QMainWindow):
         Y_MIN = float(self.config_man.read_option('rendering', 'Y_MIN'))
         Y_MAX = float(self.config_man.read_option('rendering', 'Y_MAX'))
 
+        if is_external_filter_enabled:
+            external_filter_params = {
+                'url': self.config_man.read_option('external_filter', 'url'),
+                'radius': int(self.config_man.read_option('external_filter', 'radius')),
+                'pixel_threshold': int(self.config_man.read_option('external_filter', 'pixel_threshold')),
+                'default_return':
+                    True if self.config_man.read_option('external_filter', 'default_return') == 'True' else False,
+                'IMG_X_MIN': float(self.config_man.read_option('external_filter', 'IMG_X_MIN')),
+                'IMG_X_MAX': float(self.config_man.read_option('external_filter', 'IMG_X_MAX')),
+                'IMG_Y_MIN': float(self.config_man.read_option('external_filter', 'IMG_Y_MIN')),
+                'IMG_Y_MAX': float(self.config_man.read_option('external_filter', 'IMG_Y_MAX'))
+            }
+        else:
+            external_filter_params = None
+
         calculation_params = {
             'start': start,
             'end': end,
@@ -789,6 +804,7 @@ class MainWindow(QMainWindow):
             'time_diff': time_diff,
             'is_cnn_enabled': is_cnn_enabled,
             'is_external_filter_enabled': is_external_filter_enabled,
+            'external_filter_params': external_filter_params,
             'rolling_hours': rolling_hours,
             'rolling_values': rolling_values,
             'wet_dry_deviation': wet_dry_deviation,

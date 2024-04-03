@@ -12,6 +12,7 @@ from lib.pycomlink.pycomlink.processing.wet_dry.cnn import CNN_OUTPUT_LEFT_NANS_
 from database.influx_manager import InfluxManager
 from procedures.calculation_signals import CalcSignals
 from procedures.exceptions import ProcessingException
+from procedures.external_filter import determine_wet
 from procedures import data_loading, data_preprocessing, temperature_correlation, temperature_compensation
 
 
@@ -168,6 +169,34 @@ class Calculation(QRunnable):
                 # remove first CNN_OUTPUT_LEFT_NANS_LENGTH time values from dataset since they are NaNs
                 calc_data = [link.isel(time=slice(CNN_OUTPUT_LEFT_NANS_LENGTH, None)) for link in calc_data]
 
+            if self.cp['is_external_filter_enabled']:
+                efp = self.cp['external_filter_params']
+                for link in calc_data:
+                    # central points of the links are sent into external filter
+                    link['lat_center'] = (link.site_a_latitude + link.site_b_latitude) / 2
+                    link['lon_center'] = (link.site_a_longitude + link.site_b_longitude) / 2
+
+                    for t in range(len(link.time)):
+                        time = link.time[t].values
+                        external_wet = determine_wet(
+                            time,
+                            link.lon_center,
+                            link.lat_center,
+                            efp['radius'] + link.length / 2,
+                            efp['pixel_threshold'],
+                            efp['IMG_X_MIN'],
+                            efp['IMG_X_MAX'],
+                            efp['IMG_Y_MIN'],
+                            efp['IMG_Y_MAX'],
+                            efp['url'],
+                            efp['default_return'],
+                            not self.cp['is_realtime']
+                        )
+                        internal_wet = link.wet[t].values
+                        link.wet[t] = external_wet and internal_wet
+                        print(f"[{log_run_id}][EXTERNAL FILTER]: cml: {link.cml_id.values} time: {time} "
+                              f"EXWET: {external_wet} INTWET: {internal_wet} = {link.wet[t].values}")
+
             for link in calc_data:
                 # calculate ratio of wet periods
                 link['wet_fraction'] = (link.wet == 1).sum() / len(link.time)
@@ -215,6 +244,8 @@ class Calculation(QRunnable):
 
             print(f"[{log_run_id}] Interpolating spatial data for rainfall overall map...")
 
+            # TODO: use already created coords from external filter
+            # if not self.cp['is_external_filter_enabled']:
             # central points of the links are considered in interpolation algorithms
             calc_data_1h['lat_center'] = (calc_data_1h.site_a_latitude + calc_data_1h.site_b_latitude) / 2
             calc_data_1h['lon_center'] = (calc_data_1h.site_a_longitude + calc_data_1h.site_b_longitude) / 2

@@ -30,3 +30,13 @@ bucket_new_data=cmls_new
 new_data_type=default
 old_new_data_border=2023-12-31T12:00:00Z
 bucket_out_cml=output_bucket
+
+[external_filter]
+url=http://127.0.0.1/img_data/
+radius=20
+pixel_threshold=5
+default_return=True
+IMG_X_MIN=11.28
+IMG_X_MAX=20.765
+IMG_Y_MIN=48.05
+IMG_Y_MAX=52.165
