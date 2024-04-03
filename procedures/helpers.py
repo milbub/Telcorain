@@ -30,7 +30,7 @@ def calc_distance(lat_A: float, long_A: float, lat_B: float, long_B: float) -> f
     return r * c
 
 
-def dt64_to_unixtime(dt64) -> int:
+def dt64_to_unixtime(dt64: np.datetime64) -> int:
     """
     Convert numpy datetime64 to Unix timestamp.
 
