@@ -366,15 +366,15 @@ class ResultsWidget(QWidget):
 
         canvas.cbar.draw_all()
 
-        for coords in self.points:
-            # get 'z' value of a point from rain grid
-            z = self._get_z_value(rain_grid, coords[0], coords[1])
-
-            # plot an annotation and keep its reference
-            a = canvas.ax.annotate(text='{:.1f}'.format(z), xy=(coords[0], coords[1]), fontsize=14)
-
-            # store an annotation reference
-            annotations.append(a)
+        # for coords in self.points:
+        #     # get 'z' value of a point from rain grid
+        #     z = self._get_z_value(rain_grid, coords[0], coords[1])
+        #
+        #     # plot an annotation and keep its reference
+        #     a = canvas.ax.annotate(text='{:.1f}'.format(z), xy=(coords[0], coords[1]), fontsize=14)
+        #
+        #     # store an annotation reference
+        #     annotations.append(a)
 
     def _plot_link_lines(self, calc_data, ax, link_lines):
         # remove old lines from the plot
