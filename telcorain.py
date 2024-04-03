@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 from PyQt6.QtWidgets import QApplication
+from PyQt6.QtGui import QFont, QFontDatabase
 import app.main_window as mw
 import sys
 import warnings
@@ -10,6 +11,16 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)  # currently, there are no CLI args
+
+    # Set up the font
+    font_id = QFontDatabase.addApplicationFont("app/gui/fonts/LiberationSans-Regular.ttf")
+    if font_id != -1:
+        font_families = QFontDatabase.applicationFontFamilies(font_id)
+        if font_families:
+            custom_font = QFont(font_families[0])
+            custom_font.setPointSize(9)
+            app.setFont(custom_font)
+
     # Qt's main window = central hub of the application
     # constructor of the main window contains all the starting mechanism -> see /gui/main_window.py
     main_win = mw.MainWindow()
