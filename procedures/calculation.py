@@ -194,7 +194,7 @@ class Calculation(QRunnable):
                         )
                         internal_wet = link.wet[t].values
                         link.wet[t] = external_wet and internal_wet
-                        print(f"[{log_run_id}][EXTERNAL FILTER]: cml: {link.cml_id.values} time: {time} "
+                        print(f"[{log_run_id}] [EXTERNAL FILTER]: cml: {link.cml_id.values} time: {time} "
                               f"EXWET: {external_wet} INTWET: {internal_wet} = {link.wet[t].values}")
 
             for link in calc_data:
