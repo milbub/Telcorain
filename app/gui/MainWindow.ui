@@ -225,7 +225,7 @@
              </property>
              <property name="dateTime">
               <datetime>
-               <hour>22</hour>
+               <hour>16</hour>
                <minute>0</minute>
                <second>0</second>
                <year>2022</year>
@@ -242,21 +242,21 @@
              </property>
              <property name="time">
               <time>
-               <hour>22</hour>
+               <hour>16</hour>
                <minute>0</minute>
                <second>0</second>
               </time>
              </property>
              <property name="maximumTime">
               <time>
-               <hour>20</hour>
+               <hour>18</hour>
                <minute>59</minute>
                <second>59</second>
               </time>
              </property>
              <property name="minimumTime">
               <time>
-               <hour>21</hour>
+               <hour>19</hour>
                <minute>0</minute>
                <second>0</second>
               </time>
@@ -292,7 +292,7 @@
              </property>
              <property name="dateTime">
               <datetime>
-               <hour>22</hour>
+               <hour>16</hour>
                <minute>0</minute>
                <second>0</second>
                <year>2022</year>
@@ -309,21 +309,21 @@
              </property>
              <property name="time">
               <time>
-               <hour>22</hour>
+               <hour>16</hour>
                <minute>0</minute>
                <second>0</second>
               </time>
              </property>
              <property name="maximumTime">
               <time>
-               <hour>20</hour>
+               <hour>18</hour>
                <minute>59</minute>
                <second>59</second>
               </time>
              </property>
              <property name="minimumTime">
               <time>
-               <hour>21</hour>
+               <hour>19</hour>
                <minute>0</minute>
                <second>0</second>
               </time>
@@ -1567,7 +1567,7 @@
                </rect>
               </property>
               <property name="text">
-               <string>Skip Influx</string>
+               <string>No Influx</string>
               </property>
              </widget>
             </widget>
@@ -2260,7 +2260,7 @@
     <bool>true</bool>
    </property>
    <property name="checked">
-    <bool>true</bool>
+    <bool>false</bool>
    </property>
    <property name="text">
     <string>External Filter Layer</string>
