@@ -758,11 +758,14 @@ class MainWindow(QMainWindow):
         idw_near = self.spin_idw_near.value()
         idw_dist = self.spin_idw_dist.value()
         output_step = self.spin_output_step.value()
+        min_rain_value = float(self.config_man.read_option('rainfields', 'min_value'))
         is_only_overall = self.box_only_overall.isChecked()
         is_output_total = self.radio_output_total.isChecked()
         is_pdf = self.pdf_box.isChecked()
         is_png = self.png_box.isChecked()
         is_dummy = self.check_dummy.isChecked()
+        map_file = self.config_man.read_option('rendering', 'map')
+        animation_speed = int(self.config_man.read_option('viewer', 'animation_speed'))
         waa_schleiss_val = self.spin_waa_schleiss_val.value()
         waa_schleiss_tau = self.spin_waa_schleiss_tau.value()
         close_func = self.close_tab_result
@@ -814,11 +817,14 @@ class MainWindow(QMainWindow):
             'idw_near': idw_near,
             'idw_dist': idw_dist,
             'output_step': output_step,
+            'min_rain_value': min_rain_value,
             'is_only_overall': is_only_overall,
             'is_output_total': is_output_total,
             'is_pdf': is_pdf,
             'is_png': is_png,
             'is_dummy': is_dummy,
+            'map_file': map_file,
+            'animation_speed': animation_speed,
             'waa_schleiss_val': waa_schleiss_val,
             'waa_schleiss_tau': waa_schleiss_tau,
             'close_func': close_func,

@@ -337,6 +337,7 @@ class Calculation(QRunnable):
                         grid = interpolator(x=calc_data_steps.lon_center, y=calc_data_steps.lat_center,
                                             z=calc_data_steps.R.mean(dim='channel_id').isel(time=x),
                                             xgrid=x_grid, ygrid=y_grid)
+                        grid[grid < self.cp['min_rain_value']] = 0  # zeroing out small values below threshold
                         self.rain_grids.append(grid)
                         self.last_time = calc_data_steps.time[x].values
 

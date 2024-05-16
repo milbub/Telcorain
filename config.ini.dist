@@ -4,9 +4,16 @@ X_MIN=12.0905
 X_MAX=18.8591
 Y_MIN=48.5525
 Y_MAX=51.0557
+map=plain_czechia.png
+
+[rainfields]
+min_value=0.1
 
 [realtime]
 retention=336
+
+[viewer]
+animation_speed=1000
 
 [mariadb]
 address=127.0.0.1

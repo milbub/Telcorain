@@ -12,12 +12,25 @@ from PyQt6.QtCore import QDateTime, QTimeZone, QTimer
 from PyQt6.QtWidgets import QWidget, QLabel, QGridLayout, QSlider, QPushButton, QMessageBox, QTableWidget
 
 from procedures.helpers import dt64_to_unixtime
+from writers.realtime_writer import RealtimeWriter
 
 matplotlib.use('QtAgg')
 
 
 class Canvas(FigureCanvasQTAgg):
-    def __init__(self, x_min, x_max, y_min, y_max, dpi=96, left=0, bottom=0.03, right=1, top=0.97):
+    def __init__(
+            self,
+            x_min: float,
+            x_max: float,
+            y_min: float,
+            y_max: float,
+            map_bg: str,
+            dpi: int = 96,
+            left: float = 0,
+            bottom: float = 0.03,
+            right: float = 1,
+            top: float = 0.97
+    ):
         # setup single plot positioning
         self.fig = Figure(dpi=dpi)
         self.fig.tight_layout()
@@ -26,8 +39,7 @@ class Canvas(FigureCanvasQTAgg):
         self.ax.axes.yaxis.set_visible(False)
         self.fig.subplots_adjust(left, bottom, right, top)
 
-        # TODO: load path from options
-        bg_map = pyplot.imread('./assets/cz.png')
+        bg_map = pyplot.imread(f"./assets/{map_bg}")
         self.ax.imshow(bg_map, zorder=0, extent=(x_min, x_max, y_min, y_max), aspect='auto')
 
         super(Canvas, self).__init__(self.fig)
@@ -35,6 +47,7 @@ class Canvas(FigureCanvasQTAgg):
         self.pc = None
         self.cbar = None
 
+        # TODO: remove this and implement proper value printing when clinking on a map
         # TEST
         def onclick(event):
             print(event)
@@ -43,11 +56,7 @@ class Canvas(FigureCanvasQTAgg):
 
 
 class ResultsWidget(QWidget):
-    # TODO: load speed from settings
-    # animation speed constant, later speed control can be implemented
-    ANIMATION_SPEED = 1000
-
-    def __init__(self, tab_name: str, result_id: int, figs_path: str, cp: dict, realtime_writer):
+    def __init__(self, tab_name: str, result_id: int, figs_path: str, cp: dict, realtime_writer: RealtimeWriter):
         super(QWidget, self).__init__()
         self.tab_name = tab_name
         self.result_id = result_id
@@ -105,13 +114,16 @@ class ResultsWidget(QWidget):
         self.rain_cmap.set_under('k', alpha=0)
 
         # prepare canvases
-        self.overall_canvas = Canvas(cp['X_MIN'], cp['X_MAX'], cp['Y_MIN'], cp['Y_MAX'], dpi=75)
-        self.animation_canvas = Canvas(cp['X_MIN'], cp['X_MAX'], cp['Y_MIN'], cp['Y_MAX'], dpi=75)
+        self.overall_canvas = Canvas(cp['X_MIN'], cp['X_MAX'], cp['Y_MIN'], cp['Y_MAX'], cp['map_file'], dpi=75)
+        self.animation_canvas = Canvas(cp['X_MIN'], cp['X_MAX'], cp['Y_MIN'], cp['Y_MAX'], cp['map_file'], dpi=75)
 
         # init animation rain grids list
         self.animation_grids = []
         self.animation_x_grid = None
         self.animation_y_grid = None
+
+        # animation speed constant, later maybe speed control can be implemented?
+        self.animation_speed = cp['animation_speed']
 
         # init link lines list
         self.anim_link_lines = []
@@ -235,7 +247,7 @@ class ResultsWidget(QWidget):
         else:
             self.slider.setEnabled(False)
             self.button_play_pause.setText('⏸')
-            self.animation_timer.start(self.ANIMATION_SPEED)
+            self.animation_timer.start(self.animation_speed)
 
     def next_animation_fig(self):
         self.animation_counter += 1
@@ -418,7 +430,7 @@ class ResultsWidget(QWidget):
         if self.slider_return_to_anim:
             self.button_play_pause.setText('⏸')
             self.slider_return_to_anim = False
-            self.animation_timer.start(self.ANIMATION_SPEED)
+            self.animation_timer.start(self.animation_speed)
 
     def _set_enabled_controls(self, enabled: bool):
         self.button_play_pause.setEnabled(enabled)
