@@ -273,8 +273,8 @@ def convert_to_link_datasets(
 
     except BaseException as error:
         signals.error_signal.emit({"id": results_id})
-        print(f"[{log_run_id}] ERROR: An unexpected error occurred during data processing: "
-              f"{type(error)} {error}.")
+
+        print(f"[{log_run_id}] ERROR: An unexpected error occurred during data processing: {type(error)} {error}.")
         print(f"[{log_run_id}] ERROR: Last processed microwave link ID: {link}")
         print(f"[{log_run_id}] ERROR: Calculation thread terminated.")
 
