@@ -13,7 +13,14 @@ from procedures.rain import temperature_compensation, temperature_correlation
 from procedures.utils.external_filter import determine_wet
 
 
-def get_rain_rates(signals: CalcSignals, calc_data: list[Dataset], cp: dict[str, Any], ips: list[str], log_run_id: str, results_id: int) -> list[Dataset]:
+def get_rain_rates(
+        signals: CalcSignals,
+        calc_data: list[Dataset],
+        cp: dict[str, Any],
+        ips: list[str],
+        log_run_id: str,
+        results_id: int
+) -> list[Dataset]:
     current_link = 0
 
     try:
