@@ -1,5 +1,6 @@
 class ProcessingException(Exception):
-    """Exception raised for errors in the input data processing.
+    """
+    Exception raised for errors in the input data processing.
 
     Attributes:
         message -- explanation of the error

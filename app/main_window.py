@@ -1,4 +1,5 @@
 import sys
+from datetime import datetime, timedelta
 
 from PyQt6 import uic, QtGui, QtCore
 from PyQt6.QtCore import QTimer, QObject
@@ -6,7 +7,8 @@ from PyQt6.QtGui import QPixmap, QAction
 from PyQt6.QtWidgets import QMainWindow, QLabel, QProgressBar, QHBoxLayout, QWidget, QTextEdit, QListWidget, \
     QDateTimeEdit, QPushButton, QSpinBox, QTabWidget, QLineEdit, QDoubleSpinBox, QRadioButton, QCheckBox, \
     QListWidgetItem, QTableWidget, QGridLayout, QMessageBox, QFileDialog, QApplication, QComboBox
-from datetime import datetime, timedelta
+
+from lib.pycomlink.pycomlink.processing.wet_dry.cnn import CNN_OUTPUT_LEFT_NANS_LENGTH
 
 from database.influx_manager import InfluxManager, InfluxChecker, InfluxSignals
 from database.sql_manager import SqlManager, SqlChecker, SqlSignals
@@ -128,11 +130,17 @@ class MainWindow(QMainWindow):
         self.radio_realtime: QObject = self.findChild(QRadioButton, "radioRealtime")
         self.combo_realtime: QObject = self.findChild(QComboBox, "comboRealtime")
         self.label_realtime: QObject = self.findChild(QLabel, "labelRealtime")
+        self.filter_box: QObject = self.findChild(QCheckBox, "boxTemperatureFilter")
         self.correlation_spin: QObject = self.findChild(QDoubleSpinBox, "correlationSpin")
-        self.correlation_filter_box: QObject = self.findChild(QCheckBox, "filterCMLsBox")
-        self.compensation_box: QObject = self.findChild(QCheckBox, "compensationBox")
+        self.correlation_filter_box: QObject = self.findChild(QRadioButton, "radioRemove")
+        self.compensation_box: QObject = self.findChild(QRadioButton, "radioCompensation")
         self.write_output_box: QObject = self.findChild(QCheckBox, "writeOutputBox")
+        self.write_history_box: QObject = self.findChild(QCheckBox, "writeHistoryBox")
+        self.skip_influx_write_box: QObject = self.findChild(QCheckBox, "boxSkipInfluxWrite")
+        self.force_write_box: QObject = self.findChild(QCheckBox, "boxForce")
         self.window_pointer_combo: QObject = self.findChild(QComboBox, "windowPointerCombo")
+        self.radio_cnn: QObject = self.findChild(QRadioButton, "radioCNN")
+        self.action_external_filter: QObject = self.findChild(QAction, "actionExternalFilterLayer")
 
         # declare dictionary for created tabs with calculation results
         # <key: int = result ID, value: ResultsWidget>
@@ -171,6 +179,8 @@ class MainWindow(QMainWindow):
         # style out other things
         self.combo_realtime.setHidden(True)
         self.label_realtime.setHidden(True)
+        self.force_write_box.setHidden(True)
+        self.skip_influx_write_box.setHidden(True)
 
         # show window
         self.show()
@@ -416,30 +426,84 @@ class MainWindow(QMainWindow):
         elif cp['step'] > 59:
             msg = f"Input time interval cannot be longer than 59 minutes."
             print(f"[WARNING] {msg}")
+        elif cp['is_cnn_enabled'] and \
+                ((cp['start'].secsTo(cp['end']) / 60) / cp['step']) <= CNN_OUTPUT_LEFT_NANS_LENGTH:
+            msg = f"When using CNN with {cp['step']}m resolution, " \
+                  f"input time interval must be at least {(CNN_OUTPUT_LEFT_NANS_LENGTH * cp['step']) / 60} hours long."
+            print(f"[WARNING] {msg}")
         else:
             self.result_id += 1
 
             # create calculation instance
-            calculation = Calculation(self.influx_man, self.calc_signals, self.result_id, self.links,
-                                      self.current_selection, cp)
+            calculation = Calculation(
+                self.influx_man,
+                self.calc_signals,
+                self.result_id,
+                self.links,
+                self.current_selection,
+                cp
+            )
 
             if self.results_name.text() == "":
                 results_tab_name = "<no name>"
             else:
                 results_tab_name = self.results_name.text()
 
-            # create results widget instance
+            # create results widget instance and prepare outputs write, if activated
             if cp['is_output_write']:
                 start_time = datetime.utcnow()
                 output_delta = timedelta(minutes=cp['output_step'])
                 since_time = start_time - output_delta
 
-                realtime_w = RealtimeWriter(self.sql_man, self.influx_man, False, since_time)
-                self.results_tabs[self.result_id] = ResultsWidget(results_tab_name, self.result_id, self.path, cp,
-                                                                  realtime_writer=realtime_w)
+                realtime_w = RealtimeWriter(
+                    self.sql_man,
+                    self.influx_man,
+                    cp['is_history_write'],
+                    cp['is_influx_write_skipped'],
+                    since_time
+                )
+
+                self.results_tabs[self.result_id] = ResultsWidget(
+                    results_tab_name,
+                    self.result_id,
+                    self.path,
+                    cp,
+                    realtime_writer=realtime_w
+                )
+
+                params = self.sql_man.get_last_realtime()
+                print("Calculation outputs writing activated!")
+                if len(params) != 0:
+                    print(f"Last written calculation started at "
+                          f"{params['start_time'].strftime('%Y-%m-%d %H:%M:%S')} and ran with parameters: "
+                          f"retention: {(params['retention'] / 60):.0f} h, step: {(params['timestep'] / 60):.0f} min, "
+                          f"grid resolution: {(params['resolution']):.8f} °.")
+                print(f"Current parameters are: retention: {cp['retention']} h, step: "
+                      f"{cp['output_step']} min, grid resolution: {cp['interpol_res']:.8f} °.")
+
+                # if force write is activated, rewrite history...
+                if cp['is_force_write']:
+                    print("[DEVELOPER MODE] FORCE write activated, all calculations will be ERASED from the database.")
+                    self.sql_man.wipeout_realtime_tables()
+                    print("[DEVELOPER MODE] MariaDB output tables erased.")
+                    self.influx_man.wipeout_output_bucket()
+                    print("[DEVELOPER MODE] InfluxDB output bucket erased.")
+                    print("[DEVELOPER MODE] PURGE DONE. New calculation data will be written.")
+
+                self.sql_man.insert_realtime(
+                    cp['retention'] * 60,
+                    cp['output_step'] * 60,
+                    cp['interpol_res'],
+                    cp['X_MIN'], cp['X_MAX'], cp['Y_MIN'], cp['Y_MAX']
+                )
             else:
-                self.results_tabs[self.result_id] = ResultsWidget(results_tab_name, self.result_id, self.path, cp,
-                                                                  realtime_writer=None)
+                self.results_tabs[self.result_id] = ResultsWidget(
+                    results_tab_name,
+                    self.result_id,
+                    self.path,
+                    cp,
+                    realtime_writer=None
+                )
 
             self.results_name.clear()
             self.butt_start.setEnabled(False)
@@ -447,26 +511,12 @@ class MainWindow(QMainWindow):
             if cp['is_realtime']:
                 calculation.setAutoDelete(False)
                 self.running_realtime = calculation
-
-                if cp['is_output_write']:
-                    params = self.sql_man.get_last_realtime()
-                    print("Realtime outputs writing activated!")
-                    if len(params) != 0:
-                        print(f"Last written realtime calculation started at "
-                              f"{params['start_time'].strftime('%Y-%m-%d %H:%M:%S')} and ran with parameters: "
-                              f"retention: {(params['retention']/60):.0f} h, step: {(params['timestep']/60):.0f} min, "
-                              f"grid resolution: {(params['resolution']):.8f} °.")
-                    print(f"Current realtime parameters are: retention: {cp['retention']} h, step: "
-                          f"{cp['output_step']} min, grid resolution: {cp['interpol_res']:.8f} °.")
-                    self.sql_man.insert_realtime(cp['retention'] * 60, cp['output_step'] * 60, cp['interpol_res'],
-                                                 cp['X_MIN'], cp['X_MAX'], cp['Y_MIN'], cp['Y_MAX'])
-
                 self._pool_realtime_run()
                 msg = "Processing realtime calculation iteration..."
             else:
-                # RUN calculation on worker thread from threadpool
+                # run calculation on worker thread from threadpool
                 self.threadpool.start(calculation)
-                # calculation.run()  # TEMP: run directly on gui thread for debugging reasons
+                # calculation.run()  # DEBUG: run directly on gui thread
                 msg = "Processing..."
 
         self.statusBar().showMessage(msg)
@@ -697,6 +747,8 @@ class MainWindow(QMainWindow):
         end = self.datetime_stop.dateTime()
         step = self.spin_timestep.value()
         time_diff = start.msecsTo(end)
+        is_cnn_enabled = self.radio_cnn.isChecked()
+        is_external_filter_enabled = self.action_external_filter.isChecked()
         rolling_hours = self.spin_roll_window.value()
         rolling_values = int((rolling_hours * 60) / step)
         wet_dry_deviation = self.spin_wet_dry_sd.value()
@@ -706,20 +758,26 @@ class MainWindow(QMainWindow):
         idw_near = self.spin_idw_near.value()
         idw_dist = self.spin_idw_dist.value()
         output_step = self.spin_output_step.value()
+        min_rain_value = float(self.config_man.read_option('rainfields', 'min_value'))
         is_only_overall = self.box_only_overall.isChecked()
         is_output_total = self.radio_output_total.isChecked()
         is_pdf = self.pdf_box.isChecked()
         is_png = self.png_box.isChecked()
         is_dummy = self.check_dummy.isChecked()
+        map_file = self.config_man.read_option('rendering', 'map')
+        animation_speed = int(self.config_man.read_option('viewer', 'animation_speed'))
         waa_schleiss_val = self.spin_waa_schleiss_val.value()
         waa_schleiss_tau = self.spin_waa_schleiss_tau.value()
         close_func = self.close_tab_result
-        is_temp_compensated = self.compensation_box.isChecked()
+        is_temp_compensated = self.compensation_box.isChecked() and self.filter_box.isChecked()
         correlation_threshold = self.correlation_spin.value()
         realtime_timewindow = self.combo_realtime.currentText()
         is_realtime = self.radio_realtime.isChecked()
-        is_temp_filtered = self.correlation_filter_box.isChecked()
+        is_temp_filtered = self.correlation_filter_box.isChecked() and self.filter_box.isChecked()
         is_output_write = self.write_output_box.isChecked()
+        is_history_write = self.write_history_box.isChecked()
+        is_force_write = self.force_write_box.isChecked() and self.write_output_box.isChecked()
+        is_influx_write_skipped = self.skip_influx_write_box.isChecked()
         is_window_centered = True if self.window_pointer_combo.currentIndex() == 0 else False
         retention = int(self.config_man.read_option('realtime', 'retention'))
         X_MIN = float(self.config_man.read_option('rendering', 'X_MIN'))
@@ -727,11 +785,29 @@ class MainWindow(QMainWindow):
         Y_MIN = float(self.config_man.read_option('rendering', 'Y_MIN'))
         Y_MAX = float(self.config_man.read_option('rendering', 'Y_MAX'))
 
+        if is_external_filter_enabled:
+            external_filter_params = {
+                'url': self.config_man.read_option('external_filter', 'url'),
+                'radius': int(self.config_man.read_option('external_filter', 'radius')),
+                'pixel_threshold': int(self.config_man.read_option('external_filter', 'pixel_threshold')),
+                'default_return':
+                    True if self.config_man.read_option('external_filter', 'default_return') == 'True' else False,
+                'IMG_X_MIN': float(self.config_man.read_option('external_filter', 'IMG_X_MIN')),
+                'IMG_X_MAX': float(self.config_man.read_option('external_filter', 'IMG_X_MAX')),
+                'IMG_Y_MIN': float(self.config_man.read_option('external_filter', 'IMG_Y_MIN')),
+                'IMG_Y_MAX': float(self.config_man.read_option('external_filter', 'IMG_Y_MAX'))
+            }
+        else:
+            external_filter_params = None
+
         calculation_params = {
             'start': start,
             'end': end,
             'step': step,
             'time_diff': time_diff,
+            'is_cnn_enabled': is_cnn_enabled,
+            'is_external_filter_enabled': is_external_filter_enabled,
+            'external_filter_params': external_filter_params,
             'rolling_hours': rolling_hours,
             'rolling_values': rolling_values,
             'wet_dry_deviation': wet_dry_deviation,
@@ -741,11 +817,14 @@ class MainWindow(QMainWindow):
             'idw_near': idw_near,
             'idw_dist': idw_dist,
             'output_step': output_step,
+            'min_rain_value': min_rain_value,
             'is_only_overall': is_only_overall,
             'is_output_total': is_output_total,
             'is_pdf': is_pdf,
             'is_png': is_png,
             'is_dummy': is_dummy,
+            'map_file': map_file,
+            'animation_speed': animation_speed,
             'waa_schleiss_val': waa_schleiss_val,
             'waa_schleiss_tau': waa_schleiss_tau,
             'close_func': close_func,
@@ -755,6 +834,9 @@ class MainWindow(QMainWindow):
             'is_realtime': is_realtime,
             'is_temp_filtered': is_temp_filtered,
             'is_output_write': is_output_write,
+            'is_history_write': is_history_write,
+            'is_force_write': is_force_write,
+            'is_influx_write_skipped': is_influx_write_skipped,
             'is_window_centered': is_window_centered,
             'retention': retention,
             'X_MIN': X_MIN,

@@ -1,19 +1,36 @@
-import os
 import gc
+import os
+from typing import cast
 import webbrowser
+
 import matplotlib
-from PyQt6 import uic, QtCore
-from PyQt6.QtCore import QDateTime, QTimeZone, QTimer
-from PyQt6.QtWidgets import QWidget, QLabel, QGridLayout, QSlider, QPushButton, QMessageBox, QTableWidget
 from matplotlib import cm, colors, pyplot
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
+from PyQt6 import uic, QtCore
+from PyQt6.QtCore import QDateTime, QTimeZone, QTimer
+from PyQt6.QtWidgets import QWidget, QLabel, QGridLayout, QSlider, QPushButton, QMessageBox, QTableWidget
+
+from procedures.helpers import dt64_to_unixtime
+from writers.realtime_writer import RealtimeWriter
 
 matplotlib.use('QtAgg')
 
 
 class Canvas(FigureCanvasQTAgg):
-    def __init__(self, x_min, x_max, y_min, y_max, dpi=96, left=0, bottom=0.03, right=1, top=0.97):
+    def __init__(
+            self,
+            x_min: float,
+            x_max: float,
+            y_min: float,
+            y_max: float,
+            map_bg: str,
+            dpi: int = 96,
+            left: float = 0,
+            bottom: float = 0.03,
+            right: float = 1,
+            top: float = 0.97
+    ):
         # setup single plot positioning
         self.fig = Figure(dpi=dpi)
         self.fig.tight_layout()
@@ -22,8 +39,7 @@ class Canvas(FigureCanvasQTAgg):
         self.ax.axes.yaxis.set_visible(False)
         self.fig.subplots_adjust(left, bottom, right, top)
 
-        # TODO: load path from options
-        bg_map = pyplot.imread('./assets/cz.png')
+        bg_map = pyplot.imread(f"./assets/{map_bg}")
         self.ax.imshow(bg_map, zorder=0, extent=(x_min, x_max, y_min, y_max), aspect='auto')
 
         super(Canvas, self).__init__(self.fig)
@@ -31,6 +47,7 @@ class Canvas(FigureCanvasQTAgg):
         self.pc = None
         self.cbar = None
 
+        # TODO: remove this and implement proper value printing when clinking on a map
         # TEST
         def onclick(event):
             print(event)
@@ -39,11 +56,7 @@ class Canvas(FigureCanvasQTAgg):
 
 
 class ResultsWidget(QWidget):
-    # TODO: load speed from settings
-    # animation speed constant, later speed control can be implemented
-    ANIMATION_SPEED = 1000
-
-    def __init__(self, tab_name: str, result_id: int, figs_path: str, cp: dict, realtime_writer):
+    def __init__(self, tab_name: str, result_id: int, figs_path: str, cp: dict, realtime_writer: RealtimeWriter):
         super(QWidget, self).__init__()
         self.tab_name = tab_name
         self.result_id = result_id
@@ -63,25 +76,25 @@ class ResultsWidget(QWidget):
         uic.loadUi("./app/gui/ResultsWidget.ui", self)
 
         # lookup for used widgets and define them
-        self.overall_plot_layout = self.findChild(QGridLayout, "layoutOverallPlot")
-        self.main_plot_layout = self.findChild(QGridLayout, "layoutMainPlot")
-        self.tab_name_label = self.findChild(QLabel, "labelCalcName")
-        self.start_label = self.findChild(QLabel, "labelStartTime")
-        self.end_label = self.findChild(QLabel, "labelEndTime")
-        self.interval_label = self.findChild(QLabel, "labelFrameInterval")
-        self.output_label = self.findChild(QLabel, "labelOutputType")
-        self.label_no_anim_notify = self.findChild(QLabel, "labelNoAnim")
-        self.label_current_fig_time = self.findChild(QLabel, "labelCurrentFig")
-        self.slider = self.findChild(QSlider, "sliderFrames")
-        self.button_play_pause = self.findChild(QPushButton, "buttPlayPause")
-        self.button_prev = self.findChild(QPushButton, "buttPrev")
-        self.button_next = self.findChild(QPushButton, "buttNext")
-        self.button_start = self.findChild(QPushButton, "buttStart")
-        self.button_end = self.findChild(QPushButton, "buttEnd")
-        self.butt_save = self.findChild(QPushButton, "buttSave")
-        self.butt_open = self.findChild(QPushButton, "buttOpenFolder")
-        self.butt_close = self.findChild(QPushButton, "buttClose")
-        self.table_params = self.findChild(QTableWidget, "tableParams")
+        self.overall_plot_layout: QGridLayout = cast(QGridLayout, self.findChild(QGridLayout, "layoutOverallPlot"))
+        self.main_plot_layout: QGridLayout = cast(QGridLayout, self.findChild(QGridLayout, "layoutMainPlot"))
+        self.tab_name_label: QLabel = cast(QLabel, self.findChild(QLabel, "labelCalcName"))
+        self.start_label: QLabel = cast(QLabel, self.findChild(QLabel, "labelStartTime"))
+        self.end_label: QLabel = cast(QLabel, self.findChild(QLabel, "labelEndTime"))
+        self.interval_label: QLabel = cast(QLabel, self.findChild(QLabel, "labelFrameInterval"))
+        self.output_label: QLabel = cast(QLabel, self.findChild(QLabel, "labelOutputType"))
+        self.label_no_anim_notify: QLabel = cast(QLabel, self.findChild(QLabel, "labelNoAnim"))
+        self.label_current_fig_time: QLabel = cast(QLabel, self.findChild(QLabel, "labelCurrentFig"))
+        self.slider: QSlider = cast(QSlider, self.findChild(QSlider, "sliderFrames"))
+        self.button_play_pause: QPushButton = cast(QPushButton, self.findChild(QPushButton, "buttPlayPause"))
+        self.button_prev: QPushButton = cast(QPushButton, self.findChild(QPushButton, "buttPrev"))
+        self.button_next: QPushButton = cast(QPushButton, self.findChild(QPushButton, "buttNext"))
+        self.button_start: QPushButton = cast(QPushButton, self.findChild(QPushButton, "buttStart"))
+        self.button_end: QPushButton = cast(QPushButton, self.findChild(QPushButton, "buttEnd"))
+        self.butt_save: QPushButton = cast(QPushButton, self.findChild(QPushButton, "buttSave"))
+        self.butt_open: QPushButton = cast(QPushButton, self.findChild(QPushButton, "buttOpenFolder"))
+        self.butt_close: QPushButton = cast(QPushButton, self.findChild(QPushButton, "buttClose"))
+        self.table_params: QTableWidget = cast(QTableWidget, self.findChild(QTableWidget, "tableParams"))
 
         # connect buttons
         self.button_play_pause.clicked.connect(self.start_pause_fired)
@@ -101,13 +114,16 @@ class ResultsWidget(QWidget):
         self.rain_cmap.set_under('k', alpha=0)
 
         # prepare canvases
-        self.overall_canvas = Canvas(cp['X_MIN'], cp['X_MAX'], cp['Y_MIN'], cp['Y_MAX'], dpi=75)
-        self.animation_canvas = Canvas(cp['X_MIN'], cp['X_MAX'], cp['Y_MIN'], cp['Y_MAX'], dpi=75)
+        self.overall_canvas = Canvas(cp['X_MIN'], cp['X_MAX'], cp['Y_MIN'], cp['Y_MAX'], cp['map_file'], dpi=75)
+        self.animation_canvas = Canvas(cp['X_MIN'], cp['X_MAX'], cp['Y_MIN'], cp['Y_MAX'], cp['map_file'], dpi=75)
 
         # init animation rain grids list
         self.animation_grids = []
         self.animation_x_grid = None
         self.animation_y_grid = None
+
+        # animation speed constant, later maybe speed control can be implemented?
+        self.animation_speed = cp['animation_speed']
 
         # init link lines list
         self.anim_link_lines = []
@@ -123,6 +139,7 @@ class ResultsWidget(QWidget):
         # init calc start and end time vals
         self.start_time = None
         self.end_time = None
+        self.real_start_time = None
 
         # init animation slider
         self.slider_return_to_anim = False
@@ -183,6 +200,9 @@ class ResultsWidget(QWidget):
         self.animation_x_grid = x_grid
         self.animation_y_grid = y_grid
 
+        # reset start and end times since real start can be different due to skipped frames
+        self._set_times(np_real_start=calc_data.isel(time=0).time.values)
+
         # render first figure of the animation
         self._refresh_fig(self.animation_canvas, x_grid, y_grid, rain_grids[0], self.anim_annotations,
                           is_total=self.cp['is_output_total'])
@@ -227,7 +247,7 @@ class ResultsWidget(QWidget):
         else:
             self.slider.setEnabled(False)
             self.button_play_pause.setText('⏸')
-            self.animation_timer.start(self.ANIMATION_SPEED)
+            self.animation_timer.start(self.animation_speed)
 
     def next_animation_fig(self):
         self.animation_counter += 1
@@ -327,7 +347,7 @@ class ResultsWidget(QWidget):
                                 dpi=dpi, bbox_inches='tight', pad_inches=0.3)
 
     def _update_animation_time(self):
-        self.current_anim_time = self.start_time.addSecs(self.cp['output_step'] * self.animation_counter * 60)
+        self.current_anim_time = self.real_start_time.addSecs(self.cp['output_step'] * self.animation_counter * 60)
         self.label_current_fig_time.setText(self.current_anim_time.toString("dd.MM.yyyy HH:mm:ss"))
 
     def _update_animation_fig(self):
@@ -358,15 +378,15 @@ class ResultsWidget(QWidget):
 
         canvas.cbar.draw_all()
 
-        for coords in self.points:
-            # get 'z' value of a point from rain grid
-            z = self._get_z_value(rain_grid, coords[0], coords[1])
-
-            # plot an annotation and keep its reference
-            a = canvas.ax.annotate(text='{:.1f}'.format(z), xy=(coords[0], coords[1]), fontsize=14)
-
-            # store an annotation reference
-            annotations.append(a)
+        # for coords in self.points:
+        #     # get 'z' value of a point from rain grid
+        #     z = self._get_z_value(rain_grid, coords[0], coords[1])
+        #
+        #     # plot an annotation and keep its reference
+        #     a = canvas.ax.annotate(text='{:.1f}'.format(z), xy=(coords[0], coords[1]), fontsize=14)
+        #
+        #     # store an annotation reference
+        #     annotations.append(a)
 
     def _plot_link_lines(self, calc_data, ax, link_lines):
         # remove old lines from the plot
@@ -410,7 +430,7 @@ class ResultsWidget(QWidget):
         if self.slider_return_to_anim:
             self.button_play_pause.setText('⏸')
             self.slider_return_to_anim = False
-            self.animation_timer.start(self.ANIMATION_SPEED)
+            self.animation_timer.start(self.animation_speed)
 
     def _set_enabled_controls(self, enabled: bool):
         self.button_play_pause.setEnabled(enabled)
@@ -437,14 +457,21 @@ class ResultsWidget(QWidget):
             table_vals[x].setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
             self.table_params.setCellWidget(x, 1, table_vals[x])
 
-    def _set_times(self, start, end):
-        unix_start = start.item() / 1000000000
-        unix_end = end.item() / 1000000000
+    def _set_times(self, start=None, end=None, np_real_start=None):
+        if start is not None:
+            unix_start = start.item() / 1000000000
+            self.start_time = QDateTime.fromSecsSinceEpoch(unix_start, QTimeZone.utc())
+            self.start_label.setText(self.start_time.toString("dd.MM.yyyy HH:mm"))
+            self.current_anim_time = self.start_time
 
-        self.start_time = QDateTime.fromSecsSinceEpoch(unix_start, QTimeZone.utc())
-        self.end_time = QDateTime.fromSecsSinceEpoch(unix_end, QTimeZone.utc())
+        if end is not None:
+            unix_end = end.item() / 1000000000
+            self.end_time = QDateTime.fromSecsSinceEpoch(unix_end, QTimeZone.utc())
+            self.end_label.setText(self.end_time.toString("dd.MM.yyyy HH:mm"))
 
-        self.current_anim_time = self.start_time
-
-        self.start_label.setText(self.start_time.toString("dd.MM.yyyy HH:mm"))
-        self.end_label.setText(self.end_time.toString("dd.MM.yyyy HH:mm"))
+        if np_real_start is not None:
+            unix_real_start = dt64_to_unixtime(np_real_start)
+            self.real_start_time = QDateTime.fromSecsSinceEpoch(unix_real_start, QTimeZone.utc())
+            self.current_anim_time = self.real_start_time
+        else:
+            self.real_start_time = self.start_time

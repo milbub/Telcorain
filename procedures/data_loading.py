@@ -48,12 +48,12 @@ def load_data_from_influxdb(
         # Realtime calculation is being done
         if cp['is_realtime']:
             print(f"[{log_run_id}] Realtime data procedure started.", flush=True)
-            influx_data = influx_man.query_signal_mean_realtime(ips, cp['realtime_timewindow'], cp['step'])
+            influx_data = influx_man.query_units_realtime(ips, cp['realtime_timewindow'], cp['step'])
 
         # In other case, notify we are doing historic calculation
         else:
             print(f"[{log_run_id}] Historic data procedure started.", flush=True)
-            influx_data = influx_man.query_signal_mean(ips, cp['start'], cp['end'], cp['step'])
+            influx_data = influx_man.query_units(ips, cp['start'], cp['end'], cp['step'])
 
         diff = len(ips) - len(influx_data)
 

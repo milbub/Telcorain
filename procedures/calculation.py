@@ -1,16 +1,19 @@
 import datetime
 
 import numpy as np
-import lib.pycomlink.pycomlink.processing as pycmlp
-import lib.pycomlink.pycomlink.spatial as pycmls
 import xarray as xr
 from PyQt6.QtCore import QRunnable
+
+import lib.pycomlink.pycomlink.processing as pycmlp
+import lib.pycomlink.pycomlink.spatial as pycmls
+from lib.pycomlink.pycomlink.processing.wet_dry import cnn
+from lib.pycomlink.pycomlink.processing.wet_dry.cnn import CNN_OUTPUT_LEFT_NANS_LENGTH
 
 from database.influx_manager import InfluxManager
 from procedures.calculation_signals import CalcSignals
 from procedures.exceptions import ProcessingException
-from procedures import data_loading, data_preprocessing
-from procedures import temperature_correlation, temperature_compensation
+from procedures.external_filter import determine_wet
+from procedures import data_loading, data_preprocessing, temperature_correlation, temperature_compensation
 
 
 class Calculation(QRunnable):
@@ -143,12 +146,60 @@ class Calculation(QRunnable):
             current_link = 0
 
             for link in calc_data:
-                # determine wet periods
-                link['wet'] = link.trsl.rolling(time=self.cp['rolling_values'], center=self.cp['is_window_centered'])\
-                                  .std(skipna=False) > self.cp['wet_dry_deviation']
+                if self.cp['is_cnn_enabled']:
+                    # determine wet periods using CNN
+                    link['wet'] = (('time',), np.zeros([link.time.size]))
 
+                    cnn_out = cnn.cnn_wet_dry(
+                        trsl_channel_1=link.isel(channel_id=0).trsl.values,
+                        trsl_channel_2=link.isel(channel_id=1).trsl.values,
+                        threshold=0.82,
+                        batch_size=128
+                    )
+
+                    link['wet'] = (('time',), np.where(np.isnan(cnn_out), link['wet'], cnn_out))
+                else:
+                    # determine wet periods using rolling standard deviation
+                    link['wet'] = link.trsl.rolling(
+                        time=self.cp['rolling_values'],
+                        center=self.cp['is_window_centered']
+                    ).std(skipna=False) > self.cp['wet_dry_deviation']
+
+            if self.cp['is_cnn_enabled']:
+                # remove first CNN_OUTPUT_LEFT_NANS_LENGTH time values from dataset since they are NaNs
+                calc_data = [link.isel(time=slice(CNN_OUTPUT_LEFT_NANS_LENGTH, None)) for link in calc_data]
+
+            if self.cp['is_external_filter_enabled']:
+                efp = self.cp['external_filter_params']
+                for link in calc_data:
+                    # central points of the links are sent into external filter
+                    link['lat_center'] = (link.site_a_latitude + link.site_b_latitude) / 2
+                    link['lon_center'] = (link.site_a_longitude + link.site_b_longitude) / 2
+
+                    for t in range(len(link.time)):
+                        time = link.time[t].values
+                        external_wet = determine_wet(
+                            time,
+                            link.lon_center,
+                            link.lat_center,
+                            efp['radius'] + link.length / 2,
+                            efp['pixel_threshold'],
+                            efp['IMG_X_MIN'],
+                            efp['IMG_X_MAX'],
+                            efp['IMG_Y_MIN'],
+                            efp['IMG_Y_MAX'],
+                            efp['url'],
+                            efp['default_return'],
+                            not self.cp['is_realtime']
+                        )
+                        internal_wet = link.wet[t].values
+                        link.wet[t] = external_wet and internal_wet
+                        print(f"[{log_run_id}] [EXTERNAL FILTER]: cml: {link.cml_id.values} time: {time} "
+                              f"EXWET: {external_wet} INTWET: {internal_wet} = {link.wet[t].values}")
+
+            for link in calc_data:
                 # calculate ratio of wet periods
-                link['wet_fraction'] = (link.wet == 1).sum() / (link.wet == 0).sum()
+                link['wet_fraction'] = (link.wet == 1).sum() / len(link.time)
 
                 # determine signal baseline
                 link['baseline'] = pycmlp.baseline.baseline_constant(trsl=link.trsl, wet=link.wet,
@@ -193,6 +244,8 @@ class Calculation(QRunnable):
 
             print(f"[{log_run_id}] Interpolating spatial data for rainfall overall map...")
 
+            # TODO: use already created coords from external filter
+            # if not self.cp['is_external_filter_enabled']:
             # central points of the links are considered in interpolation algorithms
             calc_data_1h['lat_center'] = (calc_data_1h.site_a_latitude + calc_data_1h.site_b_latitude) / 2
             calc_data_1h['lon_center'] = (calc_data_1h.site_a_longitude + calc_data_1h.site_b_longitude) / 2
@@ -284,6 +337,7 @@ class Calculation(QRunnable):
                         grid = interpolator(x=calc_data_steps.lon_center, y=calc_data_steps.lat_center,
                                             z=calc_data_steps.R.mean(dim='channel_id').isel(time=x),
                                             xgrid=x_grid, ygrid=y_grid)
+                        grid[grid < self.cp['min_rain_value']] = 0  # zeroing out small values below threshold
                         self.rain_grids.append(grid)
                         self.last_time = calc_data_steps.time[x].values
 
