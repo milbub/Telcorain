@@ -12,8 +12,9 @@ from lib.pycomlink.pycomlink.processing.wet_dry.cnn import CNN_OUTPUT_LEFT_NANS_
 from database.influx_manager import InfluxManager
 from procedures.calculation_signals import CalcSignals
 from procedures.exceptions import ProcessingException
-from procedures.external_filter import determine_wet
-from procedures import data_loading, data_preprocessing, temperature_correlation, temperature_compensation
+from procedures.data import data_loading, data_preprocessing
+from procedures.rain import temperature_compensation, temperature_correlation
+from procedures.utils.external_filter import determine_wet
 
 
 class Calculation(QRunnable):

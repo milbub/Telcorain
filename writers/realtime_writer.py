@@ -4,7 +4,7 @@ import numpy as np
 
 from database.sql_manager import SqlManager
 from database.influx_manager import InfluxManager
-from procedures.helpers import dt64_to_unixtime
+from procedures.utils.helpers import dt64_to_unixtime
 
 
 class RealtimeWriter:
