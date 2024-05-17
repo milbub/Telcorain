@@ -421,13 +421,13 @@ class ResultsWidget(QWidget):
     def _set_times(self, start=None, end=None, np_real_start=None):
         if start is not None:
             unix_start = start.item() / 1000000000
-            self.start_time = QDateTime.fromSecsSinceEpoch(unix_start, QTimeZone.utc())
+            self.start_time = QDateTime.fromSecsSinceEpoch(int(unix_start), QTimeZone.utc())
             self.start_label.setText(self.start_time.toString("dd.MM.yyyy HH:mm"))
             self.current_anim_time = self.start_time
 
         if end is not None:
             unix_end = end.item() / 1000000000
-            self.end_time = QDateTime.fromSecsSinceEpoch(unix_end, QTimeZone.utc())
+            self.end_time = QDateTime.fromSecsSinceEpoch(int(unix_end), QTimeZone.utc())
             self.end_label.setText(self.end_time.toString("dd.MM.yyyy HH:mm"))
 
         if np_real_start is not None:
