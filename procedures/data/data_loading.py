@@ -86,8 +86,8 @@ def load_data_from_influxdb(
 
     except BaseException as error:
         signals.error_signal.emit({"id": results_id})
-        print(f"[{log_run_id}] ERROR: An unexpected error occurred during InfluxDB query: "
-              f"{type(error)} {error}.")
+
+        print(f"[{log_run_id}] ERROR: An unexpected error occurred during InfluxDB query: {type(error)} {error}.")
         print(f"[{log_run_id}] ERROR: Calculation thread terminated.")
 
         raise ProcessingException("Error occurred during InfluxDB query.")

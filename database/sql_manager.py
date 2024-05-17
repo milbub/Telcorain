@@ -6,7 +6,7 @@ from mariadb import Cursor
 import mariadb
 
 from database.models.mwlink import MwLink
-from procedures.helpers import calc_distance
+from procedures.utils.helpers import calc_distance
 
 
 class SqlManager:
