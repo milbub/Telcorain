@@ -27,7 +27,7 @@ def generate_rainfields(
         print(f"[{log_run_id}] Resampling rain values for rainfall overall map...")
 
         # resample values to 1h means
-        calc_data_1h = xr.concat(objs=[cml.R.resample(time='1h', label='right').mean() for cml in calc_data],
+        calc_data_1h = xr.concat(objs=[cml.R.resample(time='1H', label='right').mean() for cml in calc_data],
                                  dim='cml_id').to_dataset()
 
         signals.progress_signal.emit({'prg_val': 93})
@@ -92,7 +92,7 @@ def generate_rainfields(
             elif cp['output_step'] > cp['step']:
                 os = cp['output_step']
                 calc_data_steps = xr.concat(
-                    objs=[cml.R.resample(time=f'{os}m', label='right').mean() for cml in calc_data], dim='cml_id'
+                    objs=[cml.R.resample(time=f'{os}T', label='right').mean() for cml in calc_data], dim='cml_id'
                 ).to_dataset()
             elif cp['output_step'] == cp['step']:  # in case of same intervals, no resample needed
                 calc_data_steps = xr.concat(calc_data, dim='cml_id')
