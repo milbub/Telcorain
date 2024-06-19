@@ -198,7 +198,7 @@
               <number>1440</number>
              </property>
              <property name="value">
-              <number>10</number>
+              <number>1</number>
              </property>
             </widget>
            </item>
@@ -225,7 +225,7 @@
              </property>
              <property name="dateTime">
               <datetime>
-               <hour>16</hour>
+               <hour>14</hour>
                <minute>0</minute>
                <second>0</second>
                <year>2022</year>
@@ -242,21 +242,21 @@
              </property>
              <property name="time">
               <time>
-               <hour>16</hour>
+               <hour>14</hour>
                <minute>0</minute>
                <second>0</second>
               </time>
              </property>
              <property name="maximumTime">
               <time>
-               <hour>18</hour>
+               <hour>17</hour>
                <minute>59</minute>
                <second>59</second>
               </time>
              </property>
              <property name="minimumTime">
               <time>
-               <hour>19</hour>
+               <hour>18</hour>
                <minute>0</minute>
                <second>0</second>
               </time>
@@ -292,7 +292,7 @@
              </property>
              <property name="dateTime">
               <datetime>
-               <hour>16</hour>
+               <hour>14</hour>
                <minute>0</minute>
                <second>0</second>
                <year>2022</year>
@@ -309,21 +309,21 @@
              </property>
              <property name="time">
               <time>
-               <hour>16</hour>
+               <hour>14</hour>
                <minute>0</minute>
                <second>0</second>
               </time>
              </property>
              <property name="maximumTime">
               <time>
-               <hour>18</hour>
+               <hour>17</hour>
                <minute>59</minute>
                <second>59</second>
               </time>
              </property>
              <property name="minimumTime">
               <time>
-               <hour>19</hour>
+               <hour>18</hour>
                <minute>0</minute>
                <second>0</second>
               </time>
