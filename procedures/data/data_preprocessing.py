@@ -8,7 +8,7 @@ from procedures.calculation_signals import CalcSignals
 from procedures.exceptions import ProcessingException
 
 
-class ChannelIdentifiers(Enum):
+class ChannelIdentifier(Enum):
     CHANNEL_0 = 'A(rx)_B(tx)'  # unit B (transmit) --> unit A (receive)
     CHANNEL_1 = 'B(rx)_A(tx)'  # unit A (transmit) --> unit B (receive)
 
@@ -100,7 +100,7 @@ def _sort_into_channels(
         tx_freq: int,
         rx_freq: int,
         is_opposite_included: bool,
-        channel_identifier: str,
+        channel_identifier: ChannelIdentifier,
         log_run_id: str
 ) -> Optional[list]:
     """
@@ -108,37 +108,44 @@ def _sort_into_channels(
     """
     channels = []
 
-    if (link_channel_selector in (1, 3)) and (rx_ip in influx_data):
+    # ChannelIdentifier -> channel_selector mapping
+    channel_selector_map = {
+        ChannelIdentifier.CHANNEL_0: 1,
+        ChannelIdentifier.CHANNEL_1: 2
+    }
+    all_channels_selector = 3
+
+    if (link_channel_selector in (channel_selector_map.get(channel_identifier), all_channels_selector)) and (rx_ip in influx_data):
         if not tx_tx_zeros:
             if len(influx_data[rx_ip]["rx_power"]) != len(influx_data[tx_ip]["tx_power"]):
                 print(f"[{log_run_id}] WARNING: Skipping link ID: {link_id}. "
-                      f"Non-coherent Rx/Tx data on channel {channel_identifier}.", flush=True)
+                      f"Non-coherent Rx/Tx data on channel {channel_identifier.value}.", flush=True)
                 return None
 
         channel_a = _fill_channel_dataset(
-            links[link_id],
-            influx_data,
-            tx_ip,
-            rx_ip,
-            channel_identifier,
-            tx_freq,
-            tx_tx_zeros
+            current_link=links[link_id],
+            flux_data=influx_data,
+            tx_ip=tx_ip,
+            rx_ip=rx_ip,
+            channel_id=channel_identifier.value,
+            freq=tx_freq,
+            tx_zeros=tx_tx_zeros
         )
         channels.append(channel_a)
 
         # if including only this channel, create empty second channel and fill it with zeros (pycomlink
         # functions require both channels included -> with this hack it's valid, but zeros have no effect)
         # rx and tx freqs are switched, since it's a (dummy) opposite channel
-        if (link_channel_selector == 1) or not is_opposite_included:
+        if (link_channel_selector == channel_selector_map.get(channel_identifier)) or not is_opposite_included:
             channel_b = _fill_channel_dataset(
-                links[link_id],
-                influx_data,
-                rx_ip,
-                rx_ip,  # rx will be always available (since it's a dummy channel, it doesn't matter)
-                ChannelIdentifiers.CHANNEL_1 if channel_identifier == ChannelIdentifiers.CHANNEL_0
-                else ChannelIdentifiers.CHANNEL_0,
-                rx_freq,
-                tx_rx_zeros,
+                current_link=links[link_id],
+                flux_data=influx_data,
+                tx_ip=rx_ip,  # rx will be always available (since it's a dummy channel, it doesn't matter)
+                rx_ip=rx_ip,
+                channel_id=ChannelIdentifier.CHANNEL_1.value if channel_identifier == ChannelIdentifier.CHANNEL_0
+                else ChannelIdentifier.CHANNEL_0.value,
+                freq=rx_freq,
+                tx_zeros=tx_rx_zeros,
                 is_empty_channel=True
             )
             channels.append(channel_b)
@@ -224,19 +231,19 @@ def convert_to_link_datasets(
 
             # Side/unit A (channel B to A)
             unit_a_channels = _sort_into_channels(
-                influx_data,
-                links,
-                link,
-                selected_links[link],
-                links[link].ip_b,
-                links[link].ip_a,
-                tx_zeros_b,
-                tx_zeros_a,
-                links[link].freq_b,
-                links[link].freq_a,
-                is_b_in,
-                ChannelIdentifiers.CHANNEL_0.value,
-                log_run_id
+                influx_data=influx_data,
+                links=links,
+                link_id=link,
+                link_channel_selector=selected_links[link],
+                tx_ip=links[link].ip_b,
+                rx_ip=links[link].ip_a,
+                tx_tx_zeros=tx_zeros_b,
+                tx_rx_zeros=tx_zeros_a,
+                tx_freq=links[link].freq_b,
+                rx_freq=links[link].freq_a,
+                is_opposite_included=is_b_in,
+                channel_identifier=ChannelIdentifier.CHANNEL_0,
+                log_run_id=log_run_id
             )
             if unit_a_channels is not None:
                 link_channels.extend(unit_a_channels)
@@ -245,19 +252,19 @@ def convert_to_link_datasets(
 
             # Side/unit B (channel A to B)
             unit_b_channels = _sort_into_channels(
-                influx_data,
-                links,
-                link,
-                selected_links[link],
-                links[link].ip_a,
-                links[link].ip_b,
-                tx_zeros_a,
-                tx_zeros_b,
-                links[link].freq_a,
-                links[link].freq_b,
-                is_a_in,
-                ChannelIdentifiers.CHANNEL_1.value,
-                log_run_id
+                influx_data=influx_data,
+                links=links,
+                link_id=link,
+                link_channel_selector=selected_links[link],
+                tx_ip=links[link].ip_a,
+                rx_ip=links[link].ip_b,
+                tx_tx_zeros=tx_zeros_a,
+                tx_rx_zeros=tx_zeros_b,
+                tx_freq=links[link].freq_a,
+                rx_freq=links[link].freq_b,
+                is_opposite_included=is_a_in,
+                channel_identifier=ChannelIdentifier.CHANNEL_1,
+                log_run_id=log_run_id
             )
             if unit_b_channels is not None:
                 link_channels.extend(unit_b_channels)
