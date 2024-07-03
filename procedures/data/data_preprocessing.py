@@ -28,35 +28,36 @@ def _fill_channel_dataset(
     for timestamp in flux_data[rx_ip]["rx_power"].keys():
         times.append(np.datetime64(timestamp).astype("datetime64[ns]"))
 
-    # if creating empty channel dataset, fill Rx vars with zeros =>
-    # => since Rx unit should be always available, rx_ip can be used
+    # if creating empty channel dataset, fill data vars with zeros
     if is_empty_channel:
         rsl = np.zeros((len(flux_data[rx_ip]["rx_power"]),), dtype=float)
+
+        # => get array length from rx_power of rx_ip, since it should be always defined
+        temperature_rx = np.zeros((len(flux_data[rx_ip]["rx_power"]),), dtype=float)
+        temperature_tx = np.zeros((len(flux_data[rx_ip]["rx_power"]),), dtype=float)
+
         dummy = True
     else:
         rsl = [*flux_data[rx_ip]["rx_power"].values()]
+
+        # temperature data can be missing in some cases, if so, fill with zeros
+        if "temperature" in flux_data[rx_ip].keys():
+            temperature_rx = [*flux_data[rx_ip]["temperature"].values()]
+        else:
+            temperature_rx = np.zeros((len(flux_data[rx_ip]["rx_power"]),), dtype=float)
+        if tx_ip in flux_data and "temperature" in flux_data[tx_ip].keys():
+            temperature_tx = [*flux_data[tx_ip]["temperature"].values()]
+        else:
+            temperature_tx = np.zeros((len(flux_data[rx_ip]["rx_power"]),), dtype=float)
+
         dummy = False
 
-    # in case of Tx power zeros, we don't have data of Tx unit available in flux_data =>
-    # => get array length from Rx array of rx_ip unit, since it should be always available
+    # in case of Tx power zeros, we don't have data of Tx unit available in flux_data
     if tx_zeros:
+        # => get array length from rx_power of rx_ip, since it should be always defined
         tsl = np.zeros((len(flux_data[rx_ip]["rx_power"]),), dtype=float)
     else:
         tsl = [*flux_data[tx_ip]["tx_power"].values()]
-
-    # if creating empty channel dataset, fill Temperature_Rx vars with zeros
-    # since Rx unit should be always available, rx_ip can be used
-    if is_empty_channel:
-        temperature_rx = np.zeros((len(flux_data[rx_ip]["temperature"]),), dtype=float)
-    else:
-        temperature_rx = [*flux_data[rx_ip]["temperature"].values()]
-
-    # in case of Tx power zeros, we don't have data of Tx unit available in flux_data =>
-    # => get array length from Temperature array of rx_ip unit, since it should be always available
-    if tx_zeros:
-        temperature_tx = np.zeros((len(flux_data[rx_ip]["temperature"]),), dtype=float)
-    else:
-        temperature_tx = [*flux_data[tx_ip]["temperature"].values()]
 
     channel = xr.Dataset(
         data_vars={
@@ -64,7 +65,6 @@ def _fill_channel_dataset(
             "rsl": ("time", rsl),
             "temperature_rx": ("time", temperature_rx),
             "temperature_tx": ("time", temperature_tx),
-
         },
         coords={
             "time": times,
