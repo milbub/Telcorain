@@ -183,7 +183,7 @@ def convert_to_link_datasets(
             is_b_in = links[link].ip_b in influx_data
 
             # TODO: load from options list of constant Tx power devices
-            is_constant_tx_power = links[link].tech in ("1s10",)
+            is_constant_tx_power = links[link].tech in ("1s10", "summit", "summit_bt")
             # TODO: load from options list of bugged techs with missing Tx zeros in InfluxDB
             is_tx_power_bugged = links[link].tech in ("ceragon_ip_10",)
 

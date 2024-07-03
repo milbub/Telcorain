@@ -13,7 +13,7 @@ def _get_ips_from_links_dict(selected_links: dict, links: dict) -> list:
             # TODO: add dynamic exception list of constant Tx power devices
             # 1S10s have constant Tx power, so only one unit can be included in query
             # otherwise, both ends needs to be included in query, due Tx power correction
-            if links[link].tech in "1s10":
+            if links[link].tech in ["1s10", "summit", "summit_bt"]:
                 if selected_links[link] == 1:
                     ips.append(links[link].ip_a)
                 elif selected_links[link] == 2:
