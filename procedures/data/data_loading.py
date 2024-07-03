@@ -1,3 +1,5 @@
+import traceback
+
 from database.influx_manager import InfluxManager
 from procedures.calculation_signals import CalcSignals
 from procedures.exceptions import ProcessingException
@@ -89,5 +91,7 @@ def load_data_from_influxdb(
 
         print(f"[{log_run_id}] ERROR: An unexpected error occurred during InfluxDB query: {type(error)} {error}.")
         print(f"[{log_run_id}] ERROR: Calculation thread terminated.")
+
+        traceback.print_exc()
 
         raise ProcessingException("Error occurred during InfluxDB query.")

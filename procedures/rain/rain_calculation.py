@@ -1,3 +1,4 @@
+import traceback
 from typing import Any
 
 import numpy as np
@@ -168,5 +169,7 @@ def get_rain_rates(
         print(f"[{log_run_id}] ERROR: An unexpected error occurred during rain calculation: {type(error)} {error}.")
         print(f"[{log_run_id}] ERROR: Last processed microwave link dataset: {calc_data[current_link]}")
         print(f"[{log_run_id}] ERROR: Calculation thread terminated.")
+
+        traceback.print_exc()
 
         raise RaincalcException("Error occurred during rainfall calculation processing")

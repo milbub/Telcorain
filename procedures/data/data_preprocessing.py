@@ -1,4 +1,5 @@
 from enum import Enum
+import traceback
 from typing import Optional
 
 import numpy as np
@@ -284,5 +285,7 @@ def convert_to_link_datasets(
         print(f"[{log_run_id}] ERROR: An unexpected error occurred during data processing: {type(error)} {error}.")
         print(f"[{log_run_id}] ERROR: Last processed microwave link ID: {link}")
         print(f"[{log_run_id}] ERROR: Calculation thread terminated.")
+
+        traceback.print_exc()
 
         raise ProcessingException("Error occured during influx data merging with metadata into xarray datasets.")

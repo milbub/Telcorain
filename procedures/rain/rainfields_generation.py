@@ -1,3 +1,4 @@
+import traceback
 from typing import Any
 
 import numpy as np
@@ -159,8 +160,10 @@ def generate_rainfields(
 
     except BaseException as error:
         signals.error_signal.emit({"id": results_id})
-        
+
         print(f"[{log_run_id}] ERROR: An error occurred during rainfall fields generation: {type(error)} {error}.")
         print(f"[{log_run_id}] ERROR: Calculation thread terminated.")
-        
+
+        traceback.print_exc()
+
         raise RainfieldsGenException("Error occurred during rainfall fields generation processing")
