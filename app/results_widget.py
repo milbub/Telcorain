@@ -1,6 +1,6 @@
 import gc
 import os
-from typing import cast
+from typing import Optional, cast
 import webbrowser
 
 import matplotlib
@@ -17,7 +17,14 @@ matplotlib.use('QtAgg')
 
 
 class ResultsWidget(QWidget):
-    def __init__(self, tab_name: str, result_id: int, figs_path: str, cp: dict, realtime_writer: RealtimeWriter):
+    def __init__(
+            self,
+            tab_name: str,
+            result_id: int,
+            figs_path: str,
+            cp: dict,
+            realtime_writer: Optional[RealtimeWriter]
+    ):
         super(QWidget, self).__init__()
         self.tab_name = tab_name
         self.result_id = result_id
