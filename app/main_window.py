@@ -119,7 +119,7 @@ class MainWindow(QMainWindow):
         self.spin_idw_dist: QObject = self.findChild(QDoubleSpinBox, "spinIdwDist")
         self.radio_output_total: QObject = self.findChild(QRadioButton, "radioOutputTotal")
         self.box_only_overall: QObject = self.findChild(QCheckBox, "checkOnlyOverall")
-        self.path_box: QObject = self.findChild(QLineEdit, "editPath")
+        self.outputs_path_box: QObject = self.findChild(QLineEdit, "editPath")
         self.butt_choose_path: QObject = self.findChild(QPushButton, "buttChoosePath")
         self.pdf_box: QObject = self.findChild(QCheckBox, "checkFilePDF")
         self.png_box: QObject = self.findChild(QCheckBox, "checkFilePNG")
@@ -252,9 +252,9 @@ class MainWindow(QMainWindow):
         # fill with other sets
         self._fill_linksets()
 
-        # output default path, TODO: load from options
-        self.path = './outputs'
-        self.path_box.setText(self.path + '/<time>')
+        # output default path
+        self.outputs_path = self.config_man.read_option("directories", "outputs")
+        self.outputs_path_box.setText(self.outputs_path + '/<time>')
 
         # prepare realtime calculation slot and timer
         self.running_realtime = None
@@ -466,7 +466,7 @@ class MainWindow(QMainWindow):
                 self.results_tabs[self.result_id] = ResultsWidget(
                     results_tab_name,
                     self.result_id,
-                    self.path,
+                    self.outputs_path,
                     cp,
                     realtime_writer=realtime_w
                 )
@@ -500,7 +500,7 @@ class MainWindow(QMainWindow):
                 self.results_tabs[self.result_id] = ResultsWidget(
                     results_tab_name,
                     self.result_id,
-                    self.path,
+                    self.outputs_path,
                     cp,
                     realtime_writer=None
                 )
@@ -606,10 +606,10 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage(f'Link set "{sel_name}" was deleted.')
 
     def choose_path_fired(self):
-        self.path = QFileDialog.getExistingDirectory(self, 'Select folder for outputs', self.path)
-        if self.path == '':
-            self.path = './outputs'
-        self.path_box.setText(self.path + '/<time>')
+        self.outputs_path = QFileDialog.getExistingDirectory(self, 'Select folder for outputs', self.outputs_path)
+        if self.outputs_path == '':
+            self.outputs_path = './outputs'
+        self.outputs_path_box.setText(self.outputs_path + '/<time>')
 
     def close_tab_result(self, result_id: int):
         self.tabs.removeTab(self.tabs.currentIndex())
