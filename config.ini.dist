@@ -47,9 +47,11 @@ animation_speed=500
 
 [external_filter]
 url=http://127.0.0.1/img_data/
+file_prefix=FILTER_LAYER_
 radius=20
 pixel_threshold=5
 default_return=True
+max_history_lookups=3
 IMG_X_MIN=11.28
 IMG_X_MAX=20.765
 IMG_Y_MIN=48.05
