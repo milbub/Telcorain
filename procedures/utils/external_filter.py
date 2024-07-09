@@ -8,7 +8,8 @@ import numpy as np
 import requests
 from scipy.ndimage import label
 
-from app.main_window import config_manager
+from writers import config_manager
+
 
 BLACK_INDEX = [0]  # Upper text color
 RED_INDEX = [122, 123, 124, 125, 126, 141, 162, 166, 167, 182, 183, 184, 185, 186, 187, 212, 216]  # Bottom text color
@@ -17,7 +18,7 @@ GREY_INDEX = [242]  # Unknown area color
 # Maximum number of history fetch steps attempts
 MAX_HISTORY_LOOKUPS = int(config_manager.read_option("external_filter", "max_history_lookups"))
 # Prefix of the image filenames
-FILENAME_PREFIX = config_manager.read_option("external_filter", "filename_prefix")
+FILENAME_PREFIX = config_manager.read_option("external_filter", "file_prefix")
 # Directory where cached images will be stored
 CACHE_DIR = config_manager.read_option("directories", "ext_filter_cache")
 
@@ -149,7 +150,7 @@ def determine_wet(
 ) -> bool:
     def timestamp_to_filename(ts: np.datetime64):
         """Helper function to format the numpy datetime64 timestamp into image filename format."""
-        return f"{FILENAME_PREFIX}{ts.astype("datetime64[m]").astype(str).replace("T", "_").replace(":", "-")}.png"
+        return f"{FILENAME_PREFIX}{ts.astype('datetime64[m]').astype(str).replace('T', '_').replace(':', '-')}.png"
 
     delta_10 = np.timedelta64(10, "m")
 

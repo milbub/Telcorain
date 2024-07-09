@@ -13,7 +13,7 @@ from lib.pycomlink.pycomlink.processing.wet_dry.cnn import CNN_OUTPUT_LEFT_NANS_
 
 from database.influx_manager import InfluxManager, InfluxChecker, InfluxSignals
 from database.sql_manager import SqlManager, SqlChecker, SqlSignals
-from writers.config_manager import ConfigManager
+from writers import config_manager
 from writers.linksets_manager import LinksetsManager
 from writers.log_manager import LogManager
 from writers.realtime_writer import RealtimeWriter
@@ -26,9 +26,6 @@ from app.results_widget import ResultsWidget
 from app.utils import LinksTableFactory
 
 # TODO: move Control Tab elements into separate widget. Currently, this class contains main logic + Control Tab widgets.
-
-# load global configuration manager
-config_manager = ConfigManager()
 
 
 class MainWindow(QMainWindow):
