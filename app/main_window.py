@@ -27,6 +27,10 @@ from app.utils import LinksTableFactory
 
 # TODO: move Control Tab elements into separate widget. Currently, this class contains main logic + Control Tab widgets.
 
+# load global configuration manager
+config_manager = ConfigManager()
+
+
 class MainWindow(QMainWindow):
     def __init__(self):
         super(MainWindow, self).__init__()
@@ -183,10 +187,9 @@ class MainWindow(QMainWindow):
         # ////// APP LOGIC CONSTRUCTOR \\\\\\
 
         # init core managers
-        self.config_man = ConfigManager()
         self.log_man = LogManager(self.text_log)
-        self.sql_man = SqlManager(self.config_man)
-        self.influx_man = InfluxManager(self.config_man)
+        self.sql_man = SqlManager(config_manager)
+        self.influx_man = InfluxManager(config_manager)
 
         # redirect stdout to log handler
         sys.stdout = self.log_man
@@ -214,7 +217,7 @@ class MainWindow(QMainWindow):
         self.influx_status: int = 0  # 0 = unknown, 1 = ok, -1 = not available
         self.sql_status: int = 0  # 0 = unknown, 1 = ok, -1 = not available
 
-        self.influx_checker = InfluxChecker(self.config_man, self.influx_signals)
+        self.influx_checker = InfluxChecker(config_manager, self.influx_signals)
         self.influx_checker.setAutoDelete(False)
         self._pool_influx_checker()   # first Influx connection check
         self.influx_timer = QTimer()  # create timer for next checks
@@ -222,7 +225,7 @@ class MainWindow(QMainWindow):
         # TODO: load influx timeout from config and add some time
         self.influx_timer.start(5000)
 
-        self.sql_checker = SqlChecker(self.config_man, self.sql_signals)
+        self.sql_checker = SqlChecker(config_manager, self.sql_signals)
         self.sql_checker.setAutoDelete(False)
         self._pool_sql_checker()   # first MariaDB connection check
         self.sql_timer = QTimer()  # create timer for next checks
@@ -248,7 +251,7 @@ class MainWindow(QMainWindow):
         self._fill_linksets()
 
         # output default path
-        self.outputs_path = self.config_man.read_option("directories", "outputs")
+        self.outputs_path = config_manager.read_option("directories", "outputs")
         self.outputs_path_box.setText(self.outputs_path + '/<time>')
 
         # prepare realtime calculation slot and timer
@@ -691,14 +694,14 @@ class MainWindow(QMainWindow):
         idw_near = self.spin_idw_near.value()
         idw_dist = self.spin_idw_dist.value()
         output_step = self.spin_output_step.value()
-        min_rain_value = float(self.config_man.read_option('rainfields', 'min_value'))
+        min_rain_value = float(config_manager.read_option('rainfields', 'min_value'))
         is_only_overall = self.box_only_overall.isChecked()
         is_output_total = self.radio_output_total.isChecked()
         is_pdf = self.pdf_box.isChecked()
         is_png = self.png_box.isChecked()
         is_dummy = self.check_dummy.isChecked()
-        map_file = self.config_man.read_option('rendering', 'map')
-        animation_speed = int(self.config_man.read_option('viewer', 'animation_speed'))
+        map_file = config_manager.read_option('rendering', 'map')
+        animation_speed = int(config_manager.read_option('viewer', 'animation_speed'))
         waa_schleiss_val = self.spin_waa_schleiss_val.value()
         waa_schleiss_tau = self.spin_waa_schleiss_tau.value()
         close_func = self.close_tab_result
@@ -712,23 +715,23 @@ class MainWindow(QMainWindow):
         is_force_write = self.force_write_box.isChecked() and self.write_output_box.isChecked()
         is_influx_write_skipped = self.skip_influx_write_box.isChecked()
         is_window_centered = True if self.window_pointer_combo.currentIndex() == 0 else False
-        retention = int(self.config_man.read_option('realtime', 'retention'))
-        X_MIN = float(self.config_man.read_option('rendering', 'X_MIN'))
-        X_MAX = float(self.config_man.read_option('rendering', 'X_MAX'))
-        Y_MIN = float(self.config_man.read_option('rendering', 'Y_MIN'))
-        Y_MAX = float(self.config_man.read_option('rendering', 'Y_MAX'))
+        retention = int(config_manager.read_option('realtime', 'retention'))
+        X_MIN = float(config_manager.read_option('rendering', 'X_MIN'))
+        X_MAX = float(config_manager.read_option('rendering', 'X_MAX'))
+        Y_MIN = float(config_manager.read_option('rendering', 'Y_MIN'))
+        Y_MAX = float(config_manager.read_option('rendering', 'Y_MAX'))
 
         if is_external_filter_enabled:
             external_filter_params = {
-                'url': self.config_man.read_option('external_filter', 'url'),
-                'radius': int(self.config_man.read_option('external_filter', 'radius')),
-                'pixel_threshold': int(self.config_man.read_option('external_filter', 'pixel_threshold')),
+                'url': config_manager.read_option('external_filter', 'url'),
+                'radius': int(config_manager.read_option('external_filter', 'radius')),
+                'pixel_threshold': int(config_manager.read_option('external_filter', 'pixel_threshold')),
                 'default_return':
-                    True if self.config_man.read_option('external_filter', 'default_return') == 'True' else False,
-                'IMG_X_MIN': float(self.config_man.read_option('external_filter', 'IMG_X_MIN')),
-                'IMG_X_MAX': float(self.config_man.read_option('external_filter', 'IMG_X_MAX')),
-                'IMG_Y_MIN': float(self.config_man.read_option('external_filter', 'IMG_Y_MIN')),
-                'IMG_Y_MAX': float(self.config_man.read_option('external_filter', 'IMG_Y_MAX'))
+                    True if config_manager.read_option('external_filter', 'default_return') == 'True' else False,
+                'IMG_X_MIN': float(config_manager.read_option('external_filter', 'IMG_X_MIN')),
+                'IMG_X_MAX': float(config_manager.read_option('external_filter', 'IMG_X_MAX')),
+                'IMG_Y_MIN': float(config_manager.read_option('external_filter', 'IMG_Y_MIN')),
+                'IMG_Y_MAX': float(config_manager.read_option('external_filter', 'IMG_Y_MAX'))
             }
         else:
             external_filter_params = None
