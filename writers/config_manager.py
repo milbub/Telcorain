@@ -16,7 +16,7 @@ class ConfigManager:
             # TODO: do some clever exit from the app
             raise FileNotFoundError("ERROR: Cannot start! Missing configuration file!")
 
-    def read_option(self, section, option):
+    def read_option(self, section: str, option: str) -> str:
         if not self.configs.has_option(section, option):
             # TODO: do some clever exit from the app
             raise ModuleNotFoundError("ERROR: Missing option in configuration file. Check the config!")
