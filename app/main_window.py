@@ -1,12 +1,13 @@
 import sys
 from datetime import datetime, timedelta
+from typing import cast
 
 from PyQt6 import uic, QtGui, QtCore
 from PyQt6.QtCore import QTimer, QObject
 from PyQt6.QtGui import QPixmap, QAction
 from PyQt6.QtWidgets import QMainWindow, QLabel, QProgressBar, QHBoxLayout, QWidget, QTextEdit, QListWidget, \
     QDateTimeEdit, QPushButton, QSpinBox, QTabWidget, QLineEdit, QDoubleSpinBox, QRadioButton, QCheckBox, \
-    QListWidgetItem, QTableWidget, QGridLayout, QMessageBox, QFileDialog, QApplication, QComboBox
+    QListWidgetItem, QTableWidget, QMessageBox, QFileDialog, QApplication, QComboBox
 
 from lib.pycomlink.pycomlink.processing.wet_dry.cnn import CNN_OUTPUT_LEFT_NANS_LENGTH
 
@@ -22,7 +23,7 @@ from procedures.calculation_signals import CalcSignals
 from app.form_dialog import FormDialog
 from app.selection_dialog import SelectionDialog
 from app.results_widget import ResultsWidget
-
+from app.utils import LinksTableFactory
 
 # TODO: move Control Tab elements into separate widget. Currently, this class contains main logic + Control Tab widgets.
 
@@ -97,7 +98,7 @@ class MainWindow(QMainWindow):
         # lookup for used widgets and define them
         self.text_log: QObject = self.findChild(QTextEdit, "textLog")
         self.lists: QObject = self.findChild(QListWidget, "listLists")
-        self.selection_table: QObject = self.findChild(QTableWidget, "tableSelection")
+        self.selection_table: QTableWidget = cast(QTableWidget, self.findChild(QTableWidget, "tableSelection"))
         self.butt_new_set: QObject = self.findChild(QPushButton, "buttLstNew")
         self.butt_edit_set: QObject = self.findChild(QPushButton, "buttLstEdit")
         self.butt_copy_set: QObject = self.findChild(QPushButton, "buttLstCopy")
@@ -167,14 +168,8 @@ class MainWindow(QMainWindow):
         self.radio_realtime.clicked.connect(lambda a: self.window_pointer_combo.setCurrentIndex(1))
         self.radio_historic.clicked.connect(lambda a: self.write_output_box.setChecked(False))
 
-        # style out link table
-        self.selection_table.setColumnWidth(0, 40)
-        self.selection_table.setColumnWidth(1, 42)
-        self.selection_table.setColumnWidth(2, 42)
-        self.selection_table.setColumnWidth(3, 75)
-        self.selection_table.setColumnWidth(4, 71)
-        self.selection_table.setColumnWidth(5, 75)
-        self.selection_table.setColumnWidth(6, 148)
+        # init link table factory
+        self.link_table_factory = LinksTableFactory(self.selection_table)
 
         # style out other things
         self.combo_realtime.setHidden(True)
@@ -656,8 +651,8 @@ class MainWindow(QMainWindow):
         self.threadpool.start(self.running_realtime)
 
     def _linkset_selected(self, selection: str):
-        if selection == '<ALL>':
-            sel = self.sets_man.linksets['DEFAULT']
+        if selection == "<ALL>":
+            sel = self.sets_man.linksets["DEFAULT"]
             self.butt_edit_set.setEnabled(False)
             self.butt_copy_set.setEnabled(False)
             self.butt_del_set.setEnabled(False)
@@ -667,75 +662,13 @@ class MainWindow(QMainWindow):
             self.butt_copy_set.setEnabled(True)
             self.butt_del_set.setEnabled(True)
 
-        active_count = 0
-        for link_id in sel:
-            self.current_selection[int(link_id)] = int(sel[link_id])
+        self.current_selection = {int(link_id): int(sel[link_id]) for link_id in sel}
+        visible_row_count = sum(1 for link_id in sel if sel[link_id] != '0')
 
-            if sel[link_id] == str(0):
-                continue
-
-            active_count += 1
-
-        self.selection_table.clearContents()
-        self.selection_table.setRowCount(active_count)
-
-        # columns: 0 = ID, 1 = channel 1, 2 = channel 2, 3 = technology, 4 = band, 5 = length, 6 = name
-        row = 0
-        for link_id in self.current_selection:
-            if self.current_selection[link_id] == 0:
-                continue
-
-            id_label = QLabel(str(link_id))
-            id_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-            tech_label = QLabel(self.links[link_id].tech)
-            tech_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-            band_label = QLabel("{:.0f}".format(self.links[link_id].freq_a / 1000))
-            band_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-            length_label = QLabel("{:.2f}".format(self.links[link_id].distance))
-            length_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-            name_label = QLabel(self.links[link_id].name)
-
-            channel_1 = QCheckBox()
-            channel_2 = QCheckBox()
-
-            if self.current_selection[link_id] == 1:
-                channel_1.setChecked(True)
-                channel_2.setChecked(False)
-            elif self.current_selection[link_id] == 2:
-                channel_1.setChecked(False)
-                channel_2.setChecked(True)
-            elif self.current_selection[link_id] == 3:
-                channel_1.setChecked(True)
-                channel_2.setChecked(True)
-
-            # Qt TableWidget formatting weirdness:
-
-            channel_1.setAttribute(QtCore.Qt.WidgetAttribute.WA_TransparentForMouseEvents)
-            channel_1.setFocusPolicy(QtCore.Qt.FocusPolicy.NoFocus)
-            channel_2.setAttribute(QtCore.Qt.WidgetAttribute.WA_TransparentForMouseEvents)
-            channel_2.setFocusPolicy(QtCore.Qt.FocusPolicy.NoFocus)
-
-            channel_1_box = QGridLayout()
-            channel_1_box.addWidget(channel_1, 0, 0, alignment=QtCore.Qt.AlignmentFlag.AlignCenter)
-            channel_1_box.setContentsMargins(0, 0, 0, 0)
-            channel_1_box_box = QWidget()
-            channel_1_box_box.setLayout(channel_1_box)
-
-            channel_2_box = QGridLayout()
-            channel_2_box.addWidget(channel_2, 0, 0, alignment=QtCore.Qt.AlignmentFlag.AlignCenter)
-            channel_2_box.setContentsMargins(0, 0, 0, 0)
-            channel_2_box_box = QWidget()
-            channel_2_box_box.setLayout(channel_2_box)
-
-            self.selection_table.setCellWidget(row, 0, id_label)
-            self.selection_table.setCellWidget(row, 1, channel_1_box_box)
-            self.selection_table.setCellWidget(row, 2, channel_2_box_box)
-            self.selection_table.setCellWidget(row, 3, tech_label)
-            self.selection_table.setCellWidget(row, 4, band_label)
-            self.selection_table.setCellWidget(row, 5, length_label)
-            self.selection_table.setCellWidget(row, 6, name_label)
-
-            row += 1
+        try:
+            self.link_table_factory.update_table(self.current_selection, visible_row_count, self.links)
+        except Exception as e:
+            print(f"[ERROR] Error while updating link table: {e}")
 
     def _fill_linksets(self):
         for link_set in self.sets_man.sections:
