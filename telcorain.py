@@ -15,9 +15,16 @@ try:
     from PyQt6.QtWidgets import QApplication
 
     from app.main_window import MainWindow
+    from handlers.logging_handler import logger, setup_file_logging, setup_init_logging
 
 
     if __name__ == '__main__':
+        # init logging
+        setup_file_logging()
+        init_logger = setup_init_logging()
+
+        logger.info("Starting Telcorain...")
+
         # create the Qt application object
         app = QApplication(sys.argv)  # currently, there are no CLI args
 
@@ -31,11 +38,11 @@ try:
                 app.setFont(custom_font)
 
         # main window (Qt) = central hub of the application
-        # constructor of the main window contains all the starting mechanism -> see /gui/main_window.py
-        main_win = MainWindow()
+        # constructor of the main window contains rest of the starting mechanism -> see /gui/main_window.py
+        main_win = MainWindow(init_logger)
 
-        main_win.statusBar().showMessage("Application is ready.", 20000)
-        print("Starting done. Application is ready.", flush=True)
+        main_win.statusBar().showMessage("Application is ready.", msecs=20000)
+        logger.info("Starting done. Application is ready.")
 
         # hide loading screen
         loading_screen.terminate()

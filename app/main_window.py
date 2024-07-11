@@ -15,7 +15,7 @@ from database.influx_manager import InfluxManager, InfluxChecker, InfluxSignals
 from database.sql_manager import SqlManager, SqlChecker, SqlSignals
 from handlers import config_manager
 from handlers.linksets_manager import LinksetsManager
-from handlers.log_manager import LogManager
+from handlers.logging_handler import InitLogHandler, setup_qt_logging
 from handlers.realtime_writer import RealtimeWriter
 from procedures.calculation import Calculation
 from procedures.calculation_signals import CalcSignals
@@ -29,7 +29,7 @@ from app.utils import LinksTableFactory
 
 
 class MainWindow(QMainWindow):
-    def __init__(self):
+    def __init__(self, init_logger: InitLogHandler):
         super(MainWindow, self).__init__()
 
         # ////// GUI CONSTRUCTOR \\\\\\
@@ -97,7 +97,7 @@ class MainWindow(QMainWindow):
         self.exit_action.triggered.connect(QApplication.quit)
 
         # lookup for used widgets and define them
-        self.text_log: QObject = self.findChild(QTextEdit, "textLog")
+        self.text_log: QTextEdit = cast(QTextEdit, self.findChild(QTextEdit, "textLog"))
         self.lists: QObject = self.findChild(QListWidget, "listLists")
         self.selection_table: QTableWidget = cast(QTableWidget, self.findChild(QTableWidget, "tableSelection"))
         self.butt_new_set: QObject = self.findChild(QPushButton, "buttLstNew")
@@ -182,15 +182,12 @@ class MainWindow(QMainWindow):
         self.show()
 
         # ////// APP LOGIC CONSTRUCTOR \\\\\\
+        # init Qt logger
+        self.qt_logger = setup_qt_logging(self.text_log, init_logger, "DEBUG")
 
-        # init core managers
-        self.log_man = LogManager(self.text_log)
+        # init DB managers
         self.sql_man = SqlManager(config_manager)
         self.influx_man = InfluxManager(config_manager)
-
-        # redirect stdout to log handler
-        sys.stdout = self.log_man
-        print("Telcorain is starting...", flush=True)
 
         # init threadpool
         self.threadpool = QtCore.QThreadPool()
@@ -779,8 +776,3 @@ class MainWindow(QMainWindow):
         }
 
         return calculation_params
-
-    # destructor
-    def __del__(self):
-        # return stdout to default state
-        sys.stdout = sys.__stdout__

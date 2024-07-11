@@ -4,7 +4,9 @@ __pycache__/
 /assets/*
 !/assets/plain_czechia.png
 /outputs/
+/outputs_web/
 /image_cache/
+/logs/
 /config.ini
 /linksets.ini
 /save.ini

@@ -35,6 +35,9 @@ outputs=./outputs
 outputs_web=./outputs_web
 ext_filter_cache=./image_cache
 
+[logging]
+init_level=DEBUG
+
 [rainfields]
 min_value=0.1
 
