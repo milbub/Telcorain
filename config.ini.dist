@@ -30,6 +30,7 @@ Y_MAX=51.0557
 map=plain_czechia.png
 
 [directories]
+logs=./logs
 outputs=./outputs
 outputs_web=./outputs_web
 ext_filter_cache=./image_cache
@@ -39,6 +40,7 @@ min_value=0.1
 
 [realtime]
 enable_http_server=True
+http_server_address=0.0.0.0
 http_server_port=8080
 retention=336
 
