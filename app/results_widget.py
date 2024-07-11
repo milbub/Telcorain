@@ -11,7 +11,7 @@ from PyQt6.QtWidgets import QWidget, QLabel, QGridLayout, QSlider, QPushButton, 
 
 from app.results_canvas import Canvas
 from procedures.utils.helpers import dt64_to_unixtime
-from writers.realtime_writer import RealtimeWriter
+from handlers.realtime_writer import RealtimeWriter
 
 matplotlib.use('QtAgg')
 

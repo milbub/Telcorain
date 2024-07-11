@@ -8,7 +8,7 @@ import numpy as np
 import requests
 from scipy.ndimage import label
 
-from writers import config_manager
+from handlers import config_manager
 
 
 BLACK_INDEX = [0]  # Upper text color

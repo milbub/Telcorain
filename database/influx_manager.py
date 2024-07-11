@@ -7,7 +7,7 @@ from PyQt6.QtWidgets import QComboBox
 from influxdb_client import InfluxDBClient, QueryApi, WriteApi
 from influxdb_client.domain.write_precision import WritePrecision
 
-from writers.config_manager import ConfigManager
+from handlers.config_manager import ConfigManager
 
 
 class BucketType(Enum):

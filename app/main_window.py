@@ -13,10 +13,10 @@ from lib.pycomlink.pycomlink.processing.wet_dry.cnn import CNN_OUTPUT_LEFT_NANS_
 
 from database.influx_manager import InfluxManager, InfluxChecker, InfluxSignals
 from database.sql_manager import SqlManager, SqlChecker, SqlSignals
-from writers import config_manager
-from writers.linksets_manager import LinksetsManager
-from writers.log_manager import LogManager
-from writers.realtime_writer import RealtimeWriter
+from handlers import config_manager
+from handlers.linksets_manager import LinksetsManager
+from handlers.log_manager import LogManager
+from handlers.realtime_writer import RealtimeWriter
 from procedures.calculation import Calculation
 from procedures.calculation_signals import CalcSignals
 
