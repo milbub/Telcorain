@@ -38,7 +38,8 @@ class QtLogHandler(logging.Handler, QObject):
                         (used during flushing from initialization logger)
         """
         msg = self.format(record)
-        self.log_signal.emit(msg)
+        colored_msg = self.colorize_message(record.levelno, msg)
+        self.log_signal.emit(colored_msg)
         # if flushing, message has been already printed to stdout, no need to print it again
         if flushed:
             return
@@ -56,6 +57,17 @@ class QtLogHandler(logging.Handler, QObject):
         """
         self.te.append(message)
         self.te.ensureCursorVisible()
+
+    @staticmethod
+    def colorize_message(level: int, message: str) -> str:
+        color = {
+            logging.DEBUG: 'gray',
+            logging.INFO: 'black',
+            logging.WARNING: 'brown',
+            logging.ERROR: 'red',
+            logging.CRITICAL: 'purple'
+        }.get(level, 'black')
+        return f'<span style="color:{color};">{message}</span>'
 
 
 class InitLogHandler(logging.Handler):
