@@ -25,6 +25,9 @@ class SqlManager:
         # Define connection state
         self.is_connected = False
 
+        # current realtime params DB ID
+        self.realtime_params_id = 0
+
     def connect(self):
         """
         Connect to MariaDB database.
@@ -184,6 +187,9 @@ class SqlManager:
 
                 cursor.execute(query, (retention, timestep, resolution, X_MIN, X_MAX, Y_MIN, Y_MAX, x, y))
                 self.connection.commit()
+
+                # store the ID of the inserted record
+                self.realtime_params_id = cursor.lastrowid
             else:
                 raise mariadb.Error('Connection is not active.')
         except mariadb.Error as e:
@@ -220,14 +226,17 @@ class SqlManager:
         """
         Insert raingrid into output database.
         """
+        if self.realtime_params_id == 0:
+            raise ValueError('Unknown parameters ID. Realtime parameters has not been set?')
+
         try:
             if self.check_connection():
                 cursor: Cursor = self.connection.cursor()
 
-                query = f"INSERT INTO {self.settings['db_output']}.realtime_rain_grids (time, links, grid)" \
-                        f" VALUES (?, ?, ?);"
+                query = (f"INSERT INTO {self.settings['db_output']}.realtime_rain_grids "
+                         f"(time, parameters, links, grid) VALUES (?, ?, ?, ?);")
 
-                cursor.execute(query, (time, json.dumps(links), json.dumps(grid)))
+                cursor.execute(query, (time, self.realtime_params_id, json.dumps(links), json.dumps(grid)))
                 self.connection.commit()
             else:
                 raise mariadb.Error('Connection is not active.')
