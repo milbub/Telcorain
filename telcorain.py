@@ -15,6 +15,7 @@ try:
     from PyQt6.QtWidgets import QApplication
 
     from app.main_window import MainWindow
+    from handlers.http_handler import start_http_server_thread
     from handlers.logging_handler import logger, setup_file_logging, setup_init_logging
 
 
@@ -24,6 +25,12 @@ try:
         init_logger = setup_init_logging()
 
         logger.info("Starting Telcorain...")
+
+        # start the HTTP server
+        try:
+            http_server_thread = start_http_server_thread()
+        except Exception as error:
+            logger.error("Cannot start HTTP server due to an error: %s", error)
 
         # create the Qt application object
         app = QApplication(sys.argv)  # currently, there are no CLI args
