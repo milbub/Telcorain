@@ -3,7 +3,7 @@ import codecs
 from os.path import exists
 
 
-class LinksetsManager:
+class LinksetsHandler:
     def __init__(self, links: dict):
         self.links = links
         self.sets_path = './linksets.ini'

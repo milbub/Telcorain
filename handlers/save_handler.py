@@ -1,6 +1,6 @@
 import configparser
 
 
-class SaveManager:
+class SaveHandler:
     def __init__(self):
         pass

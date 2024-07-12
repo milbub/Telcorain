@@ -13,7 +13,7 @@ from lib.pycomlink.pycomlink.processing.wet_dry.cnn import CNN_OUTPUT_LEFT_NANS_
 from database.influx_manager import InfluxManager, InfluxChecker, InfluxSignals
 from database.sql_manager import SqlManager, SqlChecker, SqlSignals
 from handlers import config_handler
-from handlers.linksets_manager import LinksetsManager
+from handlers.linksets_handler import LinksetsHandler
 from handlers.logging_handler import InitLogHandler, setup_qt_logging
 from handlers.realtime_writer import RealtimeWriter
 from procedures.calculation import Calculation
@@ -231,7 +231,7 @@ class MainWindow(QMainWindow):
         print(f"{len(self.links)} microwave link's definitions loaded from MariaDB.")
 
         # init link sets
-        self.sets_man = LinksetsManager(self.links)
+        self.sets_man = LinksetsHandler(self.links)
         self.current_selection = {}   # link channel selection flag: 0=none, 1=A, 2=B, 3=both -> dict: <link_id>: flag
         self.lists.currentTextChanged.connect(self._linkset_selected)
 
