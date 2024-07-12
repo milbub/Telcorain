@@ -8,7 +8,7 @@ import numpy as np
 import requests
 from scipy.ndimage import label
 
-from handlers import config_manager
+from handlers import config_handler
 
 
 BLACK_INDEX = [0]  # Upper text color
@@ -16,11 +16,11 @@ RED_INDEX = [122, 123, 124, 125, 126, 141, 162, 166, 167, 182, 183, 184, 185, 18
 GREY_INDEX = [242]  # Unknown area color
 
 # Maximum number of history fetch steps attempts
-MAX_HISTORY_LOOKUPS = int(config_manager.read_option("external_filter", "max_history_lookups"))
+MAX_HISTORY_LOOKUPS = int(config_handler.read_option("external_filter", "max_history_lookups"))
 # Prefix of the image filenames
-FILENAME_PREFIX = config_manager.read_option("external_filter", "file_prefix")
+FILENAME_PREFIX = config_handler.read_option("external_filter", "file_prefix")
 # Directory where cached images will be stored
-CACHE_DIR = config_manager.read_option("directories", "ext_filter_cache")
+CACHE_DIR = config_handler.read_option("directories", "ext_filter_cache")
 
 
 if not os.path.exists(CACHE_DIR):

@@ -8,6 +8,7 @@ import mariadb
 from database.models.mwlink import MwLink
 from procedures.utils.helpers import calc_distance
 
+from handlers import config_handler
 
 class SqlManager:
     """
@@ -16,10 +17,10 @@ class SqlManager:
     # Do not spam log with error messages
     is_error_sent = False
 
-    def __init__(self, config_man):
+    def __init__(self):
         super(SqlManager, self).__init__()
         # Load settings from config file via ConfigurationManager
-        self.settings = config_man.load_sql_config()
+        self.settings = config_handler.load_sql_config()
         # Init empty connections
         self.connection = None
         # Define connection state
@@ -305,8 +306,8 @@ class SqlChecker(SqlManager, QRunnable):
     Subclass for use in threadpool, for connection testing.
     Emits 'ping_signal' from 'SqlSignal' class passed as 'signals' parameter.
     """
-    def __init__(self, config_man, signals: QObject):
-        super(SqlChecker, self).__init__(config_man)
+    def __init__(self, signals: QObject):
+        super(SqlChecker, self).__init__()
         self.sig = signals
 
     def run(self):

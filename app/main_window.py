@@ -1,4 +1,3 @@
-import sys
 from datetime import datetime, timedelta
 from typing import cast
 
@@ -13,7 +12,7 @@ from lib.pycomlink.pycomlink.processing.wet_dry.cnn import CNN_OUTPUT_LEFT_NANS_
 
 from database.influx_manager import InfluxManager, InfluxChecker, InfluxSignals
 from database.sql_manager import SqlManager, SqlChecker, SqlSignals
-from handlers import config_manager
+from handlers import config_handler
 from handlers.linksets_manager import LinksetsManager
 from handlers.logging_handler import InitLogHandler, setup_qt_logging
 from handlers.realtime_writer import RealtimeWriter
@@ -186,8 +185,8 @@ class MainWindow(QMainWindow):
         self.qt_logger = setup_qt_logging(self.text_log, init_logger, "DEBUG")
 
         # init DB managers
-        self.sql_man = SqlManager(config_manager)
-        self.influx_man = InfluxManager(config_manager)
+        self.sql_man = SqlManager()
+        self.influx_man = InfluxManager()
 
         # init threadpool
         self.threadpool = QtCore.QThreadPool()
@@ -211,7 +210,7 @@ class MainWindow(QMainWindow):
         self.influx_status: int = 0  # 0 = unknown, 1 = ok, -1 = not available
         self.sql_status: int = 0  # 0 = unknown, 1 = ok, -1 = not available
 
-        self.influx_checker = InfluxChecker(config_manager, self.influx_signals)
+        self.influx_checker = InfluxChecker(self.influx_signals)
         self.influx_checker.setAutoDelete(False)
         self._pool_influx_checker()   # first Influx connection check
         self.influx_timer = QTimer()  # create timer for next checks
@@ -219,7 +218,7 @@ class MainWindow(QMainWindow):
         # TODO: load influx timeout from config and add some time
         self.influx_timer.start(5000)
 
-        self.sql_checker = SqlChecker(config_manager, self.sql_signals)
+        self.sql_checker = SqlChecker(self.sql_signals)
         self.sql_checker.setAutoDelete(False)
         self._pool_sql_checker()   # first MariaDB connection check
         self.sql_timer = QTimer()  # create timer for next checks
@@ -245,7 +244,7 @@ class MainWindow(QMainWindow):
         self._fill_linksets()
 
         # output default path
-        self.outputs_path = config_manager.read_option("directories", "outputs")
+        self.outputs_path = config_handler.read_option("directories", "outputs")
         self.outputs_path_box.setText(self.outputs_path + '/<time>')
 
         # prepare realtime calculation slot and timer
@@ -688,14 +687,14 @@ class MainWindow(QMainWindow):
         idw_near = self.spin_idw_near.value()
         idw_dist = self.spin_idw_dist.value()
         output_step = self.spin_output_step.value()
-        min_rain_value = float(config_manager.read_option('rainfields', 'min_value'))
+        min_rain_value = float(config_handler.read_option('rainfields', 'min_value'))
         is_only_overall = self.box_only_overall.isChecked()
         is_output_total = self.radio_output_total.isChecked()
         is_pdf = self.pdf_box.isChecked()
         is_png = self.png_box.isChecked()
         is_dummy = self.check_dummy.isChecked()
-        map_file = config_manager.read_option('rendering', 'map')
-        animation_speed = int(config_manager.read_option('viewer', 'animation_speed'))
+        map_file = config_handler.read_option('rendering', 'map')
+        animation_speed = int(config_handler.read_option('viewer', 'animation_speed'))
         waa_schleiss_val = self.spin_waa_schleiss_val.value()
         waa_schleiss_tau = self.spin_waa_schleiss_tau.value()
         close_func = self.close_tab_result
@@ -709,23 +708,23 @@ class MainWindow(QMainWindow):
         is_force_write = self.force_write_box.isChecked() and self.write_output_box.isChecked()
         is_influx_write_skipped = self.skip_influx_write_box.isChecked()
         is_window_centered = True if self.window_pointer_combo.currentIndex() == 0 else False
-        retention = int(config_manager.read_option('realtime', 'retention'))
-        X_MIN = float(config_manager.read_option('rendering', 'X_MIN'))
-        X_MAX = float(config_manager.read_option('rendering', 'X_MAX'))
-        Y_MIN = float(config_manager.read_option('rendering', 'Y_MIN'))
-        Y_MAX = float(config_manager.read_option('rendering', 'Y_MAX'))
+        retention = int(config_handler.read_option('realtime', 'retention'))
+        X_MIN = float(config_handler.read_option('rendering', 'X_MIN'))
+        X_MAX = float(config_handler.read_option('rendering', 'X_MAX'))
+        Y_MIN = float(config_handler.read_option('rendering', 'Y_MIN'))
+        Y_MAX = float(config_handler.read_option('rendering', 'Y_MAX'))
 
         if is_external_filter_enabled:
             external_filter_params = {
-                'url': config_manager.read_option('external_filter', 'url'),
-                'radius': int(config_manager.read_option('external_filter', 'radius')),
-                'pixel_threshold': int(config_manager.read_option('external_filter', 'pixel_threshold')),
+                'url': config_handler.read_option('external_filter', 'url'),
+                'radius': int(config_handler.read_option('external_filter', 'radius')),
+                'pixel_threshold': int(config_handler.read_option('external_filter', 'pixel_threshold')),
                 'default_return':
-                    True if config_manager.read_option('external_filter', 'default_return') == 'True' else False,
-                'IMG_X_MIN': float(config_manager.read_option('external_filter', 'IMG_X_MIN')),
-                'IMG_X_MAX': float(config_manager.read_option('external_filter', 'IMG_X_MAX')),
-                'IMG_Y_MIN': float(config_manager.read_option('external_filter', 'IMG_Y_MIN')),
-                'IMG_Y_MAX': float(config_manager.read_option('external_filter', 'IMG_Y_MAX'))
+                    True if config_handler.read_option('external_filter', 'default_return') == 'True' else False,
+                'IMG_X_MIN': float(config_handler.read_option('external_filter', 'IMG_X_MIN')),
+                'IMG_X_MAX': float(config_handler.read_option('external_filter', 'IMG_X_MAX')),
+                'IMG_Y_MIN': float(config_handler.read_option('external_filter', 'IMG_Y_MIN')),
+                'IMG_Y_MAX': float(config_handler.read_option('external_filter', 'IMG_Y_MAX'))
             }
         else:
             external_filter_params = None

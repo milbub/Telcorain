@@ -7,7 +7,7 @@ from PyQt6.QtWidgets import QComboBox
 from influxdb_client import InfluxDBClient, QueryApi, WriteApi
 from influxdb_client.domain.write_precision import WritePrecision
 
-from handlers.config_manager import ConfigManager
+from handlers import config_handler
 
 
 class BucketType(Enum):
@@ -24,22 +24,22 @@ class InfluxManager:
     """
     InfluxManager class used for communication with InfluxDB database.
     """
-    def __init__(self, config_man: ConfigManager):
+    def __init__(self):
         super(InfluxManager, self).__init__()
 
         # create influx client with parameters from config file
-        self.client: InfluxDBClient = InfluxDBClient.from_config_file(config_man.config_path)
+        self.client: InfluxDBClient = InfluxDBClient.from_config_file(config_handler.config_path)
         self.qapi: QueryApi = self.client.query_api()
         self.wapi: WriteApi = self.client.write_api()
 
         data_border_format = '%Y-%m-%dT%H:%M:%SZ'
-        data_border_string = config_man.read_option('influx2', 'old_new_data_border')
-        bucket_old_type = getattr(BucketType, config_man.read_option('influx2', 'old_data_type'), BucketType.DEFAULT)
-        bucket_new_type = getattr(BucketType, config_man.read_option('influx2', 'new_data_type'), BucketType.DEFAULT)
+        data_border_string = config_handler.read_option('influx2', 'old_new_data_border')
+        bucket_old_type = getattr(BucketType, config_handler.read_option('influx2', 'old_data_type'), BucketType.DEFAULT)
+        bucket_new_type = getattr(BucketType, config_handler.read_option('influx2', 'new_data_type'), BucketType.DEFAULT)
 
-        self.BUCKET_OLD_DATA: str = config_man.read_option('influx2', 'bucket_old_data')
-        self.BUCKET_NEW_DATA: str = config_man.read_option('influx2', 'bucket_new_data')
-        self.BUCKET_OUT_CML: str = config_man.read_option('influx2', 'bucket_out_cml')
+        self.BUCKET_OLD_DATA: str = config_handler.read_option('influx2', 'bucket_old_data')
+        self.BUCKET_NEW_DATA: str = config_handler.read_option('influx2', 'bucket_new_data')
+        self.BUCKET_OUT_CML: str = config_handler.read_option('influx2', 'bucket_out_cml')
         self.BUCKET_OLD_TYPE: BucketType = bucket_old_type
         self.BUCKET_NEW_TYPE: BucketType = bucket_new_type
         self.OLD_NEW_DATA_BORDER: datetime = datetime.strptime(data_border_string, data_border_format)
@@ -222,8 +222,8 @@ class InfluxChecker(InfluxManager, QRunnable):
     InfluxChecker class for connection testing with InfluxDB database. Use in threadpool.
     Emits 'ping_signal' from 'InfluxSignal' class passed as 'signals' parameter.
     """
-    def __init__(self, config_man, signals: QObject):
-        super(InfluxChecker, self).__init__(config_man)
+    def __init__(self, signals: QObject):
+        super(InfluxChecker, self).__init__()
         self.sig = signals
 
     def run(self):

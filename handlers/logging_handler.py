@@ -9,7 +9,7 @@ from typing import Union
 from PyQt6.QtCore import QObject, pyqtSignal
 from PyQt6.QtWidgets import QTextEdit
 
-from handlers import config_manager
+from handlers import config_handler
 
 
 class QtLogHandler(logging.Handler, QObject):
@@ -139,13 +139,13 @@ def setup_init_logging() -> InitLogHandler:
     init_formatter.converter = time.gmtime  # use UTC time
     init_logger.setFormatter(init_formatter)
     logger.addHandler(init_logger)
-    logger.setLevel(config_manager.read_option('logging', 'init_level'))
+    logger.setLevel(config_handler.read_option('logging', 'init_level'))
     return init_logger
 
 
 def setup_file_logging():
     """Set up the file logging for the application."""
-    logs_dir = config_manager.read_option('directories', 'logs')
+    logs_dir = config_handler.read_option('directories', 'logs')
     if not os.path.exists(logs_dir):
         os.makedirs(logs_dir)
 
