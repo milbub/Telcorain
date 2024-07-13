@@ -1,14 +1,16 @@
 from datetime import datetime
 from enum import Enum
 import math
+from threading import Thread
 
-from PyQt6.QtCore import QRunnable, pyqtSignal, QObject, QDateTime
-from PyQt6.QtWidgets import QComboBox
 from influxdb_client import InfluxDBClient, QueryApi, WriteApi
 from influxdb_client.domain.write_precision import WritePrecision
+from PyQt6.QtCore import QRunnable, pyqtSignal, QObject, QDateTime
+from PyQt6.QtWidgets import QComboBox
+from urllib3.exceptions import ReadTimeoutError
 
 from handlers import config_handler
-
+from handlers.logging_handler import logger
 
 class BucketType(Enum):
     """
@@ -208,13 +210,31 @@ class InfluxManager:
     def write_points(self, points, bucket):
         self.wapi.write(bucket=bucket, record=points, write_precision=WritePrecision.S)
 
-    def wipeout_output_bucket(self):
-        self.client.delete_api().delete(
-            start="1970-01-01T00:00:00Z",
-            stop="2100-01-01T00:00:00Z",
-            predicate='',
-            bucket=self.BUCKET_OUT_CML
-        )
+    def run_wipeout_output_bucket(self) -> Thread:
+        thread = Thread(target=self._wipeout_output_bucket)
+        thread.start()
+        return thread
+
+    def _wipeout_output_bucket(self):
+        attempt = 0
+        while True:
+            try:
+                attempt += 1
+                self.client.delete_api().delete(
+                    start="1970-01-01T00:00:00Z",
+                    stop="2100-01-01T00:00:00Z",
+                    predicate='',
+                    bucket=self.BUCKET_OUT_CML
+                )
+                logger.debug("[DEVMODE] InfluxDB outputs wipeout successful after %d attempts.", attempt)
+                logger.info("[DEVMODE] InfluxDB output bucket erased.")
+                logger.info("[DEVMODE] PURGE DONE. New calculation data will be written.")
+                break
+            except ReadTimeoutError:
+                logger.debug(
+                    "[DEVMODE] Timeout during InfluxDB outputs wipeout. Attempt #%d. Calling again...", attempt
+                )
+                continue
 
 
 class InfluxChecker(InfluxManager, QRunnable):

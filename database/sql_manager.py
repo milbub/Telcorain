@@ -9,6 +9,7 @@ from database.models.mwlink import MwLink
 from procedures.utils.helpers import calc_distance
 
 from handlers import config_handler
+from handlers.logging_handler import logger
 
 class SqlManager:
     """
@@ -180,13 +181,17 @@ class SqlManager:
                 cursor: Cursor = self.connection.cursor()
 
                 query = f"INSERT INTO {self.settings['db_output']}.realtime_rain_parameters " \
-                        "(retention, timestep, resolution, X_MIN, X_MAX, Y_MIN, Y_MAX, X_count, Y_count)" \
-                        " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);"
+                        "(retention, timestep, resolution, X_MIN, X_MAX, Y_MIN, Y_MAX, X_count, Y_count, images_URL)" \
+                        " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);"
 
                 x = int((X_MAX - X_MIN) / resolution + 1)
                 y = int((Y_MAX - Y_MIN) / resolution + 1)
 
-                cursor.execute(query, (retention, timestep, resolution, X_MIN, X_MAX, Y_MIN, Y_MAX, x, y))
+                address = config_handler.read_option("realtime", "http_server_address")
+                port = config_handler.read_option("realtime", "http_server_port")
+                url = f"http://{address}:{port}"
+
+                cursor.execute(query, (retention, timestep, resolution, X_MIN, X_MAX, Y_MIN, Y_MAX, x, y, url))
                 self.connection.commit()
 
                 # store the ID of the inserted record
@@ -254,8 +259,10 @@ class SqlManager:
                 cursor: Cursor = self.connection.cursor()
 
                 queries = (
+                    "SET FOREIGN_KEY_CHECKS = 0;",
                     f"TRUNCATE TABLE {self.settings['db_output']}.realtime_rain_grids;",
-                    f"TRUNCATE TABLE {self.settings['db_output']}.realtime_rain_parameters;"
+                    f"TRUNCATE TABLE {self.settings['db_output']}.realtime_rain_parameters;",
+                    "SET FOREIGN_KEY_CHECKS = 1;"
                 )
 
                 for query in queries:
@@ -266,6 +273,8 @@ class SqlManager:
         except mariadb.Error as e:
             # TODO: exception handling
             print(f"Failed to insert data into MariaDB: {e}")
+        else:
+            logger.info("[DEVMODE] MariaDB output tables erased.")
 
     def get_wetdry_calibration(self, link_id: int, link_channel: int, time: datetime, night: bool) -> float:
         """

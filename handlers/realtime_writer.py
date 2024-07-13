@@ -1,10 +1,15 @@
 from datetime import datetime
+from threading import Thread
+from typing import Optional
+
 from influxdb_client import Point, WritePrecision
 import numpy as np
+from xarray import Dataset
 
 from database.sql_manager import SqlManager
 from database.influx_manager import InfluxManager
 from procedures.utils.helpers import dt64_to_unixtime
+from handlers.logging_handler import logger
 
 
 class RealtimeWriter:
@@ -14,19 +19,22 @@ class RealtimeWriter:
             influx_man: InfluxManager,
             write_historic: bool,
             skip_influx: bool,
-            since_time: datetime
+            since_time: datetime,
+            influx_wipe_thread: Optional[Thread] = None
     ):
         self.sql_man = sql_man
         self.influx_man = influx_man
         self.write_historic = write_historic
         self.skip_influx = skip_influx
         self.since_time = since_time
+        self.influx_wipe_thread = influx_wipe_thread
 
     def _write_raingrids(self, rain_grids, calc_dataset, np_last_time, np_since_time):
         for t in range(len(calc_dataset.time)):
             time = calc_dataset.time[t]
             if (time.values > np_last_time) and (self.write_historic or (time.values > np_since_time)):
-                print(f"[OUTPUT WRITE: MariaDB] Writing raingrid {time.values} into database...")
+                formatted_time = datetime.utcfromtimestamp(dt64_to_unixtime(time.values)).strftime("%Y-%m-%d %H:%M")
+                logger.info("[WRITE: MariaDB] Writing raingrid %s into database...", formatted_time)
 
                 raingrid_time = datetime.utcfromtimestamp(dt64_to_unixtime(time.values))
                 raingrid_links = calc_dataset.isel(time=t).cml_id.values.tolist()
@@ -35,7 +43,7 @@ class RealtimeWriter:
 
                 self.sql_man.insert_raingrid(raingrid_time, raingrid_links, raingrid_values)
 
-        print("[OUTPUT WRITE: MariaDB] Writing raingrids - DONE.")
+        logger.info("[WRITE: MariaDB] Writing raingrids - DONE.")
 
     def _write_timeseries(self, calc_dataset, np_last_time, np_since_time):
         if not self.write_historic and (np_since_time > np_last_time):
@@ -45,7 +53,8 @@ class RealtimeWriter:
 
         points_to_write = []
 
-        print("[OUTPUT WRITE: InfluxDB] Preparing rain timeseries from individual CMLs for writing into database...")
+        logger.info("[WRITE: InfluxDB] Preparing rain timeseries from individual CMLs for "
+                    "writing into database...")
 
         filtered = calc_dataset.where(calc_dataset.time > compare_time).dropna(dim='time', how='all')
         cmls_count = filtered.cml_id.size
@@ -66,15 +75,18 @@ class RealtimeWriter:
                             write_precision=WritePrecision.S
                         )
                     )
-
-        print("[OUTPUT WRITE: InfluxDB] Writing rain timeseries from individual CMLs into database...")
+        if self.influx_wipe_thread is not None:
+            logger.debug("[WRITE: InfluxDB] Force write is active. Checking if InfluxDB wipe thread is done...")
+            self.influx_wipe_thread.join()
+            logger.debug("[WRITE: InfluxDB] Wipe thread is done. Proceeding with timeseries writing...")
+        logger.info("[WRITE: InfluxDB] Writing rain timeseries from individual CMLs into database...")
         self.influx_man.write_points(points_to_write, self.influx_man.BUCKET_OUT_CML)
-        print("[OUTPUT WRITE: InfluxDB] Writing rain timeseries from individual CMLs - DONE.")
+        logger.info("[WRITE: InfluxDB] Writing rain timeseries from individual CMLs - DONE.")
 
-    def push_results(self, rain_grids, calc_dataset):
+    def push_results(self, rain_grids: list[np.ndarray], calc_dataset: Dataset):
         if len(rain_grids) != len(calc_dataset.time):
-            print(f"[ERROR] Cannot write raingrids into DB! Inconsistent count of rain grid frames ({len(rain_grids)}) "
-                  f"and times in calculation dataset ({len(calc_dataset.time)})!")
+            logger.error("[ERROR] Cannot write raingrids into DB! Inconsistent count of rain grid frames "
+                         "(%d) and times in calculation dataset (%d)!", len(rain_grids), len(calc_dataset.time))
             return
 
         last_record = self.sql_man.get_last_raingrid()

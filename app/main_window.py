@@ -446,22 +446,6 @@ class MainWindow(QMainWindow):
                 output_delta = timedelta(minutes=cp['output_step'])
                 since_time = start_time - output_delta
 
-                realtime_w = RealtimeWriter(
-                    self.sql_man,
-                    self.influx_man,
-                    cp['is_history_write'],
-                    cp['is_influx_write_skipped'],
-                    since_time
-                )
-
-                self.results_tabs[self.result_id] = ResultsWidget(
-                    results_tab_name,
-                    self.result_id,
-                    self.outputs_path,
-                    cp,
-                    realtime_writer=realtime_w
-                )
-
                 params = self.sql_man.get_last_realtime()
                 print("Calculation outputs writing activated!")
                 if len(params) != 0:
@@ -473,13 +457,31 @@ class MainWindow(QMainWindow):
                       f"{cp['output_step']} min, grid resolution: {cp['interpol_res']:.8f} °.")
 
                 # if force write is activated, rewrite history...
+                influx_wipe_thread = None
                 if cp['is_force_write']:
-                    print("[DEVELOPER MODE] FORCE write activated, all calculations will be ERASED from the database.")
+                    print("[DEVMODE] FORCE write activated, all calculations will be ERASED from the database.")
                     self.sql_man.wipeout_realtime_tables()
-                    print("[DEVELOPER MODE] MariaDB output tables erased.")
-                    self.influx_man.wipeout_output_bucket()
-                    print("[DEVELOPER MODE] InfluxDB output bucket erased.")
-                    print("[DEVELOPER MODE] PURGE DONE. New calculation data will be written.")
+                    # start thread for wiping out output bucket in InfluxDB, it can take a while
+                    influx_wipe_thread = self.influx_man.run_wipeout_output_bucket()
+                    # store the thread reference and pass it into the RealtimeWriter,
+                    # since it must be joined before new Influx writes can be made
+
+                realtime_w = RealtimeWriter(
+                    self.sql_man,
+                    self.influx_man,
+                    cp['is_history_write'],
+                    cp['is_influx_write_skipped'],
+                    since_time,
+                    influx_wipe_thread=influx_wipe_thread
+                )
+
+                self.results_tabs[self.result_id] = ResultsWidget(
+                    results_tab_name,
+                    self.result_id,
+                    self.outputs_path,
+                    cp,
+                    realtime_writer=realtime_w
+                )
 
                 self.sql_man.insert_realtime(
                     cp['retention'] * 60,
