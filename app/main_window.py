@@ -383,6 +383,13 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage(msg)
             return
 
+        # check if InfluxDB manager is not locked by writing of outputs
+        if self.influx_man.is_manager_locked:
+            msg = "Cannot start new calculation, writing of previous outputs is still in progress."
+            print(f"[WARNING] {msg}")
+            self.statusBar().showMessage(msg)
+            return
+
         # create dict with calculation parameters
         cp = self._get_calc_params()
 

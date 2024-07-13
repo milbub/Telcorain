@@ -18,8 +18,8 @@ class BucketType(Enum):
      - In case of 'mapped' bucket, bucket field names are mapped via MariaDB table 'technologies_influx_mapping'.
      - In case of 'default' bucket, default field names are used.
     """
-    DEFAULT = 'default'
-    MAPPED = 'mapped'
+    DEFAULT = "default"
+    MAPPED = "mapped"
 
 
 class InfluxManager:
@@ -34,14 +34,17 @@ class InfluxManager:
         self.qapi: QueryApi = self.client.query_api()
         self.wapi: WriteApi = self.client.write_api()
 
-        data_border_format = '%Y-%m-%dT%H:%M:%SZ'
-        data_border_string = config_handler.read_option('influx2', 'old_new_data_border')
-        bucket_old_type = getattr(BucketType, config_handler.read_option('influx2', 'old_data_type'), BucketType.DEFAULT)
-        bucket_new_type = getattr(BucketType, config_handler.read_option('influx2', 'new_data_type'), BucketType.DEFAULT)
+        # create influx write lock for thread safety (used only when writing output timeseries to InfluxDB)
+        self.is_manager_locked = False
 
-        self.BUCKET_OLD_DATA: str = config_handler.read_option('influx2', 'bucket_old_data')
-        self.BUCKET_NEW_DATA: str = config_handler.read_option('influx2', 'bucket_new_data')
-        self.BUCKET_OUT_CML: str = config_handler.read_option('influx2', 'bucket_out_cml')
+        data_border_format = "%Y-%m-%dT%H:%M:%SZ"
+        data_border_string = config_handler.read_option("influx2", "old_new_data_border")
+        bucket_old_type = getattr(BucketType, config_handler.read_option("influx2", "old_data_type"), BucketType.DEFAULT)
+        bucket_new_type = getattr(BucketType, config_handler.read_option("influx2", "new_data_type"), BucketType.DEFAULT)
+
+        self.BUCKET_OLD_DATA: str = config_handler.read_option("influx2", "bucket_old_data")
+        self.BUCKET_NEW_DATA: str = config_handler.read_option("influx2", "bucket_new_data")
+        self.BUCKET_OUT_CML: str = config_handler.read_option("influx2", "bucket_out_cml")
         self.BUCKET_OLD_TYPE: BucketType = bucket_old_type
         self.BUCKET_NEW_TYPE: BucketType = bucket_new_type
         self.OLD_NEW_DATA_BORDER: datetime = datetime.strptime(data_border_string, data_border_format)
@@ -71,7 +74,7 @@ class InfluxManager:
             # initialize new IP record in the result dictionary
             if ip not in data:
                 data[ip] = {}
-                data[ip]['unit'] = table.records[0].get_measurement()
+                data[ip]["unit"] = table.records[0].get_measurement()
 
             # collect data from the current table
             for record in table.records:
@@ -80,12 +83,12 @@ class InfluxManager:
                         data[ip][record.get_field()] = {}
 
                     # correct bad Tx Power and Temperature data in InfluxDB in case of missing zero values
-                    if (record.get_field() == 'tx_power') and (record.get_value() is None):
-                        data[ip]['tx_power'][record.get_time()] = 0.0
-                    elif (record.get_field() == 'temperature') and (record.get_value() is None):
-                        data[ip]['temperature'][record.get_time()] = 0.0
-                    elif (record.get_field() == 'rx_power') and (record.get_value() is None):
-                        data[ip]['rx_power'][record.get_time()] = 0.0
+                    if (record.get_field() == "tx_power") and (record.get_value() is None):
+                        data[ip]["tx_power"][record.get_time()] = 0.0
+                    elif (record.get_field() == "temperature") and (record.get_value() is None):
+                        data[ip]["temperature"][record.get_time()] = 0.0
+                    elif (record.get_field() == "rx_power") and (record.get_value() is None):
+                        data[ip]["rx_power"][record.get_time()] = 0.0
                     else:
                         data[ip][record.get_field()][record.get_time()] = record.get_value()
 
@@ -131,7 +134,7 @@ class InfluxManager:
                 # initialize new IP record in the result dictionary
                 if ip not in data:
                     data[ip] = {}
-                    data[ip]['unit'] = table.records[0].get_measurement()
+                    data[ip]["unit"] = table.records[0].get_measurement()
 
                 # collect data from the current table
                 for record in table.records:
@@ -141,12 +144,12 @@ class InfluxManager:
                             data[ip][field_name] = {}
 
                         # correct bad Tx Power and Temperature data in InfluxDB in case of missing zero values
-                        if (field_name == 'tx_power') and (record.get_value() is None):
-                            data[ip]['tx_power'][record.get_time()] = 0.0
-                        elif (field_name == 'temperature') and (record.get_value() is None):
-                            data[ip]['temperature'][record.get_time()] = 0.0
-                        elif (field_name == 'rx_power') and (record.get_value() is None):
-                            data[ip]['rx_power'][record.get_time()] = 0.0
+                        if (field_name == "tx_power") and (record.get_value() is None):
+                            data[ip]["tx_power"][record.get_time()] = 0.0
+                        elif (field_name == "temperature") and (record.get_value() is None):
+                            data[ip]["temperature"][record.get_time()] = 0.0
+                        elif (field_name == "rx_power") and (record.get_value() is None):
+                            data[ip]["rx_power"][record.get_time()] = 0.0
                         else:
                             data[ip][field_name][record.get_time()] = record.get_value()
 
@@ -208,7 +211,10 @@ class InfluxManager:
         return self.query_units(ips, start, end, interval)
 
     def write_points(self, points, bucket):
-        self.wapi.write(bucket=bucket, record=points, write_precision=WritePrecision.S)
+        try:
+            self.wapi.write(bucket=bucket, record=points, write_precision=WritePrecision.S)
+        except Exception as error:
+            logger.error("Error occured during InfluxDB write query, stopping. Error: %s", error)
 
     def run_wipeout_output_bucket(self) -> Thread:
         thread = Thread(target=self._wipeout_output_bucket)
@@ -223,7 +229,7 @@ class InfluxManager:
                 self.client.delete_api().delete(
                     start="1970-01-01T00:00:00Z",
                     stop="2100-01-01T00:00:00Z",
-                    predicate='',
+                    predicate="",
                     bucket=self.BUCKET_OUT_CML
                 )
                 logger.debug("[DEVMODE] InfluxDB outputs wipeout successful after %d attempts.", attempt)

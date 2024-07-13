@@ -84,6 +84,10 @@ class RealtimeWriter:
         logger.info("[WRITE: InfluxDB] Writing rain timeseries from individual CMLs - DONE.")
 
     def push_results(self, rain_grids: list[np.ndarray], calc_dataset: Dataset):
+        # lock the influx manager to prevent start of new calculation before writing is finished
+        # (lock is checked by the calculation starting mechanism, if the lock is active, calculation cannot start)
+        self.influx_man.is_manager_locked = True
+
         if len(rain_grids) != len(calc_dataset.time):
             logger.error("[ERROR] Cannot write raingrids into DB! Inconsistent count of rain grid frames "
                          "(%d) and times in calculation dataset (%d)!", len(rain_grids), len(calc_dataset.time))
@@ -105,5 +109,11 @@ class RealtimeWriter:
         # II. INDIVIDUAL CML TIMESERIES INTO INFLUXDB (if not skipped)
         if not self.skip_influx:
             self._write_timeseries(calc_dataset, np_last_time, np_since_time)
-
         del calc_dataset
+
+        # unlock the influx manager
+        self.influx_man.is_manager_locked = False
+    def start_push_results_thread(self, rain_grids: list[np.ndarray], calc_dataset: Dataset) -> Thread:
+        thread = Thread(target=self.push_results, args=(rain_grids, calc_dataset))
+        thread.start()
+        return thread
