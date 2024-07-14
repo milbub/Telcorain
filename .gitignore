@@ -3,6 +3,7 @@ __pycache__/
 /.idea/
 /assets/*
 !/assets/plain_czechia.png
+!/assets/czechia.json
 /outputs/
 /outputs_web/
 /image_cache/

@@ -46,6 +46,8 @@ enable_http_server=True
 http_server_address=0.0.0.0
 http_server_port=8080
 retention=336
+crop_to_geojson_polygon=True
+geojson=czechia.json
 
 [viewer]
 animation_speed=500
