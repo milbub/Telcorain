@@ -199,7 +199,7 @@ class ResultsWidget(QWidget):
 
         # push results into DB
         if self.realtime_writer is not None:
-            self.realtime_writer.start_push_results_thread(rain_grids, calc_data)
+            self.realtime_writer.start_push_results_thread(rain_grids, x_grid, y_grid, calc_data)
 
         del x_grid
         del y_grid

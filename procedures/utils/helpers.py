@@ -1,6 +1,8 @@
 from math import sin, cos, sqrt, atan2, radians
 
 import numpy as np
+from shapely.geometry import Point
+from shapely.prepared import PreparedGeometry
 
 
 def calc_distance(lat_A: float, long_A: float, lat_B: float, long_B: float) -> float:
@@ -40,3 +42,24 @@ def dt64_to_unixtime(dt64: np.datetime64) -> int:
     unix_epoch = np.datetime64(0, 's')
     s = np.timedelta64(1, 's')
     return int((dt64 - unix_epoch) / s)
+
+
+def mask_grid(
+        data_grid: np.ndarray,
+        x_grid: np.ndarray,
+        y_grid: np.ndarray,
+        prepared_polygons: list[PreparedGeometry]
+) -> np.ndarray:
+    """
+    Mask the 2D data grid with polygons. If a point is not within any of the polygons, it is set to NaN.
+
+    :param data_grid: 2D ndarray data grid to be masked
+    :param x_grid: 2D ndarray of x coordinates
+    :param y_grid: 2D ndarray of y coordinates
+    :param prepared_polygons: list of prepared polygons
+    :return: masked 2D ndarray with NaN values outside the polygons
+    """
+    mask = np.vectorize(lambda lon, lat: any(polygon.contains(Point(lon, lat)) for polygon in prepared_polygons))
+    within_polygons = mask(x_grid, y_grid)
+    data_grid[~within_polygons] = np.nan
+    return data_grid

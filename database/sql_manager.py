@@ -262,14 +262,23 @@ class SqlManager:
             logger.error("Failed to read data from MariaDB: %s", e)
             return {}
 
-    def insert_raingrid(self, time: datetime, links: list[int], file_name: str, r_min: float, r_max: float):
+    def insert_raingrid(
+            self,
+            time: datetime,
+            links: list[int],
+            file_name: str,
+            r_median: float,
+            r_avg: float,
+            r_max: float
+    ):
         """
         Insert raingrid's metadata into output database.
 
         :param time: Time of the raingrid.
         :param links: List of CML IDs.
         :param file_name: Name of the generated raingrid SVG image file.
-        :param r_min: Minimum rain intensity value in given raingrid.
+        :param r_median: Median rain intensity value in given raingrid.
+        :param r_avg: Average rain intensity value in given raingrid.
         :param r_max: Maximum rain intensity value in given raingrid.
         """
         if self.realtime_params_id == 0:
@@ -280,9 +289,12 @@ class SqlManager:
                 cursor: Cursor = self.connection.cursor()
 
                 query = (f"INSERT INTO {self.settings['db_output']}.realtime_rain_grids "
-                         f"(time, parameters, links, image_name, R_MIN, R_MAX) VALUES (?, ?, ?, ?, ?, ?);")
+                         f"(time, parameters, links, image_name, R_MEDIAN, R_AVG, R_MAX) VALUES (?, ?, ?, ?, ?, ?, ?);")
 
-                cursor.execute(query, (time, self.realtime_params_id, json.dumps(links), file_name, r_min, r_max))
+                cursor.execute(
+                    statement=query,
+                    data=(time, self.realtime_params_id, json.dumps(links), file_name, r_median, r_avg, r_max)
+                )
                 self.connection.commit()
             else:
                 raise mariadb.Error("Connection is not active.")
