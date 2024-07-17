@@ -12,6 +12,10 @@ from PyQt6.QtWidgets import QTextEdit
 from handlers import config_handler
 
 
+# create logger: work with app logger only (maybe external modules can log somewhere else one day...)
+logger = logging.getLogger("telcorain")
+
+
 class QtLogHandler(logging.Handler, QObject):
     """
     Custom logging handler for displaying log messages in a QTextEdit widget,
@@ -101,10 +105,6 @@ class InitLogHandler(logging.Handler):
         for record in self.buffer:
             handler.emit(record, flushed=True)
         self.buffer = []
-
-
-# work with app logger only (maybe external modules can log somewhere else one day...)
-logger = logging.getLogger("telcorain")
 
 
 def setup_qt_logging(text_edit: QTextEdit, init_logger: InitLogHandler, log_level: Union[str, int] ) -> QtLogHandler:
