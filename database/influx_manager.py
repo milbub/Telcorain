@@ -7,7 +7,7 @@ from influxdb_client import InfluxDBClient, QueryApi, WriteApi
 from influxdb_client.domain.write_precision import WritePrecision
 from PyQt6.QtCore import QRunnable, pyqtSignal, QObject, QDateTime
 from PyQt6.QtWidgets import QComboBox
-from urllib3.exceptions import ReadTimeoutError
+from urllib3.exceptions import ConnectTimeoutError, ReadTimeoutError
 
 from handlers import config_handler
 from handlers.logging_handler import logger
@@ -223,6 +223,8 @@ class InfluxManager:
 
     def _wipeout_output_bucket(self):
         attempt = 0
+        influx_timeout = int(config_handler.read_option("influx2", "timeout"))
+        max_attempts = 120 * 1000 / influx_timeout  # wait max 120 seconds
         while True:
             try:
                 attempt += 1
@@ -236,10 +238,13 @@ class InfluxManager:
                 logger.info("[DEVMODE] InfluxDB output bucket erased.")
                 logger.info("[DEVMODE] PURGE DONE. New calculation data will be written.")
                 break
-            except ReadTimeoutError:
-                logger.debug(
-                    "[DEVMODE] Timeout during InfluxDB outputs wipeout. Attempt #%d. Calling again...", attempt
-                )
+            except (ConnectTimeoutError, ReadTimeoutError):
+                logger.debug("[DEVMODE] Timeout during InfluxDB outputs wipeout. "
+                             "Attempt #%d. Calling again...", attempt)
+                if attempt > max_attempts:
+                    logger.error("[DEVMODE] Timeout during InfluxDB outputs wipeout. Maximum attempts reached. "
+                                 "Check state of bucket %s. Skipping.", self.BUCKET_OUT_CML)
+                    break
                 continue
 
 
