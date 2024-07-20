@@ -2,6 +2,7 @@ import configparser
 import codecs
 from os.path import exists
 
+from handlers.logging_handler import logger
 
 class LinksetsHandler:
     def __init__(self, links: dict):
@@ -31,7 +32,10 @@ class LinksetsHandler:
 
                 for link_set in self.sections:
                     for link_id in links_for_del:
-                        self.linksets[link_set].pop(link_id)
+                        try:
+                            self.linksets[link_set].pop(link_id)
+                        except KeyError:
+                            logger.warning(f"Deleted link ID {link_id} not found in link set {link_set}.")
 
         # add new/missing links into linksets default list
         for link_id in self.links:
