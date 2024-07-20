@@ -12,6 +12,7 @@ from urllib3.exceptions import ConnectTimeoutError, ReadTimeoutError
 from handlers import config_handler
 from handlers.logging_handler import logger
 
+
 class BucketType(Enum):
     """
     Enum specifying the type of InfluxDB bucket: 'default' or 'mapped'.
@@ -266,3 +267,7 @@ class InfluxSignals(QObject):
     InfluxSignals class for signaling between InfluxManager and its threadpooled subclasses.
     """
     ping_signal = pyqtSignal(bool)
+
+
+# global instance of InfluxManager, accessible from all modules
+influx_man = InfluxManager()

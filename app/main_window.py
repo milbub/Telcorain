@@ -10,8 +10,8 @@ from PyQt6.QtWidgets import QMainWindow, QLabel, QProgressBar, QHBoxLayout, QWid
 
 from lib.pycomlink.pycomlink.processing.wet_dry.cnn import CNN_OUTPUT_LEFT_NANS_LENGTH
 
-from database.influx_manager import InfluxManager, InfluxChecker, InfluxSignals
-from database.sql_manager import SqlManager, SqlChecker, SqlSignals
+from database.influx_manager import influx_man, InfluxChecker, InfluxSignals
+from database.sql_manager import sql_man, SqlChecker, SqlSignals
 from handlers import config_handler
 from handlers.linksets_handler import LinksetsHandler
 from handlers.logging_handler import InitLogHandler, setup_qt_logging
@@ -184,10 +184,6 @@ class MainWindow(QMainWindow):
         # init Qt logger
         self.qt_logger = setup_qt_logging(self.text_log, init_logger, "DEBUG")
 
-        # init DB managers
-        self.sql_man = SqlManager()
-        self.influx_man = InfluxManager()
-
         # init threadpool
         self.threadpool = QtCore.QThreadPool()
 
@@ -227,7 +223,7 @@ class MainWindow(QMainWindow):
         self.sql_timer.start(5000)
 
         # load CML definitions from SQL database
-        self.links = self.sql_man.load_metadata()
+        self.links = sql_man.load_metadata()
         print(f"{len(self.links)} microwave link's definitions loaded from MariaDB.")
 
         # init link sets
@@ -384,7 +380,7 @@ class MainWindow(QMainWindow):
             return
 
         # check if InfluxDB manager is not locked by writing of outputs
-        if self.influx_man.is_manager_locked:
+        if influx_man.is_manager_locked:
             msg = "Cannot start new calculation, writing of previous outputs is still in progress."
             print(f"[WARNING] {msg}")
             self.statusBar().showMessage(msg)
@@ -434,7 +430,7 @@ class MainWindow(QMainWindow):
 
             # create calculation instance
             calculation = Calculation(
-                self.influx_man,
+                influx_man,
                 self.calc_signals,
                 self.result_id,
                 self.links,
@@ -453,7 +449,7 @@ class MainWindow(QMainWindow):
                 output_delta = timedelta(minutes=cp['output_step'])
                 since_time = start_time - output_delta
 
-                params = self.sql_man.get_last_realtime()
+                params = sql_man.get_last_realtime()
                 print("Calculation outputs writing activated!")
                 if len(params) != 0:
                     print(f"Last written calculation started at "
@@ -467,15 +463,15 @@ class MainWindow(QMainWindow):
                 influx_wipe_thread = None
                 if cp['is_force_write']:
                     print("[DEVMODE] FORCE write activated, all calculations will be ERASED from the database.")
-                    self.sql_man.wipeout_realtime_tables()
+                    sql_man.wipeout_realtime_tables()
                     # start thread for wiping out output bucket in InfluxDB, it can take a while
-                    influx_wipe_thread = self.influx_man.run_wipeout_output_bucket()
+                    influx_wipe_thread = influx_man.run_wipeout_output_bucket()
                     # store the thread reference and pass it into the RealtimeWriter,
                     # since it must be joined before new Influx writes can be made
 
                 realtime_w = RealtimeWriter(
-                    self.sql_man,
-                    self.influx_man,
+                    sql_man,
+                    influx_man,
                     cp['is_history_write'],
                     cp['is_influx_write_skipped'],
                     since_time,
@@ -490,7 +486,7 @@ class MainWindow(QMainWindow):
                     realtime_writer=realtime_w
                 )
 
-                self.sql_man.insert_realtime(
+                sql_man.insert_realtime(
                     cp['retention'] * 60,
                     cp['output_step'] * 60,
                     cp['interpol_res'],

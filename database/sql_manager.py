@@ -13,6 +13,7 @@ from procedures.utils.helpers import calc_distance
 from handlers import config_handler
 from handlers.logging_handler import logger
 
+
 class SqlManager:
     """
     Class for handling MariaDB connection and database data loading/writing.
@@ -120,6 +121,9 @@ class SqlManager:
 
                     link_length = calc_distance(latitude_A, longitude_A, latitude_B, longitude_B)
 
+                    if link_length < 0.5:
+                        continue  # TODO temporarily skip links shorter than 300 meters
+
                     link = MwLink(
                         link_id=ID,
                         name=address_A + " <-> " + address_B,
@@ -223,6 +227,8 @@ class SqlManager:
 
                 address = config_handler.read_option("realtime", "http_server_address")
                 port = config_handler.read_option("realtime", "http_server_port")
+                if address == "0.0.0.0" or address == "":
+                    address = "localhost"
                 url = f"http://{address}:{port}"
 
                 cursor.execute(query, (retention, timestep, resolution, X_MIN, X_MAX, Y_MIN, Y_MAX, x, y, url))
@@ -348,3 +354,7 @@ class SqlSignals(QObject):
     Signaling class for SqlManager's threadpool subclasses.
     """
     ping_signal = pyqtSignal(bool)
+
+
+# global instance of SqlManager, accessible from all modules
+sql_man = SqlManager()
