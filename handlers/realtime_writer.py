@@ -225,39 +225,58 @@ class RealtimeWriter:
 def _get_color(value: float) -> tuple[int, int, int, int]:
     """
     Get RGBA color tuple based on the rain intensity value.
-    The color scale is identical to the CHMI rain scale colorbar.
+    The color scale is identical to the CHMI rain scale colorbar. The rain intensity values are in mm/h, the scale is
+    derived from the CHMI radar scale, where dBZ have been converted to mm/h using the Marshall-Palmer formula:
+    https://rdrr.io/github/potterzot/kgRainPredictR/man/marshall_palmer.html
+
+    [dBZ]  [mm/h]    [RGBA]
+    4      0.064842  (57, 0, 112, 255)
+    8      0.115307  (47, 1, 169, 255)
+    12     0.205048  (0, 0, 252, 255)
+    16     0.364633  (0, 108, 192, 255)
+    20     0.648420  (0, 160, 0, 255)
+    24     1.153072  (0, 188, 0, 255)
+    28     2.050483  (52, 216, 0, 255)
+    32     3.646332  (156, 220, 0, 255)
+    36     6.484198  (224, 220, 0, 255)
+    40     11.53072  (252, 176, 0, 255)
+    44     20.50483  (252, 132, 0, 255)
+    48     36.46332  (252, 88, 0, 255)
+    52     64.84198  (252, 0, 0, 255)
+    56     115.3072  (160, 0, 0, 255)
+
     :param value: rain intensity value
     :return: RGBA color tuple, NaN and values below 0.1 are transparent
     """
     if np.isnan(value) or value < 0.1:
         return 0, 0, 0, 0  # transparent
-    elif 0.1 <= value < 0.3:
+    elif 0.1 <= value < 0.115307:
         return 57, 0, 112, 255
-    elif 0.3 <= value < 0.6:
+    elif 0.115307 <= value < 0.205048:
         return 47, 1, 169, 255
-    elif 0.6 <= value < 1.0:
+    elif 0.205048 <= value < 0.364633:
         return 0, 0, 252, 255
-    elif 1.0 <= value < 2.0:
+    elif 0.364633 <= value < 0.648420:
         return 0, 108, 192, 255
-    elif 2.0 <= value < 4.0:
+    elif 0.648420 <= value < 1.153072:
         return 0, 160, 0, 255
-    elif 4.0 <= value < 6.0:
+    elif 1.153072 <= value < 2.050483:
         return 0, 188, 0, 255
-    elif 6.0 <= value < 10.0:
+    elif 2.050483 <= value < 3.646332:
         return 52, 216, 0, 255
-    elif 10.0 <= value < 15.0:
+    elif 3.646332 <= value < 6.484198:
         return 156, 220, 0, 255
-    elif 15.0 <= value < 20.0:
+    elif 6.484198 <= value < 11.53072:
         return 224, 220, 0, 255
-    elif 20.0 <= value < 30.0:
+    elif 11.53072 <= value < 20.50483:
         return 252, 176, 0, 255
-    elif 30.0 <= value < 40.0:
+    elif 20.50483 <= value < 36.46332:
         return 252, 132, 0, 255
-    elif 40.0 <= value < 60.0:
+    elif 36.46332 <= value < 64.84198:
         return 252, 88, 0, 255
-    elif 60.0 <= value < 80.0:
+    elif 64.84198 <= value < 115.3072:
         return 252, 0, 0, 255
-    elif value >= 80.0:
+    elif value >= 115.3072:
         return 160, 0, 0, 255
     else:
         return 0, 0, 0, 0  # default: transparent
