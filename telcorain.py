@@ -24,7 +24,26 @@ try:
         setup_file_logging()
         init_logger = setup_init_logging()
 
+        # with the logger set up, the first message can be logged
         logger.info("Starting Telcorain...")
+
+        # check the databases connections (in theory, app should start without InfluxDB, but let's check it anyway)
+        try:
+            # 1) MariaDB
+            from database.sql_manager import sql_man
+            if not sql_man.check_connection():
+                raise ConnectionError("MariaDB connection is not available.")
+            # 2) InfluxDB
+            from database.influx_manager import influx_man
+            if not influx_man.check_connection():
+                raise ConnectionError("InfluxDB connection is not available.")
+        except Exception as error:
+            loading_screen.terminate()
+            logger.critical("Cannot start Telcorain due to an error: %s", error)
+            error_screen = subprocess.Popen(
+                [sys.executable, "app/error_screen.py", "Cannot start Telcorain", str(error)]
+            )
+            sys.exit(1)
 
         # start the HTTP server
         try:

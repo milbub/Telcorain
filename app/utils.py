@@ -1,10 +1,21 @@
-from PyQt6.QtWidgets import QLabel, QCheckBox, QTableWidget
+"""This module contains utility classes and functions for the application."""
+from PyQt6.QtGui import QIcon
+from PyQt6.QtWidgets import QLabel, QCheckBox, QMessageBox, QTableWidget
 from PyQt6 import QtCore
 
 from database.models.mwlink import MwLink
 
 class LinksTableFactory:
+    """
+    Factory class for creating and updating the links view table in the Control Widget.
+    Non-active rows in the table are hidden. Table is updated with the current selection and is not editable.
+    """
     def __init__(self, table: QTableWidget):
+        """
+        Initialize the factory with the table.
+
+        :param table: QTableWidget object
+        """
         self.selection_table = table
 
         # style out link table
@@ -86,3 +97,25 @@ class LinksTableFactory:
             self.selection_table.hideRow(r)
 
         self.selection_table.setUpdatesEnabled(True)
+
+
+class ErrorBox(QMessageBox):
+    """In case of fatal error, show this box."""
+    def __init__(self, box_title: str = "Error", box_error: str = "Unknown error occurred."):
+        """
+        Initialize the error box.
+
+        :param box_title: title of the box
+        :param box_error: error message
+        """
+        super().__init__()
+
+        self.setIcon(QMessageBox.Icon.Critical)
+        self.setWindowTitle(box_title)
+        self.setWindowIcon(QIcon("./app/gui/icons/app_96x96.png"))
+        self.setText(box_error)
+
+        self.setStandardButtons(QMessageBox.StandardButton.Ok)
+        self.setDefaultButton(QMessageBox.StandardButton.Ok)
+
+        self.show()
