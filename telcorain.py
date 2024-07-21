@@ -41,7 +41,7 @@ try:
             loading_screen.terminate()
             logger.critical("Cannot start Telcorain due to an error: %s", error)
             error_screen = subprocess.Popen(
-                [sys.executable, "app/error_screen.py", "Cannot start Telcorain", str(error)]
+                [sys.executable, "app/error_screen.py", "Telcorain Cannot Start", str(error)]
             )
             sys.exit(1)
 
@@ -76,6 +76,11 @@ try:
         # run until exit
         sys.exit(app.exec())
 except Exception as error:
+    msg = "An unexpected error occurred during Telcorain's run. Error occurred outside the Qt event loop: "
+    logger.exception(msg)
     if "loading_screen" in locals():
         loading_screen.terminate()
-    raise
+    crash_screen = subprocess.Popen(
+        [sys.executable, "app/error_screen.py", "Telcorain Fatal Error", f"{msg}{str(error)}"]
+    )
+    sys.exit(1)
