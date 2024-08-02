@@ -33,6 +33,7 @@ map=plain_czechia.png
 logs=./logs
 outputs=./outputs
 outputs_web=./outputs_web
+outputs_raw=./outputs_raw
 ext_filter_cache=./image_cache
 
 [logging]

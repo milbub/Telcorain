@@ -6,6 +6,7 @@ __pycache__/
 !/assets/czechia.json
 /outputs/
 /outputs_web/
+/outputs_raw/
 /image_cache/
 /logs/
 /config.ini
