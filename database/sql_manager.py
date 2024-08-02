@@ -193,6 +193,46 @@ class SqlManager:
             logger.error("Failed to read data from MariaDB: %s", e)
             return {}
 
+    def get_realtime(self, parameters_id: id) -> dict[str, Union[int, float, datetime]]:
+        """
+        Get parameters of specific realtime calculation from output database.
+
+        :param parameters_id: ID of the realtime parameters.
+        :return: Dictionary of realtime parameters. Key is parameter name, value is parameter value.
+        """
+        try:
+            if self.check_connection():
+                cursor: Cursor = self.connection.cursor()
+
+                query = "SELECT started, retention, timestep, resolution, X_MIN, X_MAX, Y_MIN, Y_MAX, " \
+                        f"X_count, Y_count FROM {self.settings['db_output']}.realtime_rain_parameters " \
+                        "WHERE ID = ?;"
+
+                cursor.execute(query, (parameters_id,))
+
+                realtime_params = {}
+
+                for (started, retention, timestep, resolution, X_MIN, X_MAX, Y_MIN, Y_MAX, X_count, Y_count) in cursor:
+                    realtime_params = {
+                        "start_time": started,
+                        "retention": retention,
+                        "timestep": timestep,
+                        "resolution": float(resolution),
+                        "X_MIN": float(X_MIN),
+                        "X_MAX": float(X_MAX),
+                        "Y_MIN": float(Y_MIN),
+                        "Y_MAX": float(Y_MAX),
+                        "X_count": X_count,
+                        "Y_count": Y_count
+                    }
+
+                return realtime_params
+            else:
+                raise mariadb.Error("Connection is not active.")
+        except mariadb.Error as e:
+            logger.error("Failed to read data from MariaDB: %s", e)
+            return {}
+
     def insert_realtime(
             self,
             retention: int,
