@@ -26,7 +26,9 @@ class RealtimeWriter:
     Raingrid metadata are written into MariaDB.
     The raingrids themselves are saved as PNG images in the outputs directory, from where they are then served by
     Telcorain's HTTP server (if enabled) to the web application (or other clients).
-    Individual CML timeseries are written into InfluxDB.
+    Also, raw numpy NPY files are saved in the outputs_raw directory, which are then processed by the HTTP REST API
+    endpoint for the queries on the exact rain intensity values on the given coordinates.
+    Then, individual CML timeseries are written into InfluxDB.
 
     The class is designed to be run primarily in a separate thread to prevent blocking of the GUI thread.
     """
@@ -58,6 +60,7 @@ class RealtimeWriter:
         self.is_crop_enabled = config_handler.read_option("realtime", "crop_to_geojson_polygon")
         self.geojson_file = config_handler.read_option("realtime", "geojson")
         self.output_dir = config_handler.read_option("directories", "outputs_web")
+        self.outputs_raw_dir = config_handler.read_option("directories", "outputs_raw")
 
     def _write_raingrids(
             self,
@@ -69,7 +72,7 @@ class RealtimeWriter:
             np_since_time: np.datetime64
     ):
         """
-        Write raingrids metadata into MariaDB table and save them as PNG images (if enabled).
+        Write raingrids metadata into MariaDB table and save them as PNG images and NPY raw data (if enabled).
         :param rain_grids: list of 2D numpy arrays with rain intensity values
         :param x_grid: 2D numpy array of x coordinates
         :param y_grid: 2D numpy array of y coordinates
@@ -90,7 +93,7 @@ class RealtimeWriter:
             if (time.values > np_last_time) and (self.write_historic or (time.values > np_since_time)):
                 raingrid_time: datetime = datetime.utcfromtimestamp(dt64_to_unixtime(time.values))
                 formatted_time: str = raingrid_time.strftime("%Y-%m-%d %H:%M")
-                file_name: str = raingrid_time.strftime("%Y-%m-%d_%H%M.png")
+                file_name: str = raingrid_time.strftime("%Y-%m-%d_%H%M")
 
                 logger.info("[WRITE] Saving raingrid %s for web output...", formatted_time)
                 raingrid_links = calc_dataset.isel(time=t).cml_id.values.tolist()
@@ -102,7 +105,7 @@ class RealtimeWriter:
                 self.sql_man.insert_raingrid(
                     time=raingrid_time,
                     links=raingrid_links,
-                    file_name=file_name,
+                    file_name=f"{file_name}.png",
                     r_median=r_median_value,
                     r_avg=r_avg_value,
                     r_max=r_max_value
@@ -114,7 +117,10 @@ class RealtimeWriter:
                     rain_grid = mask_grid(rain_grid, x_grid, y_grid, prepared_polygons)
 
                 logger.debug("[WRITE] Saving raingrid %s as PNG file...", formatted_time)
-                ndarray_to_png(rain_grid, f"{self.output_dir}/{file_name}")
+                ndarray_to_png(rain_grid, f"{self.output_dir}/{file_name}.png")
+
+                logger.debug("[WRITE] Saving raingrid %s as raw numpy file...", formatted_time)
+                save_ndarray_to_file(rain_grid, f"{self.outputs_raw_dir}/{file_name}.npy")
 
                 logger.debug("[WRITE] Raingrid %s successfully saved.", formatted_time)
 
@@ -302,3 +308,66 @@ def ndarray_to_png(array: np.ndarray, output_path: str):
         image.save(output_path, "PNG")
     except Exception as error:
         logger.error("Cannot save PNG image: %s", error)
+
+
+def save_ndarray_to_file(array: np.ndarray, output_path: str):
+    """
+    Save a 2D numpy ndarray to a local file.
+    :param array: 2D numpy array to be saved
+    :param output_path: Path to the file where the array will be saved
+    """
+    try:
+        np.save(output_path, array)
+    except Exception as error:
+        logger.error("Cannot save ndarray to file \"%s\": %s", output_path, error)
+
+
+def read_from_ndarray_file(
+        input_path: str,
+        x: float,
+        y: float,
+        x_min: float,
+        x_max: float,
+        y_min: float,
+        y_max: float,
+        total_rows: int,
+        total_cols: int
+) -> Optional[float]:
+    """
+    Read a value from a saved 2D numpy ndarray local file based on given geographic coordinates.
+
+    Parameters:
+    :param input_path: Path to the saved ndarray file
+    :param x: Longitude value to read
+    :param y: Latitude value to read
+    :param x_min: Minimum longitude (array border)
+    :param x_max: Maximum longitude (array border)
+    :param y_min: Minimum latitude (array border)
+    :param y_max: Maximum latitude (array border)
+    :param total_rows: Total number of rows in the array (vertical resolution)
+    :param total_cols: Total number of columns in the array (horizontal resolution)
+
+    Returns:
+    value: The value at the specified geographic coordinates in the array.
+    """
+    try:
+        array: np.ndarray = np.load(input_path)
+    except FileNotFoundError:
+        logger.error("Cannot read stored ndarray file \"%s\": File not found.", input_path)
+        return None
+    except Exception as error:
+        logger.error("Cannot read stored ndarray file \"%s\": %s", input_path, error)
+        return None
+
+    x_step = (x_max - x_min) / (total_cols - 1)
+    y_step = (y_max - y_min) / (total_rows - 1)
+
+    # calculate the closest row and column indices
+    col = round((x - x_min) / x_step)
+    row = round((y - y_min) / y_step)
+
+    # ensure indices are within array bounds
+    col = min(max(col, 0), total_cols - 1)
+    row = min(max(row, 0), total_rows - 1)
+
+    return array[row, col]
