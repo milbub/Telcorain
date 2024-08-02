@@ -308,6 +308,31 @@ class SqlManager:
             logger.error("Failed to read data from MariaDB: %s", e)
             return {}
 
+    def verify_raingrid(self, parameters: id, time: datetime) -> bool:
+        """
+        Verify if raingrid with given parameters and time already exists in output database.
+
+        :param parameters: ID of the realtime parameters.
+        :param time: Time of the raingrid.
+        :return: True if raingrid exists, False otherwise.
+        """
+        try:
+            if self.check_connection():
+                cursor: Cursor = self.connection.cursor()
+
+                query = f"SELECT COUNT(*) FROM {self.settings['db_output']}.realtime_rain_grids " \
+                        f"WHERE time = ? AND parameters = ?;"
+
+                cursor.execute(query, (time, parameters))
+
+                count = cursor.fetchone()[0]
+
+                return count > 0
+            else:
+                raise mariadb.Error("Connection is not active.")
+        except mariadb.Error as e:
+            logger.error("Failed to read data from MariaDB: %s", e)
+
     def insert_raingrid(
             self,
             time: datetime,
