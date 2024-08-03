@@ -333,7 +333,7 @@ def read_from_ndarray_file(input_path: str) -> np.ndarray:
     array: The 2D numpy ndarray read from the file.
     """
     try:
-        array: np.ndarray = np.load(input_path)
+        array: np.ndarray = np.round(np.load(input_path), decimals=3)
     except FileNotFoundError as error:
         logger.error("Cannot read stored ndarray file \"%s\": File not found.", input_path)
         raise error
