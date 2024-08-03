@@ -14,8 +14,8 @@ from database.influx_manager import influx_man, InfluxChecker, InfluxSignals
 from database.sql_manager import sql_man, SqlChecker, SqlSignals
 from handlers import config_handler
 from handlers.linksets_handler import LinksetsHandler
-from handlers.logging_handler import InitLogHandler, setup_qt_logging
-from handlers.realtime_writer import RealtimeWriter
+from handlers.logging_handler import InitLogHandler, logger, setup_qt_logging
+from handlers.realtime_writer import RealtimeWriter, purge_raw_outputs
 from procedures.calculation import Calculation
 from procedures.calculation_signals import CalcSignals
 
@@ -462,12 +462,16 @@ class MainWindow(QMainWindow):
                 # if force write is activated, rewrite history...
                 influx_wipe_thread = None
                 if cp['is_force_write']:
-                    print("[DEVMODE] FORCE write activated, all calculations will be ERASED from the database.")
+                    logger.info("[DEVMODE] FORCE write activated, all calculations will be ERASED from the database.")
+                    # 1) purge realtime data from MariaDB
                     sql_man.wipeout_realtime_tables()
-                    # start thread for wiping out output bucket in InfluxDB, it can take a while
+                    # 2) start thread for wiping out output bucket in InfluxDB, it can take a while
+                    # - store the thread reference and pass it into the RealtimeWriter,
+                    # - since it must be joined before new Influx writes can be made
                     influx_wipe_thread = influx_man.run_wipeout_output_bucket()
-                    # store the thread reference and pass it into the RealtimeWriter,
-                    # since it must be joined before new Influx writes can be made
+                    # 3) purge raw .npy raingrid outputs from disk
+                    purge_raw_outputs()
+                    logger.info("[DEVMODE] ERASE DONE. New calculation data will be written.")
 
                 realtime_w = RealtimeWriter(
                     sql_man,

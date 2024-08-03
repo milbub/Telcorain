@@ -237,7 +237,6 @@ class InfluxManager:
                 )
                 logger.debug("[DEVMODE] InfluxDB outputs wipeout successful after %d attempts.", attempt)
                 logger.info("[DEVMODE] InfluxDB output bucket erased.")
-                logger.info("[DEVMODE] PURGE DONE. New calculation data will be written.")
                 break
             except (ConnectTimeoutError, ReadTimeoutError):
                 logger.debug("[DEVMODE] Timeout during InfluxDB outputs wipeout. "

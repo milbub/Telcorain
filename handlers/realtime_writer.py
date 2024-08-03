@@ -1,6 +1,7 @@
 """Module containing the RealtimeWriter class for writing results of the real-time calculation."""
 from datetime import datetime
 import json
+import os
 from PIL import Image
 from threading import Thread
 from typing import Optional
@@ -393,3 +394,30 @@ def read_value_from_ndarray_file(
     row = min(max(row, 0), total_rows - 1)
 
     return array[row, col]
+
+
+def purge_raw_outputs():
+    """
+    Purge the .npy files in the raw outputs directory.
+    """
+    try:
+        raw_outputs_dir = config_handler.read_option("directories", "outputs_raw")
+        for file in os.listdir(raw_outputs_dir):
+            file_path = os.path.join(raw_outputs_dir, file)
+            try:
+                if os.path.isfile(file_path):
+                    if file_path.endswith(".npy"):
+                        os.unlink(file_path)
+                        logger.debug("[DEVMODE] NPY file \"%s\" deleted.", file_path)
+                    else:
+                        logger.warning("[DEVMODE] Cannot delete file \"%s\": It is not a NPY file.", file_path)
+                elif os.path.isdir(file_path):
+                    logger.warning(
+                        "[DEVMODE] Raw outputs directory contains another directory \"%s\", which cannot be deleted.",
+                        file_path
+                    )
+            except Exception as error:
+                logger.warning("Cannot delete file \"%s\": %s", file_path, error)
+        logger.info("[DEVMODE] Raw outputs directory erased.")
+    except Exception as error:
+        logger.error("Cannot purge raw outputs directory: %s", error)
