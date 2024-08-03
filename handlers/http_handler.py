@@ -10,7 +10,7 @@ from urllib.parse import urlparse, parse_qs
 from database.sql_manager import sql_man
 from handlers import config_handler
 from handlers.logging_handler import logger
-from handlers.realtime_writer import read_value_from_ndarray_file
+from handlers.realtime_writer import read_from_ndarray_file, read_value_from_ndarray_file
 
 
 def qs_parse_time_and_parameters(query_strings: dict[str, list[str]]) -> tuple[datetime, int]:
@@ -117,7 +117,34 @@ class TelcorainHTTPRequestHandler(SimpleHTTPRequestHandler):
         parsed_url = urlparse(self.path)
         query_strings = parse_qs(parsed_url.query)
 
-        if parsed_url.path == "/api/gridvalue":
+        if parsed_url.path == "/api/grid":
+            try:
+                timestamp, parameters = qs_parse_time_and_parameters(query_strings)
+
+                # verify existence of the requested data
+                if sql_man.verify_raingrid(parameters, timestamp):
+                    # read the whole grid from the raw outputs directory
+                    grid = read_from_ndarray_file(
+                        input_path=f"{TelcorainHTTPRequestHandler.outputs_raw_dir}/"
+                                   f"{query_strings.get('timestamp', [None])[0]}.npy"
+                    )
+
+                    response = {
+                        "grid": grid.tolist(),
+                        "timestamp": timestamp.strftime("%Y-%m-%d %H:%M"),
+                        "parameters": parameters
+                    }
+                    self.__send_json_ok_response(response)
+                else:
+                    raise FileNotFoundError("No data available for the requested parameters and timestamp")
+            except ValueError as e:
+                self.send_error(400, str(e), json_response=True)
+            except FileNotFoundError as e:
+                self.send_error(404, str(e), json_response=True)
+            except Exception as e:
+                logger.error("Unexpected error during processing of /api/grid request: %s", e)
+                self.send_error(500, "Unexpected internal error, check Telcorain log", json_response=True)
+        elif parsed_url.path == "/api/gridvalue":
             try:
                 timestamp, parameters = qs_parse_time_and_parameters(query_strings)
                 latitude, longitude = qs_parse_coordinates(query_strings)
