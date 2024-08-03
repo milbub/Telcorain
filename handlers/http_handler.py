@@ -10,7 +10,7 @@ from urllib.parse import urlparse, parse_qs
 from database.sql_manager import sql_man
 from handlers import config_handler
 from handlers.logging_handler import logger
-from handlers.realtime_writer import read_from_ndarray_file
+from handlers.realtime_writer import read_value_from_ndarray_file
 
 
 def qs_parse_time_and_parameters(query_strings: dict[str, list[str]]) -> tuple[datetime, int]:
@@ -127,7 +127,7 @@ class TelcorainHTTPRequestHandler(SimpleHTTPRequestHandler):
                     # get the given calculation parameters from the database
                     params = sql_man.get_realtime(parameters_id=parameters)
                     # read the coordinates value from the raw outputs directory
-                    value = read_from_ndarray_file(
+                    value = read_value_from_ndarray_file(
                         input_path=f"{TelcorainHTTPRequestHandler.outputs_raw_dir}/"
                                    f"{query_strings.get('timestamp', [None])[0]}.npy",
                         x=longitude,

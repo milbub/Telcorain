@@ -322,7 +322,29 @@ def save_ndarray_to_file(array: np.ndarray, output_path: str):
         logger.error("Cannot save ndarray to file \"%s\": %s", output_path, error)
 
 
-def read_from_ndarray_file(
+def read_from_ndarray_file(input_path: str) -> np.ndarray:
+    """
+    Read a 2D numpy ndarray from a local file.
+
+    Parameters:
+    :param input_path: Path to the saved ndarray file
+
+    Returns:
+    array: The 2D numpy ndarray read from the file.
+    """
+    try:
+        array: np.ndarray = np.load(input_path)
+    except FileNotFoundError as error:
+        logger.error("Cannot read stored ndarray file \"%s\": File not found.", input_path)
+        raise error
+    except Exception as error:
+        logger.error("Cannot read stored ndarray file \"%s\": %s", input_path, error)
+        raise error
+
+    return array
+
+
+def read_value_from_ndarray_file(
         input_path: str,
         x: float,
         y: float,
@@ -332,7 +354,7 @@ def read_from_ndarray_file(
         y_max: float,
         total_rows: int,
         total_cols: int
-) -> Optional[float]:
+) -> np.number:
     """
     Read a value from a saved 2D numpy ndarray local file based on given geographic coordinates.
 
@@ -352,12 +374,12 @@ def read_from_ndarray_file(
     """
     try:
         array: np.ndarray = np.load(input_path)
-    except FileNotFoundError:
+    except FileNotFoundError as error:
         logger.error("Cannot read stored ndarray file \"%s\": File not found.", input_path)
-        return None
+        raise error
     except Exception as error:
         logger.error("Cannot read stored ndarray file \"%s\": %s", input_path, error)
-        return None
+        raise error
 
     x_step = (x_max - x_min) / (total_cols - 1)
     y_step = (y_max - y_min) / (total_rows - 1)
