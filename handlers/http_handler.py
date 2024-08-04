@@ -264,13 +264,14 @@ def setup_http_server():
             else:
                 address_t = address
             socket = (address_t, port)
-            logger.info(f"HTTP server is running on {address}:{port}.")
-            logger.debug(f"HTTP server is serving files from directory: {TelcorainHTTPRequestHandler.outputs_dir}")
 
             httpd = HTTPServer(socket, TelcorainHTTPRequestHandler)
         except Exception as error:
             logger.error("Cannot start HTTP server due to an error: %s", error)
             return
+        else:
+            logger.info(f"HTTP server is running on {address}:{port}.")
+            logger.debug(f"HTTP server is serving files from directory: {TelcorainHTTPRequestHandler.outputs_dir}")
 
         # run the HTTP server
         httpd.serve_forever()
