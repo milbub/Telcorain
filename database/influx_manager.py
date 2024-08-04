@@ -7,7 +7,6 @@ from typing import Union
 from influxdb_client import InfluxDBClient, QueryApi, WriteApi
 from influxdb_client.domain.write_precision import WritePrecision
 from PyQt6.QtCore import QRunnable, pyqtSignal, QObject, QDateTime
-from PyQt6.QtWidgets import QComboBox
 from urllib3.exceptions import ConnectTimeoutError, ReadTimeoutError
 
 from handlers import config_handler
@@ -194,7 +193,7 @@ class InfluxManager:
     def query_units_realtime(
             self,
             ips: list,
-            combo_realtime: QComboBox,
+            realtime_window_str: str,
             interval: int
     ) -> dict[str, Union[dict[str, dict[datetime, float]], str]]:
         """
@@ -202,7 +201,7 @@ class InfluxManager:
         Query is done for the time interval defined by 'combo_realtime' QComboBox object.
 
         :param ips: list of IP addresses of CMLs to query
-        :param combo_realtime: QComboBox object with selected time interval string
+        :param realtime_window_str: A string describing selected moving time window
         :param interval: time interval in minutes
         :return: dictionary with queried data, with IP addresses as keys and fields with time series as values
         """
@@ -218,7 +217,7 @@ class InfluxManager:
         }
 
         end = QDateTime.currentDateTimeUtc()
-        start = end.addSecs(-1 * delta_map.get(combo_realtime.currentText()))
+        start = end.addSecs(-1 * delta_map.get(realtime_window_str))
 
         return self.query_units(ips, start, end, interval)
 
