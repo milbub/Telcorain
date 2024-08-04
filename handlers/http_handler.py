@@ -248,25 +248,31 @@ def setup_http_server():
     if is_enabled.lower() == "true":
         logger.info("Starting HTTP server...")
 
-        if not os.path.exists(TelcorainHTTPRequestHandler.outputs_dir):
-            os.makedirs(TelcorainHTTPRequestHandler.outputs_dir)
-            logger.info("Created %s directory for output PNG files.", TelcorainHTTPRequestHandler.outputs_dir)
+        try:
+            if not os.path.exists(TelcorainHTTPRequestHandler.outputs_dir):
+                os.makedirs(TelcorainHTTPRequestHandler.outputs_dir)
+                logger.info("Created %s directory for output PNG files.", TelcorainHTTPRequestHandler.outputs_dir)
 
-        if not os.path.exists(TelcorainHTTPRequestHandler.outputs_raw_dir):
-            os.makedirs(TelcorainHTTPRequestHandler.outputs_raw_dir)
-            logger.info("Created %s directory for output raw files.", TelcorainHTTPRequestHandler.outputs_raw_dir)
+            if not os.path.exists(TelcorainHTTPRequestHandler.outputs_raw_dir):
+                os.makedirs(TelcorainHTTPRequestHandler.outputs_raw_dir)
+                logger.info("Created %s directory for output raw files.", TelcorainHTTPRequestHandler.outputs_raw_dir)
 
-        address = config_handler.read_option("realtime", "http_server_address")
-        port = int(config_handler.read_option("realtime", "http_server_port"))
-        if address == "0.0.0.0":
-            address_t = ""
-        else:
-            address_t = address
-        socket = (address_t, port)
-        logger.info(f"HTTP server is running on {address}:{port}.")
-        logger.debug(f"HTTP server is serving files from directory: {TelcorainHTTPRequestHandler.outputs_dir}")
+            address = config_handler.read_option("realtime", "http_server_address")
+            port = int(config_handler.read_option("realtime", "http_server_port"))
+            if address == "0.0.0.0":
+                address_t = ""
+            else:
+                address_t = address
+            socket = (address_t, port)
+            logger.info(f"HTTP server is running on {address}:{port}.")
+            logger.debug(f"HTTP server is serving files from directory: {TelcorainHTTPRequestHandler.outputs_dir}")
 
-        httpd = HTTPServer(socket, TelcorainHTTPRequestHandler)
+            httpd = HTTPServer(socket, TelcorainHTTPRequestHandler)
+        except Exception as error:
+            logger.error("Cannot start HTTP server due to an error: %s", error)
+            return
+
+        # run the HTTP server
         httpd.serve_forever()
     else:
         logger.info("HTTP server is disabled.")
