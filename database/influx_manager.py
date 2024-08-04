@@ -2,6 +2,7 @@ from datetime import datetime
 from enum import Enum
 import math
 from threading import Thread
+from typing import Union
 
 from influxdb_client import InfluxDBClient, QueryApi, WriteApi
 from influxdb_client.domain.write_precision import WritePrecision
@@ -63,7 +64,6 @@ class InfluxManager:
                f"  |> filter(fn: (r) => r[\"ip\"] =~ /{ips_str}/)\n" + \
                f"  |> aggregateWindow(every: {interval_str}, fn: mean, createEmpty: true)\n" + \
                f"  |> yield(name: \"mean\")"
-        # print(f"History flux: {flux}")
 
         # query influxDB
         results = self.qapi.query(flux)
@@ -156,7 +156,13 @@ class InfluxManager:
 
         return data
 
-    def query_units(self, ips: list, start: QDateTime, end: QDateTime, interval: int) -> dict:
+    def query_units(
+            self,
+            ips: list,
+            start: QDateTime,
+            end: QDateTime,
+            interval: int
+    ) -> dict[str, Union[dict[str, dict[datetime, float]], str]]:
         """
         Query InfluxDB for CMLs defined in 'ips' as list of their IP addresses (as identifiers = tags in InfluxDB).
         Query is done for the time interval defined by 'start' and 'end' QDateTime objects, with 'interval' in seconds.
@@ -185,7 +191,12 @@ class InfluxManager:
         else:
             return self._raw_query_new_bucket(start_str, end_str, ips_str, interval_str)
 
-    def query_units_realtime(self, ips: list, combo_realtime: QComboBox, interval: int) -> dict:
+    def query_units_realtime(
+            self,
+            ips: list,
+            combo_realtime: QComboBox,
+            interval: int
+    ) -> dict[str, Union[dict[str, dict[datetime, float]], str]]:
         """
         Query InfluxDB for CMLs defined in 'ips' as list of their IP addresses (as identifiers = tags in InfluxDB).
         Query is done for the time interval defined by 'combo_realtime' QComboBox object.

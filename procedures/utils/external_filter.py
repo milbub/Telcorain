@@ -49,21 +49,18 @@ def _fetch_image(dt64: np.datetime64, img_url: str, url_prefix: str) -> Optional
     # Check if the image is already cached
     cache_path = _get_cache_path(dt64, url)
     if os.path.exists(cache_path):
-        # print(f"[DEBUG]: Image retrieved from cache: {cache_path}")
         with open(cache_path, "rb") as file:
             return file.read()
 
     # If not cached, fetch the image
     response: requests.Response = requests.get(url)
     if response.status_code == 200:
-        # print(f"[DEBUG]: Image fetched from: {url}")
         image_data: bytes = response.content
         # Cache the image
         with open(cache_path, "wb") as file:
             file.write(image_data)
         return image_data
     else:
-        # print(f"[DEBUG]: Image fetch failed from: {url}")
         return None
 
 

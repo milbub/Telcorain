@@ -224,7 +224,7 @@ class MainWindow(QMainWindow):
 
         # load CML definitions from SQL database
         self.links = sql_man.load_metadata()
-        print(f"{len(self.links)} microwave link's definitions loaded from MariaDB.")
+        logger.info("%d microwave link's definitions loaded from MariaDB.", len(self.links))
 
         # init link sets
         self.sets_man = LinksetsHandler(self.links)
@@ -255,38 +255,38 @@ class MainWindow(QMainWindow):
     def check_influx_status(self, influx_ping: bool):
         if influx_ping and self.influx_status == 0:
             self._influx_status_changed(True)
-            print("InfluxDB connection has been established.", flush=True)
+            logger.info("InfluxDB connection has been established.")
             self.influx_status = 1
         elif not influx_ping and self.influx_status == 0:
             self._influx_status_changed(False)
-            print("InfluxDB connection is not available.", flush=True)
+            logger.warning("InfluxDB connection is not available.")
             self.influx_status = -1
         elif not influx_ping and self.influx_status == 1:
             self._influx_status_changed(False)
-            print("InfluxDB connection has been lost.", flush=True)
+            logger.warning("InfluxDB connection has been lost.")
             self.influx_status = -1
         elif influx_ping and self.influx_status == -1:
             self._influx_status_changed(True)
-            print("InfluxDB connection has been reestablished.", flush=True)
+            logger.info("InfluxDB connection has been reestablished.")
             self.influx_status = 1
 
     # MariaDB's status selection logic, called from signal
     def check_sql_status(self, sql_ping: bool):
         if sql_ping and self.sql_status == 0:
             self._sql_status_changed(True)
-            print("MariaDB connection has been established.", flush=True)
+            logger.info("MariaDB connection has been established.")
             self.sql_status = 1
         elif not sql_ping and self.sql_status == 0:
             self._sql_status_changed(False)
-            print("MariaDB connection is not available.", flush=True)
+            logger.warning("MariaDB connection is not available.")
             self.sql_status = -1
         elif not sql_ping and self.sql_status == 1:
             self._sql_status_changed(False)
-            print("MariaDB connection has been lost.", flush=True)
+            logger.warning("MariaDB connection has been lost.")
             self.sql_status = -1
         elif sql_ping and self.sql_status == -1:
             self._sql_status_changed(True)
-            print("MariaDB connection has been reestablished.", flush=True)
+            logger.info("MariaDB connection has been reestablished.")
             self.sql_status = 1
 
     # show overall results from calculation, called from signal
@@ -375,14 +375,14 @@ class MainWindow(QMainWindow):
         # check if InfluxDB connection is available
         if self.influx_status != 1:
             msg = "Cannot start calculation, InfluxDB connection is not available."
-            print(f"[WARNING] {msg}")
+            logger.warning(msg)
             self.statusBar().showMessage(msg)
             return
 
         # check if InfluxDB manager is not locked by writing of outputs
         if influx_man.is_manager_locked:
             msg = "Cannot start new calculation, writing of previous outputs is still in progress."
-            print(f"[WARNING] {msg}")
+            logger.warning(msg)
             self.statusBar().showMessage(msg)
             return
 
@@ -392,39 +392,39 @@ class MainWindow(QMainWindow):
         # for writing output data back into DB, we need working MariaDB connection
         if cp['is_output_write'] and self.sql_status != 1:
             msg = "Cannot start realtime calculation, MariaDB connection is not available."
-            print(f"[WARNING] {msg}")
+            logger.warning(msg)
             self.statusBar().showMessage(msg)
             return
 
         # INPUT CHECKS:
         if cp['time_diff'] < 0:   # if timediff is less than 1 hour (in msecs)
             msg = "Bad input! Entered bigger (or same) start date than end date!"
-            print(f"[WARNING] {msg}")
+            logger.warning(msg)
         elif cp['time_diff'] < 3600000:
             msg = "Bad input! Time difference between start and end times must be at least 1 hour."
-            print(f"[WARNING] {msg}")
+            logger.warning(msg)
         elif (cp['time_diff'] / (cp['step'] * 60000)) < 12:
             # TODO: load magic constant 12 from options
             msg = "Bad input! Data resolution must be at least 12 times lower than input time interval length."
-            print(f"[WARNING] {msg}")
+            logger.warning(msg)
         elif cp['rolling_values'] < 6:
             # TODO: load magic constant 6 from options
             msg = f"Rolling time window length must be, for these times, at least {(cp['step'] * 6) / 60} hours."
-            print(f"[WARNING] {msg}")
+            logger.warning(msg)
         elif (cp['rolling_hours'] * 3600000) > cp['time_diff']:
             msg = f"Rolling time window length cannot be longer than set time interval."
-            print(f"[WARNING] {msg}")
+            logger.warning(msg)
         elif cp['output_step'] < cp['step']:
             msg = f"Output frame interval cannot be shorter than initial data resolution."
-            print(f"[WARNING] {msg}")
+            logger.warning(msg)
         elif cp['step'] > 59:
             msg = f"Input time interval cannot be longer than 59 minutes."
-            print(f"[WARNING] {msg}")
+            logger.warning(msg)
         elif cp['is_cnn_enabled'] and \
                 ((cp['start'].secsTo(cp['end']) / 60) / cp['step']) <= CNN_OUTPUT_LEFT_NANS_LENGTH:
             msg = f"When using CNN with {cp['step']}m resolution, " \
                   f"input time interval must be at least {(CNN_OUTPUT_LEFT_NANS_LENGTH * cp['step']) / 60} hours long."
-            print(f"[WARNING] {msg}")
+            logger.warning(msg)
         else:
             self.result_id += 1
 
@@ -450,14 +450,18 @@ class MainWindow(QMainWindow):
                 since_time = start_time - output_delta
 
                 params = sql_man.get_last_realtime()
-                print("Calculation outputs writing activated!")
+                logger.info("Calculation realtime outputs writing activated!")
                 if len(params) != 0:
-                    print(f"Last written calculation started at "
-                          f"{params['start_time'].strftime('%Y-%m-%d %H:%M:%S')} and ran with parameters: "
-                          f"retention: {(params['retention'] / 60):.0f} h, step: {(params['timestep'] / 60):.0f} min, "
-                          f"grid resolution: {(params['resolution']):.8f} °.")
-                print(f"Current parameters are: retention: {cp['retention']} h, step: "
-                      f"{cp['output_step']} min, grid resolution: {cp['interpol_res']:.8f} °.")
+                    logger.info(
+                        "Last written calculation started at %s and ran with parameters: "
+                        "retention: %.0f h, step: %.0f min, grid resolution: %.8f °.",
+                        params['start_time'].strftime('%Y-%m-%d %H:%M:%S'),
+                        params['retention'] / 60, params['timestep'] / 60, params['resolution']
+                    )
+                logger.info(
+                    "Current parameters are: retention: %d h, step: %d min, grid resolution: %.8f °.",
+                    cp['retention'], cp['output_step'], cp['interpol_res']
+                )
 
                 # if force write is activated, rewrite history...
                 influx_wipe_thread = None
@@ -673,7 +677,7 @@ class MainWindow(QMainWindow):
         try:
             self.link_table_factory.update_table(self.current_selection, visible_row_count, self.links)
         except Exception as e:
-            print(f"[ERROR] Error while updating link table: {e}")
+            logger.error("Error while updating link table: %s", e)
 
     def _fill_linksets(self):
         for link_set in self.sets_man.sections:

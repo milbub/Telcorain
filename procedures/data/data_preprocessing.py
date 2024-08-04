@@ -1,17 +1,20 @@
+from datetime import datetime
 from enum import Enum
 import traceback
-from typing import Optional
+from typing import Optional, Union
 
 import numpy as np
 import xarray as xr
 
+from database.models.mwlink import MwLink
+from handlers.logging_handler import logger
 from procedures.calculation_signals import CalcSignals
 from procedures.exceptions import ProcessingException
 
 
 class ChannelIdentifier(Enum):
-    CHANNEL_0 = 'A(rx)_B(tx)'  # unit B (transmit) --> unit A (receive)
-    CHANNEL_1 = 'B(rx)_A(tx)'  # unit A (transmit) --> unit B (receive)
+    CHANNEL_0 = "A(rx)_B(tx)"  # unit B (transmit) --> unit A (receive)
+    CHANNEL_1 = "B(rx)_A(tx)"  # unit A (transmit) --> unit B (receive)
 
 
 def _fill_channel_dataset(
@@ -90,8 +93,8 @@ def _fill_channel_dataset(
 
 
 def _sort_into_channels(
-        influx_data: dict,
-        links: dict,
+        influx_data: dict[str, Union[dict[str, dict[datetime, float]], str]],
+        links: dict[int, MwLink],
         link_id: int,
         link_channel_selector: int,
         tx_ip: str,
@@ -119,8 +122,10 @@ def _sort_into_channels(
     if (link_channel_selector in (channel_selector_map.get(channel_identifier), all_channels_selector)) and (rx_ip in influx_data):
         if not tx_tx_zeros:
             if len(influx_data[rx_ip]["rx_power"]) != len(influx_data[tx_ip]["tx_power"]):
-                print(f"[{log_run_id}] WARNING: Skipping link ID: {link_id}. "
-                      f"Non-coherent Rx/Tx data on channel {channel_identifier.value}.", flush=True)
+                logger.warning(
+                    "[%s] Skipping link ID: %d. Non-coherent Rx/Tx data on channel %s.",
+                    log_run_id, link_id, channel_identifier.value
+                )
                 return None
 
         channel_a = _fill_channel_dataset(
@@ -156,13 +161,13 @@ def _sort_into_channels(
 
 def convert_to_link_datasets(
         signals: CalcSignals,
-        selected_links: dict,
-        links: dict,
-        influx_data: dict,
-        missing_links: list,
+        selected_links: dict[int, int],
+        links: dict[int, MwLink],
+        influx_data: dict[str, Union[dict[str, dict[datetime, float]], str]],
+        missing_links: list[int],
         log_run_id: str,
         results_id: int
-) -> list:
+) -> list[xr.Dataset]:
     """
     Merge raw influx data with link metadata and convert them into a list of xarray datasets, each representing a link.
     """
@@ -193,8 +198,7 @@ def convert_to_link_datasets(
             if not (is_a_in and is_b_in):
                 if not ((is_a_in != is_b_in) and is_constant_tx_power):
                     if link not in missing_links:
-                        print(f"[{log_run_id}] INFO: Skipping link ID: {link}. "
-                              f"No unit data available.", flush=True)
+                        logger.debug("[%s] Skipping link ID: %d. No unit data available.", log_run_id, link)
                     # skip link
                     continue
 
@@ -210,16 +214,17 @@ def convert_to_link_datasets(
                 # (for other techs, there is no certainty, if original Tx value was zero in fact, or it's a NMS
                 # error and these values are missing, so it's better to skip that links)
                 if is_tx_power_bugged:
-                    print(f"[{log_run_id}] INFO: Link ID: {link}. "
-                          f"No Tx Power data available. Link technology \"{links[link].tech}\" is on "
-                          f"exception list -> filling Tx data with zeros.", flush=True)
+                    logger.debug(
+                        "[%s] Link ID: %d. No Tx Power data available. Link technology \"%s\" is on"
+                        " exception list -> filling Tx data with zeros.",
+                        log_run_id, link, links[link].tech
+                    )
                     if "tx_power" not in influx_data[links[link].ip_b]:
                         tx_zeros_b = True
                     if "tx_power" not in influx_data[links[link].ip_a]:
                         tx_zeros_a = True
                 else:
-                    print(f"[{log_run_id}] INFO: Skipping link ID: {link}. "
-                          f"No Tx Power data available.", flush=True)
+                    logger.debug("[%s] Skipping link ID: %d. No Tx Power data available.", log_run_id, link)
                     # skip link
                     continue
 
@@ -282,9 +287,12 @@ def convert_to_link_datasets(
     except BaseException as error:
         signals.error_signal.emit({"id": results_id})
 
-        print(f"[{log_run_id}] ERROR: An unexpected error occurred during data processing: {type(error)} {error}.")
-        print(f"[{log_run_id}] ERROR: Last processed microwave link ID: {link}")
-        print(f"[{log_run_id}] ERROR: Calculation thread terminated.")
+        logger.error(
+            "[%s] An unexpected error occurred during data processing: %s %s.\n"
+            "Last processed microwave link ID: %d\n"
+            "Calculation thread terminated.",
+            log_run_id, type(error), error, link
+        )
 
         traceback.print_exc()
 
