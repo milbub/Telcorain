@@ -66,6 +66,9 @@ try:
                 custom_font.setPointSize(9)
                 app.setFont(custom_font)
 
+        # set up a global stylesheet to ensure all texts are displayed in same way on all platforms
+        app.setStyleSheet("QWidget:enabled { font-family: 'Liberation Sans'; font-size: 9pt; color: black; }")
+
         # main window (Qt) = central hub of the application
         # constructor of the main window contains rest of the starting mechanism -> see /gui/main_window.py
         main_win = MainWindow(init_logger)
