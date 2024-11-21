@@ -27,10 +27,6 @@ def generate_rainfields(
         # ***** FIRST PART: Compute link segments with CML references (linear or intersection based) ******
         # *************************************************************************************************
 
-        # TODO: remove
-        cp['is_intersection_enabled'] = True
-        cp['segment_size'] = 500
-
         logger.info("[%s] Processing links segmentation...", log_run_id)
         process_segments(calc_data, cp["segment_size"], cp["is_intersection_enabled"], log_run_id)
 

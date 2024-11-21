@@ -142,6 +142,8 @@ class MainWindow(QMainWindow):
         self.window_pointer_combo: QObject = self.findChild(QComboBox, "windowPointerCombo")
         self.radio_cnn: QObject = self.findChild(QRadioButton, "radioCNN")
         self.action_external_filter: QObject = self.findChild(QAction, "actionExternalFilterLayer")
+        self.spin_segment_length: QObject = self.findChild(QSpinBox, "spinSegment")
+        self.box_do_intersection: QObject = self.findChild(QCheckBox, "checkIntersect")
 
         # declare dictionary for created tabs with calculation results
         # <key: int = result ID, value: ResultsWidget>
@@ -726,6 +728,8 @@ class MainWindow(QMainWindow):
         X_MAX = float(config_handler.read_option('rendering', 'X_MAX'))
         Y_MIN = float(config_handler.read_option('rendering', 'Y_MIN'))
         Y_MAX = float(config_handler.read_option('rendering', 'Y_MAX'))
+        segment_size = self.spin_segment_length.value()
+        is_intersection_enabled = self.box_do_intersection.isChecked()
 
         if is_external_filter_enabled:
             external_filter_params = {
@@ -784,7 +788,9 @@ class MainWindow(QMainWindow):
             'X_MIN': X_MIN,
             'X_MAX': X_MAX,
             'Y_MIN': Y_MIN,
-            'Y_MAX': Y_MAX
+            'Y_MAX': Y_MAX,
+            'segment_size': segment_size,
+            'is_intersection_enabled': is_intersection_enabled
         }
 
         return calculation_params

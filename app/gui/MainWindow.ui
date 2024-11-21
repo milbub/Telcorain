@@ -225,7 +225,7 @@
              </property>
              <property name="dateTime">
               <datetime>
-               <hour>14</hour>
+               <hour>12</hour>
                <minute>0</minute>
                <second>0</second>
                <year>2022</year>
@@ -242,21 +242,21 @@
              </property>
              <property name="time">
               <time>
-               <hour>14</hour>
+               <hour>12</hour>
                <minute>0</minute>
                <second>0</second>
               </time>
              </property>
              <property name="maximumTime">
               <time>
-               <hour>17</hour>
+               <hour>16</hour>
                <minute>59</minute>
                <second>59</second>
               </time>
              </property>
              <property name="minimumTime">
               <time>
-               <hour>18</hour>
+               <hour>17</hour>
                <minute>0</minute>
                <second>0</second>
               </time>
@@ -292,7 +292,7 @@
              </property>
              <property name="dateTime">
               <datetime>
-               <hour>14</hour>
+               <hour>12</hour>
                <minute>0</minute>
                <second>0</second>
                <year>2022</year>
@@ -309,21 +309,21 @@
              </property>
              <property name="time">
               <time>
-               <hour>14</hour>
+               <hour>12</hour>
                <minute>0</minute>
                <second>0</second>
               </time>
              </property>
              <property name="maximumTime">
               <time>
-               <hour>17</hour>
+               <hour>16</hour>
                <minute>59</minute>
                <second>59</second>
               </time>
              </property>
              <property name="minimumTime">
               <time>
-               <hour>18</hour>
+               <hour>17</hour>
                <minute>0</minute>
                <second>0</second>
               </time>
@@ -566,7 +566,7 @@
                <rect>
                 <x>400</x>
                 <y>45</y>
-                <width>542</width>
+                <width>801</width>
                 <height>112</height>
                </rect>
               </property>
@@ -620,142 +620,6 @@
              </widget>
             </widget>
            </item>
-           <item>
-            <widget class="QGroupBox" name="groupBox">
-             <property name="sizePolicy">
-              <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-               <horstretch>0</horstretch>
-               <verstretch>0</verstretch>
-              </sizepolicy>
-             </property>
-             <property name="minimumSize">
-              <size>
-               <width>220</width>
-               <height>175</height>
-              </size>
-             </property>
-             <property name="maximumSize">
-              <size>
-               <width>250</width>
-               <height>175</height>
-              </size>
-             </property>
-             <property name="title">
-              <string>Filtration</string>
-             </property>
-             <widget class="QLabel" name="filterLabel2">
-              <property name="enabled">
-               <bool>false</bool>
-              </property>
-              <property name="geometry">
-               <rect>
-                <x>30</x>
-                <y>70</y>
-                <width>121</width>
-                <height>21</height>
-               </rect>
-              </property>
-              <property name="text">
-               <string>Correlation threshold:</string>
-              </property>
-             </widget>
-             <widget class="QDoubleSpinBox" name="correlationSpin">
-              <property name="enabled">
-               <bool>false</bool>
-              </property>
-              <property name="geometry">
-               <rect>
-                <x>150</x>
-                <y>70</y>
-                <width>71</width>
-                <height>20</height>
-               </rect>
-              </property>
-              <property name="decimals">
-               <number>2</number>
-              </property>
-              <property name="minimum">
-               <double>-1.000000000000000</double>
-              </property>
-              <property name="maximum">
-               <double>1.000000000000000</double>
-              </property>
-              <property name="singleStep">
-               <double>0.100000000000000</double>
-              </property>
-              <property name="value">
-               <double>0.700000000000000</double>
-              </property>
-             </widget>
-             <widget class="QCheckBox" name="boxTemperatureFilter">
-              <property name="geometry">
-               <rect>
-                <x>20</x>
-                <y>30</y>
-                <width>221</width>
-                <height>20</height>
-               </rect>
-              </property>
-              <property name="text">
-               <string>RSL-Temperature binding filtering:</string>
-              </property>
-             </widget>
-             <widget class="QLabel" name="filterLabel">
-              <property name="enabled">
-               <bool>false</bool>
-              </property>
-              <property name="geometry">
-               <rect>
-                <x>10</x>
-                <y>100</y>
-                <width>231</width>
-                <height>20</height>
-               </rect>
-              </property>
-              <property name="text">
-               <string>CMLs under the threshold:</string>
-              </property>
-              <property name="alignment">
-               <set>Qt::AlignCenter</set>
-              </property>
-             </widget>
-             <widget class="QRadioButton" name="radioRemove">
-              <property name="enabled">
-               <bool>false</bool>
-              </property>
-              <property name="geometry">
-               <rect>
-                <x>30</x>
-                <y>140</y>
-                <width>91</width>
-                <height>17</height>
-               </rect>
-              </property>
-              <property name="text">
-               <string>Remove</string>
-              </property>
-             </widget>
-             <widget class="QRadioButton" name="radioCompensation">
-              <property name="enabled">
-               <bool>false</bool>
-              </property>
-              <property name="geometry">
-               <rect>
-                <x>130</x>
-                <y>140</y>
-                <width>91</width>
-                <height>17</height>
-               </rect>
-              </property>
-              <property name="text">
-               <string>Compensate</string>
-              </property>
-              <property name="checked">
-               <bool>true</bool>
-              </property>
-             </widget>
-            </widget>
-           </item>
           </layout>
          </widget>
         </item>
@@ -770,7 +634,7 @@
           <property name="minimumSize">
            <size>
             <width>0</width>
-            <height>200</height>
+            <height>170</height>
            </size>
           </property>
           <layout class="QHBoxLayout" name="horizontalLayout_5">
@@ -790,8 +654,14 @@
             <widget class="QGroupBox" name="groupBox_2">
              <property name="minimumSize">
               <size>
-               <width>335</width>
+               <width>490</width>
                <height>0</height>
+              </size>
+             </property>
+             <property name="maximumSize">
+              <size>
+               <width>490</width>
+               <height>16777215</height>
               </size>
              </property>
              <property name="font">
@@ -958,10 +828,10 @@
              <widget class="QLabel" name="label_9">
               <property name="geometry">
                <rect>
-                <x>20</x>
-                <y>160</y>
-                <width>211</width>
-                <height>16</height>
+                <x>250</x>
+                <y>95</y>
+                <width>161</width>
+                <height>21</height>
                </rect>
               </property>
               <property name="text">
@@ -971,10 +841,10 @@
              <widget class="QSpinBox" name="spinBaselineSamples">
               <property name="geometry">
                <rect>
-                <x>250</x>
-                <y>158</y>
+                <x>420</x>
+                <y>95</y>
                 <width>61</width>
-                <height>22</height>
+                <height>21</height>
                </rect>
               </property>
               <property name="value">
@@ -1067,13 +937,13 @@
             <widget class="QGroupBox" name="groupBox_10">
              <property name="minimumSize">
               <size>
-               <width>0</width>
+               <width>450</width>
                <height>0</height>
               </size>
              </property>
              <property name="maximumSize">
               <size>
-               <width>240</width>
+               <width>450</width>
                <height>16777215</height>
               </size>
              </property>
@@ -1083,8 +953,8 @@
              <widget class="QLabel" name="label_16">
               <property name="geometry">
                <rect>
-                <x>60</x>
-                <y>90</y>
+                <x>280</x>
+                <y>50</y>
                 <width>71</width>
                 <height>21</height>
                </rect>
@@ -1099,8 +969,8 @@
               </property>
               <property name="geometry">
                <rect>
-                <x>120</x>
-                <y>90</y>
+                <x>340</x>
+                <y>50</y>
                 <width>61</width>
                 <height>22</height>
                </rect>
@@ -1112,8 +982,8 @@
              <widget class="QLabel" name="label_23">
               <property name="geometry">
                <rect>
-                <x>60</x>
-                <y>120</y>
+                <x>280</x>
+                <y>80</y>
                 <width>49</width>
                 <height>21</height>
                </rect>
@@ -1125,8 +995,8 @@
              <widget class="QLabel" name="label_24">
               <property name="geometry">
                <rect>
-                <x>60</x>
-                <y>150</y>
+                <x>280</x>
+                <y>110</y>
                 <width>49</width>
                 <height>21</height>
                </rect>
@@ -1138,8 +1008,8 @@
              <widget class="QDoubleSpinBox" name="spinIdwDist">
               <property name="geometry">
                <rect>
-                <x>120</x>
-                <y>150</y>
+                <x>340</x>
+                <y>110</y>
                 <width>61</width>
                 <height>22</height>
                </rect>
@@ -1157,8 +1027,8 @@
              <widget class="QSpinBox" name="spinIdwNear">
               <property name="geometry">
                <rect>
-                <x>120</x>
-                <y>120</y>
+                <x>340</x>
+                <y>80</y>
                 <width>61</width>
                 <height>22</height>
                </rect>
@@ -1170,8 +1040,8 @@
              <widget class="QLabel" name="label_25">
               <property name="geometry">
                <rect>
-                <x>10</x>
-                <y>30</y>
+                <x>30</x>
+                <y>50</y>
                 <width>101</width>
                 <height>16</height>
                </rect>
@@ -1183,8 +1053,8 @@
              <widget class="QDoubleSpinBox" name="spinInterResolution">
               <property name="geometry">
                <rect>
-                <x>110</x>
-                <y>28</y>
+                <x>130</x>
+                <y>48</y>
                 <width>121</width>
                 <height>22</height>
                </rect>
@@ -1211,8 +1081,8 @@
              <widget class="QLabel" name="label_17">
               <property name="geometry">
                <rect>
-                <x>50</x>
-                <y>60</y>
+                <x>270</x>
+                <y>20</y>
                 <width>151</width>
                 <height>16</height>
                </rect>
@@ -1221,10 +1091,331 @@
                <string>Inverse Distance Weighting:</string>
               </property>
              </widget>
+             <widget class="QLabel" name="label_2">
+              <property name="geometry">
+               <rect>
+                <x>30</x>
+                <y>80</y>
+                <width>91</width>
+                <height>16</height>
+               </rect>
+              </property>
+              <property name="text">
+               <string>Segment size:</string>
+              </property>
+             </widget>
+             <widget class="QSpinBox" name="spinSegment">
+              <property name="geometry">
+               <rect>
+                <x>130</x>
+                <y>80</y>
+                <width>121</width>
+                <height>22</height>
+               </rect>
+              </property>
+              <property name="suffix">
+               <string> metres</string>
+              </property>
+              <property name="minimum">
+               <number>50</number>
+              </property>
+              <property name="maximum">
+               <number>50000</number>
+              </property>
+              <property name="value">
+               <number>500</number>
+              </property>
+             </widget>
+             <widget class="QCheckBox" name="checkIntersect">
+              <property name="geometry">
+               <rect>
+                <x>50</x>
+                <y>120</y>
+                <width>191</width>
+                <height>17</height>
+               </rect>
+              </property>
+              <property name="text">
+               <string>Enable link intersection algorithm</string>
+              </property>
+             </widget>
+            </widget>
+           </item>
+           <item>
+            <widget class="QGroupBox" name="groupBox">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="minimumSize">
+              <size>
+               <width>250</width>
+               <height>0</height>
+              </size>
+             </property>
+             <property name="maximumSize">
+              <size>
+               <width>1600000</width>
+               <height>1600000</height>
+              </size>
+             </property>
+             <property name="title">
+              <string>Filtration</string>
+             </property>
+             <widget class="QLabel" name="filterLabel2">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
+              <property name="geometry">
+               <rect>
+                <x>40</x>
+                <y>60</y>
+                <width>121</width>
+                <height>21</height>
+               </rect>
+              </property>
+              <property name="text">
+               <string>Correlation threshold:</string>
+              </property>
+             </widget>
+             <widget class="QDoubleSpinBox" name="correlationSpin">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
+              <property name="geometry">
+               <rect>
+                <x>160</x>
+                <y>60</y>
+                <width>71</width>
+                <height>20</height>
+               </rect>
+              </property>
+              <property name="decimals">
+               <number>2</number>
+              </property>
+              <property name="minimum">
+               <double>-1.000000000000000</double>
+              </property>
+              <property name="maximum">
+               <double>1.000000000000000</double>
+              </property>
+              <property name="singleStep">
+               <double>0.100000000000000</double>
+              </property>
+              <property name="value">
+               <double>0.700000000000000</double>
+              </property>
+             </widget>
+             <widget class="QCheckBox" name="boxTemperatureFilter">
+              <property name="geometry">
+               <rect>
+                <x>30</x>
+                <y>30</y>
+                <width>221</width>
+                <height>20</height>
+               </rect>
+              </property>
+              <property name="text">
+               <string>RSL-Temperature binding filtering:</string>
+              </property>
+             </widget>
+             <widget class="QLabel" name="filterLabel">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
+              <property name="geometry">
+               <rect>
+                <x>20</x>
+                <y>90</y>
+                <width>231</width>
+                <height>20</height>
+               </rect>
+              </property>
+              <property name="text">
+               <string>CMLs under the threshold:</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignCenter</set>
+              </property>
+             </widget>
+             <widget class="QRadioButton" name="radioRemove">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
+              <property name="geometry">
+               <rect>
+                <x>40</x>
+                <y>120</y>
+                <width>91</width>
+                <height>17</height>
+               </rect>
+              </property>
+              <property name="text">
+               <string>Remove</string>
+              </property>
+             </widget>
+             <widget class="QRadioButton" name="radioCompensation">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
+              <property name="geometry">
+               <rect>
+                <x>140</x>
+                <y>120</y>
+                <width>91</width>
+                <height>17</height>
+               </rect>
+              </property>
+              <property name="text">
+               <string>Compensate</string>
+              </property>
+              <property name="checked">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+        </item>
+        <item>
+         <widget class="QWidget" name="rowBottom" native="true">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="minimumSize">
+           <size>
+            <width>0</width>
+            <height>180</height>
+           </size>
+          </property>
+          <layout class="QHBoxLayout" name="horizontalLayout_3">
+           <property name="leftMargin">
+            <number>0</number>
+           </property>
+           <property name="topMargin">
+            <number>0</number>
+           </property>
+           <property name="rightMargin">
+            <number>0</number>
+           </property>
+           <property name="bottomMargin">
+            <number>0</number>
+           </property>
+           <item>
+            <widget class="QGroupBox" name="groupWaa">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="title">
+              <string>WAA Compensation</string>
+             </property>
+             <layout class="QVBoxLayout" name="verticalLayout_3">
+              <property name="spacing">
+               <number>6</number>
+              </property>
+              <property name="rightMargin">
+               <number>20</number>
+              </property>
+              <item>
+               <widget class="QLabel" name="label_15">
+                <property name="sizePolicy">
+                 <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                  <horstretch>0</horstretch>
+                  <verstretch>0</verstretch>
+                 </sizepolicy>
+                </property>
+                <property name="minimumSize">
+                 <size>
+                  <width>0</width>
+                  <height>30</height>
+                 </size>
+                </property>
+                <property name="text">
+                 <string>Select WAA compensation method:</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QComboBox" name="comboBox">
+                <property name="currentText">
+                 <string>Schleiss 2013</string>
+                </property>
+                <property name="placeholderText" stdset="0">
+                 <string/>
+                </property>
+                <item>
+                 <property name="text">
+                  <string>Schleiss 2013</string>
+                 </property>
+                </item>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLabel" name="label_28">
+                <property name="text">
+                 <string>WAA maximum:</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QDoubleSpinBox" name="spinSchleissWaa">
+                <property name="suffix">
+                 <string> dB</string>
+                </property>
+                <property name="maximum">
+                 <double>100.000000000000000</double>
+                </property>
+                <property name="singleStep">
+                 <double>0.100000000000000</double>
+                </property>
+                <property name="value">
+                 <double>2.300000000000000</double>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLabel" name="label_29">
+                <property name="text">
+                 <string>Tau 𝜏 value:</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QDoubleSpinBox" name="spinSchleissTau">
+                <property name="suffix">
+                 <string> minutes</string>
+                </property>
+                <property name="decimals">
+                 <number>1</number>
+                </property>
+                <property name="maximum">
+                 <double>1000.000000000000000</double>
+                </property>
+                <property name="value">
+                 <double>15.000000000000000</double>
+                </property>
+               </widget>
+              </item>
+             </layout>
             </widget>
            </item>
            <item>
             <widget class="QGroupBox" name="groupBox_3">
+             <property name="minimumSize">
+              <size>
+               <width>500</width>
+               <height>0</height>
+              </size>
+             </property>
              <property name="title">
               <string>Output</string>
              </property>
@@ -1277,7 +1468,7 @@
               <property name="geometry">
                <rect>
                 <x>20</x>
-                <y>120</y>
+                <y>110</y>
                 <width>111</width>
                 <height>21</height>
                </rect>
@@ -1290,7 +1481,7 @@
               <property name="geometry">
                <rect>
                 <x>130</x>
-                <y>120</y>
+                <y>110</y>
                 <width>81</width>
                 <height>22</height>
                </rect>
@@ -1324,7 +1515,7 @@
               <property name="geometry">
                <rect>
                 <x>20</x>
-                <y>160</y>
+                <y>140</y>
                 <width>101</width>
                 <height>21</height>
                </rect>
@@ -1340,7 +1531,7 @@
               <property name="geometry">
                <rect>
                 <x>130</x>
-                <y>160</y>
+                <y>140</y>
                 <width>201</width>
                 <height>22</height>
                </rect>
@@ -1359,7 +1550,7 @@
               <property name="geometry">
                <rect>
                 <x>330</x>
-                <y>159</y>
+                <y>139</y>
                 <width>20</width>
                 <height>24</height>
                </rect>
@@ -1385,7 +1576,7 @@
               <property name="geometry">
                <rect>
                 <x>360</x>
-                <y>160</y>
+                <y>140</y>
                 <width>51</width>
                 <height>20</height>
                </rect>
@@ -1401,7 +1592,7 @@
               <property name="geometry">
                <rect>
                 <x>410</x>
-                <y>160</y>
+                <y>140</y>
                 <width>51</width>
                 <height>20</height>
                </rect>
@@ -1572,358 +1763,18 @@
              </widget>
             </widget>
            </item>
-          </layout>
-         </widget>
-        </item>
-        <item>
-         <widget class="QGroupBox" name="groupWaa">
-          <property name="sizePolicy">
-           <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-            <horstretch>0</horstretch>
-            <verstretch>0</verstretch>
-           </sizepolicy>
-          </property>
-          <property name="minimumSize">
-           <size>
-            <width>0</width>
-            <height>180</height>
-           </size>
-          </property>
-          <property name="title">
-           <string>WAA Compensation</string>
-          </property>
-          <layout class="QHBoxLayout" name="horizontalLayout_3">
            <item>
-            <widget class="QWidget" name="widget_2" native="true">
-             <property name="sizePolicy">
-              <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-               <horstretch>0</horstretch>
-               <verstretch>0</verstretch>
-              </sizepolicy>
+            <spacer name="horizontalSpacer_4">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
              </property>
-             <layout class="QVBoxLayout" name="verticalLayout_3">
-              <property name="spacing">
-               <number>6</number>
-              </property>
-              <property name="rightMargin">
-               <number>20</number>
-              </property>
-              <item>
-               <widget class="QLabel" name="label_15">
-                <property name="sizePolicy">
-                 <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-                  <horstretch>0</horstretch>
-                  <verstretch>0</verstretch>
-                 </sizepolicy>
-                </property>
-                <property name="minimumSize">
-                 <size>
-                  <width>0</width>
-                  <height>30</height>
-                 </size>
-                </property>
-                <property name="text">
-                 <string>Select WAA compensation method:</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QComboBox" name="comboBox">
-                <property name="currentText">
-                 <string>Schleiss 2013</string>
-                </property>
-                <property name="placeholderText" stdset="0">
-                 <string/>
-                </property>
-                <item>
-                 <property name="text">
-                  <string>Schleiss 2013</string>
-                 </property>
-                </item>
-               </widget>
-              </item>
-             </layout>
-            </widget>
-           </item>
-           <item>
-            <widget class="QTabWidget" name="tabWidget_2">
-             <property name="currentIndex">
-              <number>0</number>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>40</width>
+               <height>20</height>
+              </size>
              </property>
-             <widget class="QWidget" name="waaSchleiss">
-              <attribute name="title">
-               <string>Schleiss 2013</string>
-              </attribute>
-              <widget class="QDoubleSpinBox" name="spinSchleissWaa">
-               <property name="geometry">
-                <rect>
-                 <x>290</x>
-                 <y>70</y>
-                 <width>111</width>
-                 <height>22</height>
-                </rect>
-               </property>
-               <property name="suffix">
-                <string> dB</string>
-               </property>
-               <property name="maximum">
-                <double>100.000000000000000</double>
-               </property>
-               <property name="singleStep">
-                <double>0.100000000000000</double>
-               </property>
-               <property name="value">
-                <double>2.300000000000000</double>
-               </property>
-              </widget>
-              <widget class="QLabel" name="label_20">
-               <property name="geometry">
-                <rect>
-                 <x>20</x>
-                 <y>20</y>
-                 <width>701</width>
-                 <height>31</height>
-                </rect>
-               </property>
-               <property name="font">
-                <font>
-                 <italic>true</italic>
-                </font>
-               </property>
-               <property name="text">
-                <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Dynamic time-bound model. When wet period starts, effective WAA value exponentially progress up to the defined constant value.&lt;br/&gt;When wet period fades, WAA decreases exponentially to zero.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-               </property>
-              </widget>
-              <widget class="QRadioButton" name="radioSchleissCommon">
-               <property name="geometry">
-                <rect>
-                 <x>210</x>
-                 <y>70</y>
-                 <width>81</width>
-                 <height>20</height>
-                </rect>
-               </property>
-               <property name="text">
-                <string>Common:</string>
-               </property>
-               <property name="checked">
-                <bool>true</bool>
-               </property>
-              </widget>
-              <widget class="QRadioButton" name="radioSchleissCalibr">
-               <property name="enabled">
-                <bool>false</bool>
-               </property>
-               <property name="geometry">
-                <rect>
-                 <x>120</x>
-                 <y>70</y>
-                 <width>81</width>
-                 <height>20</height>
-                </rect>
-               </property>
-               <property name="text">
-                <string>Calibrated</string>
-               </property>
-              </widget>
-              <widget class="QLabel" name="label_28">
-               <property name="geometry">
-                <rect>
-                 <x>20</x>
-                 <y>70</y>
-                 <width>91</width>
-                 <height>16</height>
-                </rect>
-               </property>
-               <property name="text">
-                <string>WAA maximum:</string>
-               </property>
-              </widget>
-              <widget class="QLabel" name="label_29">
-               <property name="geometry">
-                <rect>
-                 <x>440</x>
-                 <y>70</y>
-                 <width>71</width>
-                 <height>21</height>
-                </rect>
-               </property>
-               <property name="text">
-                <string>Tau 𝜏 value:</string>
-               </property>
-              </widget>
-              <widget class="QDoubleSpinBox" name="spinSchleissTau">
-               <property name="geometry">
-                <rect>
-                 <x>510</x>
-                 <y>70</y>
-                 <width>111</width>
-                 <height>22</height>
-                </rect>
-               </property>
-               <property name="suffix">
-                <string> minutes</string>
-               </property>
-               <property name="decimals">
-                <number>1</number>
-               </property>
-               <property name="maximum">
-                <double>1000.000000000000000</double>
-               </property>
-               <property name="value">
-                <double>15.000000000000000</double>
-               </property>
-              </widget>
-              <widget class="QLabel" name="label_30">
-               <property name="geometry">
-                <rect>
-                 <x>630</x>
-                 <y>70</y>
-                 <width>331</width>
-                 <height>21</height>
-                </rect>
-               </property>
-               <property name="font">
-                <font>
-                 <italic>true</italic>
-                </font>
-               </property>
-               <property name="text">
-                <string>= time after which 95% of the maximum WAA value is applied</string>
-               </property>
-              </widget>
-             </widget>
-             <widget class="QWidget" name="waaPastor">
-              <attribute name="title">
-               <string>Pastorek 2021</string>
-              </attribute>
-              <layout class="QGridLayout" name="gridLayout_3">
-               <item row="0" column="0">
-                <widget class="QLabel" name="label_31">
-                 <property name="text">
-                  <string>UNDER CONSTRUCTION</string>
-                 </property>
-                 <property name="alignment">
-                  <set>Qt::AlignCenter</set>
-                 </property>
-                </widget>
-               </item>
-              </layout>
-             </widget>
-             <widget class="QWidget" name="waaLeijnse">
-              <attribute name="title">
-               <string>Leijnse 2008</string>
-              </attribute>
-              <layout class="QGridLayout" name="gridLayout_4">
-               <item row="0" column="0">
-                <widget class="QLabel" name="label_32">
-                 <property name="text">
-                  <string>UNDER CONSTRUCTION</string>
-                 </property>
-                 <property name="alignment">
-                  <set>Qt::AlignCenter</set>
-                 </property>
-                </widget>
-               </item>
-              </layout>
-             </widget>
-             <widget class="QWidget" name="waaRatio">
-              <attribute name="title">
-               <string>Ratio</string>
-              </attribute>
-              <widget class="QDoubleSpinBox" name="doubleSpinBox_4">
-               <property name="enabled">
-                <bool>false</bool>
-               </property>
-               <property name="geometry">
-                <rect>
-                 <x>440</x>
-                 <y>70</y>
-                 <width>111</width>
-                 <height>22</height>
-                </rect>
-               </property>
-               <property name="suffix">
-                <string> %</string>
-               </property>
-               <property name="maximum">
-                <double>100.000000000000000</double>
-               </property>
-               <property name="value">
-                <double>65.000000000000000</double>
-               </property>
-              </widget>
-              <widget class="QRadioButton" name="radioButton_16">
-               <property name="enabled">
-                <bool>false</bool>
-               </property>
-               <property name="geometry">
-                <rect>
-                 <x>270</x>
-                 <y>70</y>
-                 <width>81</width>
-                 <height>20</height>
-                </rect>
-               </property>
-               <property name="text">
-                <string>Calibrated</string>
-               </property>
-               <property name="checked">
-                <bool>true</bool>
-               </property>
-              </widget>
-              <widget class="QRadioButton" name="radioButton_15">
-               <property name="enabled">
-                <bool>false</bool>
-               </property>
-               <property name="geometry">
-                <rect>
-                 <x>360</x>
-                 <y>70</y>
-                 <width>81</width>
-                 <height>20</height>
-                </rect>
-               </property>
-               <property name="text">
-                <string>Common:</string>
-               </property>
-               <property name="checked">
-                <bool>false</bool>
-               </property>
-              </widget>
-              <widget class="QLabel" name="label_33">
-               <property name="geometry">
-                <rect>
-                 <x>20</x>
-                 <y>70</y>
-                 <width>241</width>
-                 <height>16</height>
-                </rect>
-               </property>
-               <property name="text">
-                <string>WAA portion of the total signal attenuation:</string>
-               </property>
-              </widget>
-              <widget class="QLabel" name="label_34">
-               <property name="geometry">
-                <rect>
-                 <x>20</x>
-                 <y>30</y>
-                 <width>861</width>
-                 <height>16</height>
-                </rect>
-               </property>
-               <property name="font">
-                <font>
-                 <italic>true</italic>
-                </font>
-               </property>
-               <property name="text">
-                <string>This model multiple all the attenuation values by constant percentage value. Resulting values are considered as WAA and subtracted from original attenuations.</string>
-               </property>
-              </widget>
-             </widget>
-            </widget>
+            </spacer>
            </item>
           </layout>
          </widget>
@@ -2330,22 +2181,6 @@
     <hint type="destinationlabel">
      <x>1067</x>
      <y>402</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>radioSchleissCommon</sender>
-   <signal>toggled(bool)</signal>
-   <receiver>spinSchleissWaa</receiver>
-   <slot>setEnabled(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>567</x>
-     <y>680</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>677</x>
-     <y>682</y>
     </hint>
    </hints>
   </connection>
