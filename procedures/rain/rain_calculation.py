@@ -8,6 +8,7 @@ import lib.pycomlink.pycomlink.processing as pycmlp
 from lib.pycomlink.pycomlink.processing.wet_dry import cnn
 from lib.pycomlink.pycomlink.processing.wet_dry.cnn import CNN_OUTPUT_LEFT_NANS_LENGTH
 
+from handlers.logging_handler import logger
 from procedures.calculation_signals import CalcSignals
 from procedures.exceptions import RaincalcException
 from procedures.rain import temperature_compensation, temperature_correlation
@@ -25,11 +26,11 @@ def get_rain_rates(
     current_link = 0
 
     try:
-        print(f"[{log_run_id}] Smoothing signal data...")
+        logger.info("[%s] Smoothing signal data...", log_run_id)
         link_count = len(calc_data)
         count = 0
 
-        # Creating array to remove high-correlation links (class correlation.py)
+        # links stored in this list will be removed from the calculation in case of enabled correlation filtering
         links_to_delete = []
 
         for link in calc_data:
@@ -43,13 +44,13 @@ def get_rain_rates(
 
             link['trsl'] = link.tsl - link.rsl
 
-            link['temperature_rx'] = link.temperature_rx.astype(float).interpolate_na(dim='time',
-                                                                                      method='linear',
-                                                                                      max_gap=None)
+            link['temperature_rx'] = link.temperature_rx.astype(float).interpolate_na(
+                dim='time', method='linear', max_gap=None
+            )
 
-            link['temperature_tx'] = link.temperature_tx.astype(float).interpolate_na(dim='time',
-                                                                                      method='linear',
-                                                                                      max_gap=None)
+            link['temperature_tx'] = link.temperature_tx.astype(float).interpolate_na(
+                dim='time', method='linear', max_gap=None
+            )
 
             signals.progress_signal.emit({'prg_val': round((current_link / link_count) * 15) + 35})
             current_link += 1
@@ -57,19 +58,30 @@ def get_rain_rates(
 
             """
             # temperature_correlation  - remove links if the correlation exceeds the specified threshold
-            # temperature_compensation - as correlation, but also replaces the original trsl with the corrected
-                                         one, according to the created tempreture compensation algorithm
+            # temperature_compensation - as correlation, but also replaces the original trsl with the corrected one,
+                                         according to the custom temperature compensation algorithm
             """
 
             if cp['is_temp_filtered']:
-                print(f"[{log_run_id}] Remove-link procedure started.")
-                temperature_correlation.pearson_correlation(count, ips, current_link, links_to_delete, link,
-                                                            cp['correlation_threshold'])
+                logger.info("[%s] Remove-link procedure started.", log_run_id)
+                temperature_correlation.pearson_correlation(
+                    count=count,
+                    ips=ips,
+                    curr_link=current_link,
+                    link_todelete=links_to_delete,
+                    link=link,
+                    spin_correlation=cp['correlation_threshold']
+                )
 
             if cp['is_temp_compensated']:
-                print(f"[{log_run_id}] Compensation algorithm procedure started.")
-                temperature_compensation.compensation(count, ips, current_link, link,
-                                                      cp['correlation_threshold'])
+                logger.info("[%s] Compensation algorithm procedure started.", log_run_id)
+                temperature_compensation.compensation(
+                    count=count,
+                    ips=ips,
+                    curr_link=current_link,
+                    link=link,
+                    spin_correlation=cp['correlation_threshold']
+                )
 
             """
             'current_link += 1' serves to accurately list the 'count' and ip address of CML unit
@@ -77,12 +89,12 @@ def get_rain_rates(
             """
             current_link += 1
 
-        # Run the removal of high correlation links (class correlation.py)
+        # Run the removal of high correlation links in case of enabled filtering
         for link in links_to_delete:
             calc_data.remove(link)
 
         # process each link -> get intensity R value for each link:
-        print(f"[{log_run_id}] Computing rain values...")
+        logger.info("[%s] Computing rain values...", log_run_id)
         current_link = 0
 
         for link in calc_data:
@@ -134,8 +146,10 @@ def get_rain_rates(
                     )
                     internal_wet = link.wet[t].values
                     link.wet[t] = external_wet and internal_wet
-                    print(f"[{log_run_id}] [EXTERNAL FILTER]: cml: {link.cml_id.values} time: {time} "
-                          f"EXWET: {external_wet} INTWET: {internal_wet} = {link.wet[t].values}")
+                    logger.debug(
+                        "[%s] [EXTERNAL FILTER] CML: %d, time: %s, EXWET: %s && INTWET: %s = %s",
+                        log_run_id, link.cml_id.values, time, external_wet, internal_wet, link.wet[t].values
+                    )
 
         for link in calc_data:
             # calculate ratio of wet periods
@@ -166,9 +180,12 @@ def get_rain_rates(
     except BaseException as error:
         signals.error_signal.emit({"id": results_id})
 
-        print(f"[{log_run_id}] ERROR: An unexpected error occurred during rain calculation: {type(error)} {error}.")
-        print(f"[{log_run_id}] ERROR: Last processed microwave link dataset: {calc_data[current_link]}")
-        print(f"[{log_run_id}] ERROR: Calculation thread terminated.")
+        logger.error(
+            "[%s] An unexpected error occurred during rain calculation: %s %s.\n"
+            "Last processed microwave link dataset:\n%s\n"
+            "Calculation thread terminated.",
+            log_run_id, type(error), error, calc_data[current_link]
+        )
 
         traceback.print_exc()
 

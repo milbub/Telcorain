@@ -1,10 +1,15 @@
+/.venv/
 /venv/
 __pycache__/
 /.idea/
 /assets/*
 !/assets/plain_czechia.png
+!/assets/czechia.json
 /outputs/
+/outputs_web/
+/outputs_raw/
 /image_cache/
+/logs/
 /config.ini
 /linksets.ini
 /save.ini

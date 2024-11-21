@@ -1,6 +1,6 @@
 import gc
 import os
-from typing import cast
+from typing import Optional, cast
 import webbrowser
 
 import matplotlib
@@ -11,13 +11,20 @@ from PyQt6.QtWidgets import QWidget, QLabel, QGridLayout, QSlider, QPushButton, 
 
 from app.results_canvas import Canvas
 from procedures.utils.helpers import dt64_to_unixtime
-from writers.realtime_writer import RealtimeWriter
+from handlers.realtime_writer import RealtimeWriter
 
 matplotlib.use('QtAgg')
 
 
 class ResultsWidget(QWidget):
-    def __init__(self, tab_name: str, result_id: int, figs_path: str, cp: dict, realtime_writer: RealtimeWriter):
+    def __init__(
+            self,
+            tab_name: str,
+            result_id: int,
+            figs_path: str,
+            cp: dict,
+            realtime_writer: Optional[RealtimeWriter]
+    ):
         super(QWidget, self).__init__()
         self.tab_name = tab_name
         self.result_id = result_id
@@ -192,7 +199,7 @@ class ResultsWidget(QWidget):
 
         # push results into DB
         if self.realtime_writer is not None:
-            self.realtime_writer.push_results(rain_grids, calc_data)
+            self.realtime_writer.start_push_results_thread(rain_grids, x_grid, y_grid, calc_data)
 
         del x_grid
         del y_grid

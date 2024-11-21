@@ -6,6 +6,7 @@ import xarray as xr
 
 import lib.pycomlink.pycomlink.spatial as pycmls
 
+from handlers.logging_handler import logger
 from procedures.calculation_signals import CalcSignals
 from procedures.exceptions import RainfieldsGenException
 
@@ -24,8 +25,8 @@ def generate_rainfields(
         # **********************************************************************
         # ***** FIRST PART: Calculate overall rainfall accumulation field ******
         # **********************************************************************
-        
-        print(f"[{log_run_id}] Resampling rain values for rainfall overall map...")
+
+        logger.info("[%s] Resampling rain values for rainfall overall map...", log_run_id)
 
         # resample values to 1h means
         calc_data_1h = xr.concat(objs=[cml.R.resample(time='1H', label='right').mean() for cml in calc_data],
@@ -33,7 +34,7 @@ def generate_rainfields(
 
         signals.progress_signal.emit({'prg_val': 93})
 
-        print(f"[{log_run_id}] Interpolating spatial data for rainfall overall map...")
+        logger.info("[%s] Interpolating spatial data for rainfall overall map...", log_run_id)
 
         # TODO: use already created coords from external filter
         # if not cp['is_external_filter_enabled']:
@@ -85,7 +86,7 @@ def generate_rainfields(
         # continue only if is it desired, else end
         if not cp['is_only_overall']:
 
-            print(f"[{log_run_id}] Resampling data for rainfall animation maps...")
+            logger.info("[%s] Resampling data for rainfall animation maps...", log_run_id)
 
             # resample data to desired resolution, if needed
             if cp['output_step'] == 60:  # if case of one hour steps, use already existing resamples
@@ -114,7 +115,7 @@ def generate_rainfields(
 
             signals.progress_signal.emit({'prg_val': 10})
 
-            print(f"[{log_run_id}] Interpolating spatial data for rainfall animation maps...")
+            logger.info("[%s] Interpolating spatial data for rainfall animation maps...", log_run_id)
 
             # if output step is 60, it's already done
             if cp['output_step'] != 60:
@@ -161,8 +162,11 @@ def generate_rainfields(
     except BaseException as error:
         signals.error_signal.emit({"id": results_id})
 
-        print(f"[{log_run_id}] ERROR: An error occurred during rainfall fields generation: {type(error)} {error}.")
-        print(f"[{log_run_id}] ERROR: Calculation thread terminated.")
+        logger.error(
+            "[%s] An error occurred during rainfall fields generation: %s %s.\n"
+            "Calculation thread terminated.",
+            log_run_id, type(error), error
+        )
 
         traceback.print_exc()
 

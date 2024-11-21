@@ -1,6 +1,8 @@
 import numpy as np
 import pandas as pd
 
+from handlers.logging_handler import logger
+
 
 def pearson_correlation(count, ips, curr_link, link_todelete, link, spin_correlation):
 
@@ -18,22 +20,26 @@ def pearson_correlation(count, ips, curr_link, link_todelete, link, spin_correla
 
     # Calculation of the Pearson correlation index for side A
     pcctrsl_a = pd.Series(b_trsl_array).corr(pd.Series(b_temptx_array))
-    print(f"Correlation 'A(rx)_B(tx)' for link {count}"
-          f" IP: {ips[curr_link - 1]} %0.3f" % pcctrsl_a)
+    logger.debug(
+        "Correlation 'A(rx)_B(tx)' for link %d IP: %s %.3f",
+        count, ips[curr_link - 1], pcctrsl_a
+    )
 
     # Calculation of the Pearson correlation index for side B
     pcctrsl_b = pd.Series(a_trsl_array).corr(pd.Series(a_temptx_array))
-    print(f"Correlation 'B(rx)_A(tx)' for link {count}"
-          f" IP: {ips[curr_link]} %0.3f" % pcctrsl_b)
+    logger.debug(
+        "Correlation 'B(rx)_A(tx)' for link %d IP: %s %.3f",
+        count, ips[curr_link], pcctrsl_b
+    )
 
     if not (np.isnan(pcctrsl_a) or np.isnan(pcctrsl_b)):
         if ((pcctrsl_a >= spin_correlation) or (pcctrsl_a <= -spin_correlation)) \
                 or ((pcctrsl_b >= spin_correlation) or (pcctrsl_b <= -spin_correlation)):
-            print(f"!!! Remove link !!! - Number: {count}"
-                  f" for IP_A: {ips[curr_link - 1]}"
-                  f" a IP_B: {ips[curr_link]};"
-                  f" Correlation: IP_A %0.3f" % pcctrsl_a
-                  + " a IP_B %0.3f" % pcctrsl_b)
+            logger.debug(
+                "Removed link due to high correlation - Number: %d for IP_A: %s and IP_B: %s;"
+                "Correlation: IP_A %.3f and IP_B %.3f",
+                count, ips[curr_link - 1], ips[curr_link], pcctrsl_a, pcctrsl_b
+            )
             link_todelete.append(link)
     else:
         pass
