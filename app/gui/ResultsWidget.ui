@@ -539,15 +539,15 @@
                  </property>
                  <property name="font">
                   <font>
-                   <pointsize>15</pointsize>
-                   <weight>50</weight>
+                   <pointsize>12</pointsize>
+                   <weight>75</weight>
                    <italic>false</italic>
-                   <bold>false</bold>
+                   <bold>true</bold>
                    <underline>false</underline>
                   </font>
                  </property>
                  <property name="text">
-                  <string>⏵</string>
+                  <string>||</string>
                  </property>
                 </widget>
                </item>
@@ -578,7 +578,7 @@
                   </font>
                  </property>
                  <property name="text">
-                  <string>⏮</string>
+                  <string>ST</string>
                  </property>
                 </widget>
                </item>
@@ -601,15 +601,15 @@
                  </property>
                  <property name="font">
                   <font>
-                   <pointsize>15</pointsize>
-                   <weight>50</weight>
+                   <pointsize>12</pointsize>
+                   <weight>75</weight>
                    <italic>false</italic>
-                   <bold>false</bold>
+                   <bold>true</bold>
                    <underline>false</underline>
                   </font>
                  </property>
                  <property name="text">
-                  <string>⏪</string>
+                  <string>&lt;&lt;</string>
                  </property>
                 </widget>
                </item>
@@ -632,15 +632,15 @@
                  </property>
                  <property name="font">
                   <font>
-                   <pointsize>15</pointsize>
-                   <weight>50</weight>
+                   <pointsize>12</pointsize>
+                   <weight>75</weight>
                    <italic>false</italic>
-                   <bold>false</bold>
+                   <bold>true</bold>
                    <underline>false</underline>
                   </font>
                  </property>
                  <property name="text">
-                  <string>⏩</string>
+                  <string>&gt;&gt;</string>
                  </property>
                 </widget>
                </item>
@@ -677,7 +677,7 @@
                   </font>
                  </property>
                  <property name="text">
-                  <string>⏭</string>
+                  <string>EN</string>
                  </property>
                 </widget>
                </item>
