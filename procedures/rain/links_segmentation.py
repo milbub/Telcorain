@@ -61,29 +61,29 @@ def linear_repeat(cml: xr.Dataset, segment_size: int):
 
     distance = float(cml.length.data) * 1000
 
-    # dividing link into 'x'm intervals
+    # dividing link into 'x'm intervals = segments
     if distance >= segment_size:
-        number_of_points = distance / segment_size
+        number_of_segments = distance / segment_size
     else:
-        number_of_points = 1
+        number_of_segments = 1
 
     # calculating gaps between each point in link
-    gap_long = (site_b["x"] - site_a["x"]) / np.floor(number_of_points)
-    gap_lat = (site_b["y"] - site_a["y"]) / np.floor(number_of_points)
+    gap_long = (site_b["x"] - site_a["x"]) / np.floor(number_of_segments)
+    gap_lat = (site_b["y"] - site_a["y"]) / np.floor(number_of_segments)
 
-    # append into list_of_segments series of digits representing number of segments
-    list_of_segments = []
+    # append into list_of_points series of digits representing number of points bordering segments
+    list_of_points = []
     i = 1
-    while i <= np.floor(number_of_points) + 1:
-        list_of_segments.append(i)
+    while i <= np.floor(number_of_segments) + 1:
+        list_of_points.append(i)
         i += 1
-    cml["segments"] = list_of_segments
+    cml["segment_points"] = list_of_points
 
     # append coordinates of each point into lat_coords & long_coords
     long_coords = []
     lat_coords = []
     step = 0
-    while step <= number_of_points:
+    while step <= number_of_segments:
         next_long_point = site_a["x"] + gap_long * step
         next_lat_point = site_a["y"] + gap_lat * step
 
@@ -93,13 +93,13 @@ def linear_repeat(cml: xr.Dataset, segment_size: int):
 
     cml_data_id = []
     rr = 1
-    while rr <= len(list_of_segments):
+    while rr <= len(list_of_points):
         cml_data_id.append(int(cml.cml_id.data))
         rr += 1
 
-    cml["long_array"] = ("segments", long_coords)
-    cml["lat_array"] = ("segments", lat_coords)
-    cml["cml_reference"] = ("segments", cml_data_id)
+    cml["long_array"] = ("segment_points", long_coords)
+    cml["lat_array"] = ("segment_points", lat_coords)
+    cml["cml_reference"] = ("segment_points", cml_data_id)
 
 
 def intersection_algorithm(calc_data: list[xr.Dataset], intersections: dict):
@@ -149,7 +149,7 @@ def intersection_algorithm(calc_data: list[xr.Dataset], intersections: dict):
 
     for r in range(len(intersections)):
         find_number_of_intersections = []
-        listOfSegments_intersections = []
+        segment_points_intersections = []
         long_coords_intersections = []
         lat_coords_intersections = []
         cml_references = []
@@ -442,12 +442,12 @@ def intersection_algorithm(calc_data: list[xr.Dataset], intersections: dict):
         # assign segment numbers
         sections = 1
         while sections <= len(find_number_of_intersections):
-            listOfSegments_intersections.append(sections)
+            segment_points_intersections.append(sections)
             sections += 1
 
         # verify that all arrays have the same length
         lengths = [
-            len(listOfSegments_intersections),
+            len(segment_points_intersections),
             len(long_coords_intersections),
             len(lat_coords_intersections),
             len(cml_references),
@@ -465,7 +465,7 @@ def intersection_algorithm(calc_data: list[xr.Dataset], intersections: dict):
                 and list(intersections.values())[r][-1][1] == calc_data[spoj].site_b_latitude.data
             ):
                 # assign data to the current_cml dataset
-                calc_data[spoj]["segments"] = ("segments", listOfSegments_intersections)
-                calc_data[spoj]["long_array"] = ("segments", long_coords_intersections)
-                calc_data[spoj]["lat_array"] = ("segments", lat_coords_intersections)
-                calc_data[spoj]["cml_reference"] = ("segments", cml_references)
+                calc_data[spoj]["segment_points"] = ("segment_points", segment_points_intersections)
+                calc_data[spoj]["long_array"] = ("segment_points", long_coords_intersections)
+                calc_data[spoj]["lat_array"] = ("segment_points", lat_coords_intersections)
+                calc_data[spoj]["cml_reference"] = ("segment_points", cml_references)
