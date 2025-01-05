@@ -209,12 +209,12 @@ class ResultsWidget(QWidget):
 
     def start_pause_fired(self):
         if self.animation_timer.isActive():
-            self.button_play_pause.setText('⏵')
+            self.button_play_pause.setText('>')
             self.animation_timer.stop()
             self.slider.setEnabled(True)
         else:
             self.slider.setEnabled(False)
-            self.button_play_pause.setText('⏸')
+            self.button_play_pause.setText('||')
             self.animation_timer.start(self.animation_speed)
 
     def next_animation_fig(self):
@@ -385,7 +385,7 @@ class ResultsWidget(QWidget):
         if self.animation_timer.isActive():
             self.animation_timer.stop()
             self.slider_return_to_anim = True
-            self.button_play_pause.setText('⏵')
+            self.button_play_pause.setText('>')
 
     def _slider_moved(self, pos: int):
         self.animation_counter = pos
@@ -396,7 +396,7 @@ class ResultsWidget(QWidget):
         self._update_animation_fig()
 
         if self.slider_return_to_anim:
-            self.button_play_pause.setText('⏸')
+            self.button_play_pause.setText('||')
             self.slider_return_to_anim = False
             self.animation_timer.start(self.animation_speed)
 
