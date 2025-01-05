@@ -8,29 +8,39 @@ from lib.sweep_intersector.lib.SweepIntersector import SweepIntersector
 from handlers.logging_handler import logger
 
 
-def process_segments(calc_data: list[xr.Dataset], segment_size: int, is_intersection_enabled: bool, log_run_id: str):
-    segments: list[tuple[tuple[float, float], tuple[float, float]]] = []
-    for cml in calc_data:
-        segments.append(
-            (
-                (float(cml.site_a_longitude.data), float(cml.site_a_latitude.data)),
-                (float(cml.site_b_longitude.data), float(cml.site_b_latitude.data))
-            )
-        )
-
+def process_segments(
+        calc_data: list[xr.Dataset],
+        segment_size: int,
+        is_central_enabled: bool,
+        is_intersection_enabled: bool,
+        log_run_id: str
+):
     if is_intersection_enabled:
+        # create list of CML border segment points (= CML coordinates) for intersection algorithm
+        cmls_segment_points: list[tuple[tuple[float, float], tuple[float, float]]] = []
+        for cml in calc_data:
+            cmls_segment_points.append(
+                (
+                    (float(cml.site_a_longitude.data), float(cml.site_a_latitude.data)),
+                    (float(cml.site_b_longitude.data), float(cml.site_b_latitude.data))
+                )
+            )
         # find intersections of cmls with other cmls
         logger.debug("[%s] Intersection enabled, finding intersections...", log_run_id)
         intersector = SweepIntersector()
-        intersections = intersector.findIntersections(segments)
+        intersections = intersector.findIntersections(cmls_segment_points)
         logger.debug("[%s] Found %d intersections.", log_run_id, len(intersections))
 
-        # for links with no intersections, just divide them into segments
-        logger.debug(
-            "[%s] Dividing no-intersecting links into linear segments with segment size of %d m...",
-            log_run_id,
-            segment_size
-        )
+        # for links with no intersections, just apply central points or divide them into segments
+        if is_central_enabled:
+            logger.debug("[%s] Calculating central points for no-intersecting links...", log_run_id)
+        else:
+            logger.debug(
+                "[%s] Dividing no-intersecting links into linear segments with segment size of %d m...",
+                log_run_id,
+                segment_size
+            )
+
         for cml in calc_data:
             if (
                 (
@@ -40,7 +50,10 @@ def process_segments(calc_data: list[xr.Dataset], segment_size: int, is_intersec
             ) in intersections:
                 continue
             else:
-                linear_repeat(cml, segment_size)
+                if is_central_enabled:
+                    central_points(cml)
+                else:
+                    linear_repeat(cml, segment_size)
 
         # if there are intersections, divide links into segments based on intersection algorithm
         if len(intersections) > 0:
@@ -50,8 +63,32 @@ def process_segments(calc_data: list[xr.Dataset], segment_size: int, is_intersec
             )
             intersection_algorithm(calc_data, intersections)
     else:
-        for cml in calc_data:
-            linear_repeat(cml, segment_size)
+        if is_central_enabled:
+            # apply central points for all links
+            logger.debug("[%s] Intersection disabled, central points method is selected.", log_run_id)
+            logger.debug("[%s] Calculating central points of all links...", log_run_id)
+            for cml in calc_data:
+                central_points(cml)
+        else:
+            # divide all links into linear segments
+            logger.debug("[%s] Intersection disabled, linear segments method is selected.", log_run_id)
+            logger.debug(
+                "[%s] Dividing all links into linear segments with segment size of %d m...",
+                log_run_id,
+                segment_size
+            )
+            for cml in calc_data:
+                linear_repeat(cml, segment_size)
+
+
+def central_points(cml: xr.Dataset):
+    lat_center = (cml.site_a_latitude + cml.site_b_latitude) / 2
+    lon_center = (cml.site_a_longitude + cml.site_b_longitude) / 2
+
+    cml["segment_points"] = [1]
+    cml["long_array"] = ("segment_points", [lon_center])
+    cml["lat_array"] = ("segment_points", [lat_center])
+    cml["cml_reference"] = ("segment_points", [int(cml.cml_id.data)])
 
 
 def linear_repeat(cml: xr.Dataset, segment_size: int):
