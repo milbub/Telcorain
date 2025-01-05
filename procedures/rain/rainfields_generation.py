@@ -28,7 +28,13 @@ def generate_rainfields(
         # *************************************************************************************************
 
         logger.info("[%s] Processing links segmentation...", log_run_id)
-        process_segments(calc_data, cp["segment_size"], cp["is_intersection_enabled"], log_run_id)
+        process_segments(
+            calc_data=calc_data,
+            segment_size=cp["segment_size"],
+            is_central_enabled=cp["is_central_points_enabled"],
+            is_intersection_enabled=cp["is_intersection_enabled"],
+            log_run_id=log_run_id
+        )
 
         # ***********************************************************************
         # ***** SECOND PART: Calculate overall rainfall accumulation field ******

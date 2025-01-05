@@ -225,7 +225,7 @@
              </property>
              <property name="dateTime">
               <datetime>
-               <hour>12</hour>
+               <hour>10</hour>
                <minute>0</minute>
                <second>0</second>
                <year>2022</year>
@@ -242,21 +242,21 @@
              </property>
              <property name="time">
               <time>
-               <hour>12</hour>
+               <hour>10</hour>
                <minute>0</minute>
                <second>0</second>
               </time>
              </property>
              <property name="maximumTime">
               <time>
-               <hour>16</hour>
+               <hour>15</hour>
                <minute>59</minute>
                <second>59</second>
               </time>
              </property>
              <property name="minimumTime">
               <time>
-               <hour>17</hour>
+               <hour>16</hour>
                <minute>0</minute>
                <second>0</second>
               </time>
@@ -292,7 +292,7 @@
              </property>
              <property name="dateTime">
               <datetime>
-               <hour>12</hour>
+               <hour>10</hour>
                <minute>0</minute>
                <second>0</second>
                <year>2022</year>
@@ -309,21 +309,21 @@
              </property>
              <property name="time">
               <time>
-               <hour>12</hour>
+               <hour>10</hour>
                <minute>0</minute>
                <second>0</second>
               </time>
              </property>
              <property name="maximumTime">
               <time>
-               <hour>16</hour>
+               <hour>15</hour>
                <minute>59</minute>
                <second>59</second>
               </time>
              </property>
              <property name="minimumTime">
               <time>
-               <hour>17</hour>
+               <hour>16</hour>
                <minute>0</minute>
                <second>0</second>
               </time>
@@ -828,14 +828,14 @@
              <widget class="QLabel" name="label_9">
               <property name="geometry">
                <rect>
-                <x>250</x>
+                <x>240</x>
                 <y>95</y>
-                <width>161</width>
+                <width>171</width>
                 <height>21</height>
                </rect>
               </property>
               <property name="text">
-               <string>Reference signal level samples:</string>
+               <string>Last dry for baseline average:</string>
               </property>
              </widget>
              <widget class="QSpinBox" name="spinBaselineSamples">
@@ -1014,8 +1014,11 @@
                 <height>22</height>
                </rect>
               </property>
+              <property name="decimals">
+               <number>3</number>
+              </property>
               <property name="minimum">
-               <double>0.010000000000000</double>
+               <double>0.001000000000000</double>
               </property>
               <property name="singleStep">
                <double>0.100000000000000</double>
@@ -1041,7 +1044,7 @@
               <property name="geometry">
                <rect>
                 <x>30</x>
-                <y>50</y>
+                <y>40</y>
                 <width>101</width>
                 <height>16</height>
                </rect>
@@ -1054,7 +1057,7 @@
               <property name="geometry">
                <rect>
                 <x>130</x>
-                <y>48</y>
+                <y>38</y>
                 <width>121</width>
                 <height>22</height>
                </rect>
@@ -1088,14 +1091,17 @@
                </rect>
               </property>
               <property name="text">
-               <string>Inverse Distance Weighting:</string>
+               <string>IDW:</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignCenter</set>
               </property>
              </widget>
-             <widget class="QLabel" name="label_2">
+             <widget class="QLabel" name="labelSegmentSpin">
               <property name="geometry">
                <rect>
                 <x>30</x>
-                <y>80</y>
+                <y>70</y>
                 <width>91</width>
                 <height>16</height>
                </rect>
@@ -1108,7 +1114,7 @@
               <property name="geometry">
                <rect>
                 <x>130</x>
-                <y>80</y>
+                <y>70</y>
                 <width>121</width>
                 <height>22</height>
                </rect>
@@ -1130,13 +1136,42 @@
               <property name="geometry">
                <rect>
                 <x>50</x>
-                <y>120</y>
-                <width>191</width>
+                <y>130</y>
+                <width>211</width>
                 <height>17</height>
                </rect>
               </property>
               <property name="text">
                <string>Enable link intersection algorithm</string>
+              </property>
+             </widget>
+             <widget class="QRadioButton" name="radioLinear">
+              <property name="geometry">
+               <rect>
+                <x>30</x>
+                <y>100</y>
+                <width>121</width>
+                <height>21</height>
+               </rect>
+              </property>
+              <property name="text">
+               <string>Linear segments</string>
+              </property>
+              <property name="checked">
+               <bool>true</bool>
+              </property>
+             </widget>
+             <widget class="QRadioButton" name="radioCentral">
+              <property name="geometry">
+               <rect>
+                <x>160</x>
+                <y>100</y>
+                <width>101</width>
+                <height>21</height>
+               </rect>
+              </property>
+              <property name="text">
+               <string>Central points</string>
               </property>
              </widget>
             </widget>
@@ -2549,6 +2584,38 @@
     <hint type="destinationlabel">
      <x>1121</x>
      <y>386</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>radioCentral</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>spinSegment</receiver>
+   <slot>setDisabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>727</x>
+     <y>432</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>707</x>
+     <y>402</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>radioCentral</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>labelSegmentSpin</receiver>
+   <slot>setDisabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>727</x>
+     <y>432</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>592</x>
+     <y>399</y>
     </hint>
    </hints>
   </connection>
