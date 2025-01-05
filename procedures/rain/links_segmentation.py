@@ -65,7 +65,7 @@ def linear_repeat(cml: xr.Dataset, segment_size: int):
     if distance >= segment_size:
         number_of_points = distance / segment_size
     else:
-        number_of_points = 2
+        number_of_points = 1
 
     # calculating gaps between each point in link
     gap_long = (site_b["x"] - site_a["x"]) / np.floor(number_of_points)
