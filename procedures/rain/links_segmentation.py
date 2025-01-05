@@ -15,7 +15,38 @@ def process_segments(
         is_intersection_enabled: bool,
         log_run_id: str
 ):
-    if is_intersection_enabled:
+    """
+    Process segmentation of CMLs based on the selected method (central points, linear segments, intersection algorithm).
+
+    Central points = one point in the middle of the CML.
+    Linear segments = divide the CML into segments of the same length.
+    Intersection algorithm = divide the CML into segments based on intersections with other CMLs, if no intersection is
+                             found for given CML, apply central points or linear segments method.
+
+    :param calc_data: List of CML datasets to be processed.
+    :param segment_size: Size of the segment (in meters).
+    :param is_central_enabled: If True, central points method is selected.
+    :param is_intersection_enabled: If True, intersection algorithm is selected.
+    :param log_run_id: ID of the current calculation run.
+    """
+    if not is_intersection_enabled:
+        if is_central_enabled:
+            # apply central points for all links
+            logger.debug("[%s] Intersection disabled, central points method is selected.", log_run_id)
+            logger.debug("[%s] Calculating central points of all links...", log_run_id)
+            for cml in calc_data:
+                central_points(cml)
+        else:
+            # divide all links into linear segments
+            logger.debug("[%s] Intersection disabled, linear segments method is selected.", log_run_id)
+            logger.debug(
+                "[%s] Dividing all links into linear segments with segment size of %d m...",
+                log_run_id,
+                segment_size
+            )
+            for cml in calc_data:
+                linear_repeat(cml, segment_size)
+    else:
         # create list of CML border segment points (= CML coordinates) for intersection algorithm
         cmls_segment_points: list[tuple[tuple[float, float], tuple[float, float]]] = []
         for cml in calc_data:
@@ -62,36 +93,30 @@ def process_segments(
                 log_run_id
             )
             intersection_algorithm(calc_data, intersections)
-    else:
-        if is_central_enabled:
-            # apply central points for all links
-            logger.debug("[%s] Intersection disabled, central points method is selected.", log_run_id)
-            logger.debug("[%s] Calculating central points of all links...", log_run_id)
-            for cml in calc_data:
-                central_points(cml)
-        else:
-            # divide all links into linear segments
-            logger.debug("[%s] Intersection disabled, linear segments method is selected.", log_run_id)
-            logger.debug(
-                "[%s] Dividing all links into linear segments with segment size of %d m...",
-                log_run_id,
-                segment_size
-            )
-            for cml in calc_data:
-                linear_repeat(cml, segment_size)
 
 
 def central_points(cml: xr.Dataset):
+    """
+    Calculate central point of the CML and assign it as the only segment point.
+
+    :param cml: CML dataset to be processed.
+    """
     lat_center = (cml.site_a_latitude + cml.site_b_latitude) / 2
     lon_center = (cml.site_a_longitude + cml.site_b_longitude) / 2
 
-    cml["segment_points"] = [1]
+    cml["segment_points"] = [1] # only one segment point = the central point
     cml["long_array"] = ("segment_points", [lon_center])
     cml["lat_array"] = ("segment_points", [lat_center])
-    cml["cml_reference"] = ("segment_points", [int(cml.cml_id.data)])
+    cml["cml_reference"] = ("segment_points", [int(cml.cml_id.data)]) # reference to the same CML = use own rain values
 
 
 def linear_repeat(cml: xr.Dataset, segment_size: int):
+    """
+    Divide the CML into segments of the same length.
+
+    :param cml: CML dataset to be processed.
+    :param segment_size: Size of the segment (in meters).
+    """
     # putting coordinates into variables
     site_a = {"x": cml.site_a_longitude, "y": cml.site_a_latitude}
     site_b = {"x": cml.site_b_longitude, "y": cml.site_b_latitude}
@@ -136,10 +161,20 @@ def linear_repeat(cml: xr.Dataset, segment_size: int):
 
     cml["long_array"] = ("segment_points", long_coords)
     cml["lat_array"] = ("segment_points", lat_coords)
-    cml["cml_reference"] = ("segment_points", cml_data_id)
+    cml["cml_reference"] = ("segment_points", cml_data_id) # reference to the same CML = use own rain values
 
 
 def intersection_algorithm(calc_data: list[xr.Dataset], intersections: dict):
+    """
+    Divide the CMLs into segments based on intersections with other CMLs.
+
+    Original author: Radek Vomočil
+    Source: https://github.com/radekvomocil/Telcorain-GIT/blob/master/procedures/links_to_segments.py
+
+    :param calc_data: List of CML datasets to be processed.
+    :param intersections: Dictionary of intersections between CMLs.
+    """
+    # TODO: Refactor this function to make it more readable and maintainable
     def append_operation(
             long_intersections,
             coordinates,
