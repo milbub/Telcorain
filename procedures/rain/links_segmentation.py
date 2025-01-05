@@ -166,7 +166,8 @@ def linear_repeat(cml: xr.Dataset, segment_size: int):
 
 def intersection_algorithm(calc_data: list[xr.Dataset], intersections: dict):
     """
-    Divide the CMLs into segments based on intersections with other CMLs.
+    Divide the CMLs into segments based on intersections with other CMLs, and assing the CML reference to each segment
+    point with the priority of lower rain rates during the comparison of the intersecting segments.
 
     Original author: Radek Vomočil
     Source: https://github.com/radekvomocil/Telcorain-GIT/blob/master/procedures/links_to_segments.py
@@ -174,50 +175,260 @@ def intersection_algorithm(calc_data: list[xr.Dataset], intersections: dict):
     :param calc_data: List of CML datasets to be processed.
     :param intersections: Dictionary of intersections between CMLs.
     """
-    # TODO: Refactor this function to make it more readable and maintainable
-    def append_operation(
-            long_intersections,
-            coordinates,
-            lat_intersections,
-            coordinates_1,
-            number_of_intersections,
-            num,
-            references,
-            cml_data
+    # TODO: Refactor (simplify) this function to make it more readable and maintainable, add missing type hints
+    #  (currently refactored using mostly "heavy force" and ChatGPT)
+    """
+    Theoretical Algorithm Proposal:
+    
+    I. Calculation of path-averaged rain rates:  
+       Path-averaged rain rates are calculated for individual CMLs using the standard approach.
+    
+    II. Individual processing of each CML in a cycle:
+    
+        1. Division of the CML Path into Segments:  
+           Each CML's path is divided into segments based on intersections with other CMLs,
+           ensuring that each segment is bounded either by intersections or by the endpoints of the path.
+        
+        2. Selection of the Longest Path Segment:  
+           The longest path segment of the current CML is identified. The following cases are considered:  
+            CASE A. [The segment is bounded by two intersections.]  
+                - Lower-level segment parts are determined. The original path segment is divided into three lower-level
+                  segments, with the middle part being one-third of the original segment's length.  
+                - The rain rate calculated for the current CML (from Step I) is assigned to this middle segment.  
+        
+            CASE B. [The segment is bounded by an intersection and a path endpoint.]  
+                - Lower-level segment parts are determined. The original path
+                  segment is divided into two equal-length segments (halves).  
+                - The segment adjacent to the path endpoint is assigned the
+                  rain rate calculated for the current CML (from Step I).  
+        
+        3. Assignment of Rain Rates at Intersection Points:  
+           At each intersection point, the rain rates of the two intersecting CMLs are compared, and the lower rain
+           rate is selected. This selected rain rate is applied to the lower-level segment parts adjacent to the
+           intersection point. The following cases are considered:  
+            CASE A. [The adjacent path segment is the longest segment. (The same segment identified as in Step II.2.)]
+                case a. [The segment is bounded by the current and another intersection]
+                    - The selected rain rate is applied to the adjacent lower-level segment part,
+                      which is one-third of the length of the adjacent path segment.  
+                case b. [The segment is bounded by the current intersection and a path endpoint]
+                    - The selected rain rate is applied to the adjacent lower-level segment part,
+                      which is half the length of the adjacent path segment.  
+        
+            CASE B. [The adjacent path segment is not the longest segment.]  
+                case a. [The segment is bounded by the current and another intersection]
+                    - The selected rain rate is applied to the adjacent lower-level segment part,
+                      which is half the length of the adjacent path segment.  
+                case b. [The segment is bounded by the current intersection and a path endpoint]
+                    - The selected rain rate is applied to the entire length of the adjacent path segment.  
+        
+        4. Continue Processing:  
+           Proceed to process the next CML in the cycle.
+    """
+
+    # -------------------------------------------------------------------------
+    # 1. HELPER FUNCTIONS
+    # -------------------------------------------------------------------------
+    def cml_coords_match(ds: xr.Dataset, coord_first: tuple, coord_last: tuple) -> bool:
+        """
+        Returns True if dataset `ds` has site_a matching `coord_first` and site_b matching `coord_last`.
+        """
+        return (
+            ds.site_a_longitude.data == coord_first[0]
+            and ds.site_a_latitude.data == coord_first[1]
+            and ds.site_b_longitude.data == coord_last[0]
+            and ds.site_b_latitude.data == coord_last[1]
+        )
+
+    def append_point_data(
+        long_intersections,
+        long_coordinates,
+        lat_intersections,
+        lat_coordinates,
+        number_of_intersections,
+        num,
+        references,
+        cml_data
     ):
-        long_intersections.append(coordinates)
-        lat_intersections.append(coordinates_1)
+        """
+        Helper for appending parallel lists that describe segment points.
+        """
+        long_intersections.append(long_coordinates)
+        lat_intersections.append(lat_coordinates)
         number_of_intersections.append(num)
         references.append(cml_data)
 
     def nested_cycle_operation(isecDic, calc_data_op, rain_values_side, side_coords):
+        """
+        Helper that searches across all intersections and calc_data for
+        any link matching the side_coords, then appends its R.mean() value.
+        """
         for q in range(len(isecDic)):
-            for w in range(len(list(isecDic.values())[q])):
-                if list(isecDic.values())[q][w] == side_coords:
+            coords_list = list(isecDic.values())[q]
+            for w in range(len(coords_list)):
+                if coords_list[w] == side_coords:
+                    # If found intersection matches side_coords,
+                    # check each dataset in calc_data_op
                     for z in range(len(calc_data_op)):
-                        if (
-                            list(isecDic.values())[q][0][0] == calc_data_op[z].site_a_longitude.data
-                            and list(isecDic.values())[q][0][1] == calc_data_op[z].site_a_latitude.data
-                            and list(isecDic.values())[q][-1][0] == calc_data_op[z].site_b_longitude.data
-                            and list(isecDic.values())[q][-1][1] == calc_data_op[z].site_b_latitude.data
+                        if cml_coords_match(
+                            calc_data_op[z],
+                            coords_list[0],      # first intersection
+                            coords_list[-1]      # last intersection
                         ):
                             rain_values_side.append(float(calc_data_op[z].R.mean().data))
                             break
-                        else:
-                            continue
+                    # continue scanning for next q
                 else:
                     continue
 
-    # list into which distances of each intersection of one link will be saved
-    distances = []
+    def compute_lowest_rain_values(calc_data_op, intersections_dict, r_index, j_index):
+        """
+        Compute the minimum rain values for each 'side' of a single path by calling nested_cycle_operation.
 
-    for o in range(len(list(intersections.values())[0]) - 1):
-        distance = math.dist(list(intersections.values())[0][o], list(intersections.values())[0][o + 1])
-        distances.append(distance)
+        Returns:
+            (lowest_value_first, count_first_side, lowest_value_second, count_second_side)
+        """
+        # First side
+        rain_values_first_side = []
+        nested_cycle_operation(
+            intersections_dict,
+            calc_data_op,
+            rain_values_first_side,
+            list(intersections_dict.values())[r_index][j_index]
+        )
+        lowest_value_first = min(rain_values_first_side)
+        count_first_side = len(rain_values_first_side)
 
-    # list into which coordinates of the longest lines of links will be saved,
-    # more precisely the beginning and the end coordinates of the longest line of the link
-    CoordsOfLongestLinesOfLinks = []
+        # Second side
+        rain_values_second_side = []
+        nested_cycle_operation(
+            intersections_dict,
+            calc_data_op,
+            rain_values_second_side,
+            list(intersections_dict.values())[r_index][j_index + 1]
+        )
+        lowest_value_second = min(rain_values_second_side)
+        count_second_side = len(rain_values_second_side)
+
+        return lowest_value_first, count_first_side, lowest_value_second, count_second_side
+
+    def find_and_append_cml_reference(
+        calc_data_op,
+        side_coord,
+        lowest_rain_val,
+        long_intersections,
+        lat_intersections,
+        find_num_of_intersections,
+        segment_number,
+        cml_refs
+    ):
+        """
+        Loop over calc_data_op, find the dataset whose R.mean() matches 'lowest_rain_value',
+        and append the side_coord if not already in long_intersections. Break at the first match.
+        """
+        for idx in range(len(calc_data_op)):
+            if lowest_rain_val == float(calc_data_op[idx].R.mean().data):
+                # Avoid appending if the longitude is already there
+                if side_coord[0] in long_intersections:
+                    break
+                else:
+                    append_point_data(
+                        long_intersections,
+                        side_coord[0],
+                        lat_intersections,
+                        side_coord[1],
+                        find_num_of_intersections,
+                        segment_number,
+                        cml_refs,
+                        int(calc_data_op[idx].cml_id.data),
+                    )
+                    break
+            else:
+                continue
+
+    def compute_midpoint(coord1: tuple[float, float], coord2: tuple[float, float]) -> tuple[float, float]:
+        """
+        Compute midpoint of two (long, lat) coordinate pairs.
+        """
+        return (
+            (coord1[0] + coord2[0]) / 2,
+            (coord1[1] + coord2[1]) / 2
+        )
+
+    def append_side_midpoint_side(
+        calc_data_op,
+        first_side_coord,
+        second_side_coord,
+        lowest_r_first,
+        lowest_r_second,
+        long_coord_intersection,
+        lat_coord_intersection,
+        find_num_of_intersections,
+        segment_number,
+        cml_refs
+    ):
+        """
+        Apply the pattern:
+          1) Calculate midpoint
+          2) Find & append the first side
+          3) Append a midpoint
+          4) Find & append the second side
+        """
+        # 1) Use the helper for midpoint
+        mid_long, mid_lat = compute_midpoint(
+            first_side_coord,
+            second_side_coord,
+        )
+
+        # 2) First side
+        find_and_append_cml_reference(
+            calc_data_op,
+            first_side_coord,
+            lowest_r_first,
+            long_coord_intersection,
+            lat_coord_intersection,
+            find_num_of_intersections,
+            segment_number,
+            cml_refs
+        )
+        # 3) Midpoint
+        append_point_data(
+            long_coord_intersection,
+            mid_long,
+            lat_coord_intersection,
+            mid_lat,
+            find_num_of_intersections,
+            segment_number,
+            cml_refs,
+            cml_refs[-1] if cml_refs else -1
+        )
+        # 4) Second side
+        find_and_append_cml_reference(
+            calc_data_op,
+            second_side_coord,
+            lowest_r_second,
+            long_coord_intersection,
+            lat_coord_intersection,
+            find_num_of_intersections,
+            segment_number,
+            cml_refs
+        )
+
+    # -------------------------------------------------------------------------
+    # 2. MAIN LOGIC
+    # -------------------------------------------------------------------------
+
+    # (Optional) Pre-calculate distances for the first link in intersections
+    distances_example = []
+    if len(intersections) > 0 and len(list(intersections.values())[0]) > 1:
+        for o in range(len(list(intersections.values())[0]) - 1):
+            distance = math.dist(
+                list(intersections.values())[0][o],
+                list(intersections.values())[0][o + 1]
+            )
+            distances_example.append(distance)
+
+    # Store beginning-end coords of the longest lines
+    coords_of_longest_lines_of_links = []
 
     for r in range(len(intersections)):
         find_number_of_intersections = []
@@ -227,206 +438,126 @@ def intersection_algorithm(calc_data: list[xr.Dataset], intersections: dict):
         cml_references = []
         number = 1  # Start numbering segments from 1
 
-        # calculate distances for the current set of intersections
+        # Calculate distances for the current set of intersections
         distances = []
         for oo in range(len(list(intersections.values())[r]) - 1):
-            distance = math.dist(list(intersections.values())[r][oo], list(intersections.values())[r][oo + 1])
-            distances.append(distance)
+            dist = math.dist(
+                list(intersections.values())[r][oo],
+                list(intersections.values())[r][oo + 1]
+            )
+            distances.append(dist)
 
-        largestLine = max(distances)
+        largest_line = max(distances) if distances else 0
+
         for j in range(len(distances)):
-            if largestLine == distances[j]:
-                CoordsOfLongestLinesOfLinks.append(
+            (
+                lowest_rain_first,
+                count_first,
+                lowest_rain_second,
+                count_second
+            ) = compute_lowest_rain_values(calc_data, intersections, r, j)
+
+            # The "longest" segment logic
+            if largest_line == distances[j]:
+                coords_of_longest_lines_of_links.append(
                     (
                         list(intersections.values())[r][j],
                         list(intersections.values())[r][j + 1],
                     )
                 )
-
-                rain_values_for_longest_path_first_side = []
-                rain_values_for_longest_path_second_side = []
-
-                nested_cycle_operation(
-                    intersections,
-                    calc_data,
-                    rain_values_for_longest_path_first_side,
-                    list(intersections.values())[r][j],
-                )
-                lowestRainValueForLongestPathFirstSide = min(rain_values_for_longest_path_first_side)
-
-                nested_cycle_operation(
-                    intersections,
-                    calc_data,
-                    rain_values_for_longest_path_second_side,
-                    list(intersections.values())[r][j + 1],
-                )
-                lowestRainValueForLongestPathSecondSide = min(rain_values_for_longest_path_second_side)
-
-                if (
-                        len(rain_values_for_longest_path_first_side) == 1
-                        or len(rain_values_for_longest_path_second_side) == 1
-                ):
-                    middlepart_long = []
-                    halfOfLongestLongitude = (
-                        list(intersections.values())[r][j][0] + list(intersections.values())[r][j + 1][0]
-                    ) / 2
-                    halfOfLongestLatitude = (
-                        list(intersections.values())[r][j][1] + list(intersections.values())[r][j + 1][1]
-                    ) / 2
-                    middlepart_long.append((halfOfLongestLongitude, halfOfLongestLatitude))
-
-                    c = None
-                    for c in range(len(calc_data)):
-                        if lowestRainValueForLongestPathFirstSide == float(calc_data[c].R.mean().data):
-                            if list(intersections.values())[r][j][0] in long_coords_intersections:
-                                break
-                            else:
-                                append_operation(
-                                    long_coords_intersections,
-                                    list(intersections.values())[r][j][0],
-                                    lat_coords_intersections,
-                                    list(intersections.values())[r][j][1],
-                                    find_number_of_intersections,
-                                    number,
-                                    cml_references,
-                                    int(calc_data[c].cml_id.data),
-                                )
-                                break
-                        else:
-                            continue
-
-                    append_operation(
+                # If only one dataset on one side => 1 midpoint
+                if count_first == 1 or count_second == 1:
+                    append_side_midpoint_side(
+                        calc_data,
+                        list(intersections.values())[r][j],      # first side
+                        list(intersections.values())[r][j + 1],  # second side
+                        lowest_rain_first,
+                        lowest_rain_second,
                         long_coords_intersections,
-                        halfOfLongestLongitude,
                         lat_coords_intersections,
-                        halfOfLongestLatitude,
                         find_number_of_intersections,
                         number,
-                        cml_references,
-                        int(calc_data[c].cml_id.data),
+                        cml_references
                     )
-
-                    for b in range(len(calc_data)):
-                        if lowestRainValueForLongestPathSecondSide == float(calc_data[b].R.mean().data):
-                            append_operation(
-                                long_coords_intersections,
-                                list(intersections.values())[r][j + 1][0],
-                                lat_coords_intersections,
-                                list(intersections.values())[r][j + 1][1],
-                                find_number_of_intersections,
-                                number,
-                                cml_references,
-                                int(calc_data[b].cml_id.data),
-                            )
-                            break
-                        else:
-                            continue
                 else:
-                    # calculate three parts for the longest path
-                    firstThirdLongitude = (
-                        2 * list(intersections.values())[r][j][0] + list(intersections.values())[r][j + 1][0]
+                    # Multiple data on both sides => split into thirds
+                    first_third_long = (
+                        2 * list(intersections.values())[r][j][0]
+                        + list(intersections.values())[r][j+1][0]
                     ) / 3
-                    firstThirdLatitude = (
-                        2 * list(intersections.values())[r][j][1] + list(intersections.values())[r][j + 1][1]
+                    first_third_lat = (
+                        2 * list(intersections.values())[r][j][1]
+                        + list(intersections.values())[r][j+1][1]
                     ) / 3
-                    secondThirdLongitude = (
-                        list(intersections.values())[r][j][0] + 2 * list(intersections.values())[r][j + 1][0]
+                    second_third_long = (
+                        list(intersections.values())[r][j][0]
+                        + 2 * list(intersections.values())[r][j+1][0]
                     ) / 3
-                    secondThirdLatitude = (
-                        list(intersections.values())[r][j][1] + 2 * list(intersections.values())[r][j + 1][1]
+                    second_third_lat = (
+                        list(intersections.values())[r][j][1]
+                        + 2 * list(intersections.values())[r][j+1][1]
                     ) / 3
 
-                    for v in range(len(calc_data)):
-                        if lowestRainValueForLongestPathFirstSide == float(calc_data[v].R.mean().data):
-                            if list(intersections.values())[r][j][0] in long_coords_intersections:
-                                break
-                            else:
-                                append_operation(
-                                    long_coords_intersections,
-                                    list(intersections.values())[r][j][0],
-                                    lat_coords_intersections,
-                                    list(intersections.values())[r][j][1],
-                                    find_number_of_intersections,
-                                    number,
-                                    cml_references,
-                                    int(calc_data[v].cml_id.data),
-                                )
-                                break
-                        else:
-                            continue
-
-                    append_operation(
+                    # First side
+                    find_and_append_cml_reference(
+                        calc_data,
+                        list(intersections.values())[r][j],
+                        lowest_rain_first,
                         long_coords_intersections,
-                        firstThirdLongitude,
                         lat_coords_intersections,
-                        firstThirdLatitude,
+                        find_number_of_intersections,
+                        number,
+                        cml_references
+                    )
+
+                    # The two dividing points
+                    append_point_data(
+                        long_coords_intersections,
+                        first_third_long,
+                        lat_coords_intersections,
+                        first_third_lat,
                         find_number_of_intersections,
                         number,
                         cml_references,
-                        int(calc_data[v].cml_id.data),
+                        cml_references[-1] if cml_references else -1
                     )
-
-                    append_operation(
+                    append_point_data(
                         long_coords_intersections,
-                        secondThirdLongitude,
+                        second_third_long,
                         lat_coords_intersections,
-                        secondThirdLatitude,
+                        second_third_lat,
                         find_number_of_intersections,
                         number,
                         cml_references,
-                        int(calc_data[v].cml_id.data),
+                        cml_references[-1] if cml_references else -1
                     )
 
-                    for n in range(len(calc_data)):
-                        if lowestRainValueForLongestPathSecondSide == float(calc_data[n].R.mean().data):
-                            append_operation(
-                                long_coords_intersections,
-                                list(intersections.values())[r][j + 1][0],
-                                lat_coords_intersections,
-                                list(intersections.values())[r][j + 1][1],
-                                find_number_of_intersections,
-                                number,
-                                cml_references,
-                                int(calc_data[n].cml_id.data),
-                            )
-                            break
-                        else:
-                            continue
+                    # Second side
+                    find_and_append_cml_reference(
+                        calc_data,
+                        list(intersections.values())[r][j+1],
+                        lowest_rain_second,
+                        long_coords_intersections,
+                        lat_coords_intersections,
+                        find_number_of_intersections,
+                        number,
+                        cml_references
+                    )
+
             else:
-                rain_values_for_shorter_path_first_side = []
-                rain_values_for_shorter_path_second_side = []
-
-                nested_cycle_operation(
-                    intersections,
-                    calc_data,
-                    rain_values_for_shorter_path_first_side,
-                    list(intersections.values())[r][j],
-                )
-                lowestRainValueForShorterPathFirstSide = min(rain_values_for_shorter_path_first_side)
-
-                nested_cycle_operation(
-                    intersections,
-                    calc_data,
-                    rain_values_for_shorter_path_second_side,
-                    list(intersections.values())[r][j + 1],
-                )
-                lowestRainValueForShorterPathSecondSide = min(rain_values_for_shorter_path_second_side)
-
-                if (
-                        len(rain_values_for_shorter_path_first_side) == 1
-                        or len(rain_values_for_shorter_path_second_side) == 1
-                ):
-                    lowestRainValue = min(
-                        lowestRainValueForShorterPathFirstSide, lowestRainValueForShorterPathSecondSide
-                    )
+                # The "shorter" segment logic
+                if count_first == 1 or count_second == 1:
+                    # Just pick the side with the minimal of the two
+                    lowest_rain_value = min(lowest_rain_first, lowest_rain_second)
                     for m in range(len(calc_data)):
-                        if lowestRainValue == float(calc_data[m].R.mean().data):
+                        if lowest_rain_value == float(calc_data[m].R.mean().data):
+                            # If first side is already appended, append the second
                             if list(intersections.values())[r][j][0] in long_coords_intersections:
-                                append_operation(
+                                append_point_data(
                                     long_coords_intersections,
-                                    list(intersections.values())[r][j + 1][0],
+                                    list(intersections.values())[r][j+1][0],
                                     lat_coords_intersections,
-                                    list(intersections.values())[r][j + 1][1],
+                                    list(intersections.values())[r][j+1][1],
                                     find_number_of_intersections,
                                     number,
                                     cml_references,
@@ -434,7 +565,8 @@ def intersection_algorithm(calc_data: list[xr.Dataset], intersections: dict):
                                 )
                                 break
                             else:
-                                append_operation(
+                                # Append both sides
+                                append_point_data(
                                     long_coords_intersections,
                                     list(intersections.values())[r][j][0],
                                     lat_coords_intersections,
@@ -444,11 +576,11 @@ def intersection_algorithm(calc_data: list[xr.Dataset], intersections: dict):
                                     cml_references,
                                     int(calc_data[m].cml_id.data),
                                 )
-                                append_operation(
+                                append_point_data(
                                     long_coords_intersections,
-                                    list(intersections.values())[r][j + 1][0],
+                                    list(intersections.values())[r][j+1][0],
                                     lat_coords_intersections,
-                                    list(intersections.values())[r][j + 1][1],
+                                    list(intersections.values())[r][j+1][1],
                                     find_number_of_intersections,
                                     number,
                                     cml_references,
@@ -456,68 +588,25 @@ def intersection_algorithm(calc_data: list[xr.Dataset], intersections: dict):
                                 )
                                 break
                 else:
-                    # middle point for the shorter path
-                    halfOfShorterPathLongitude = (
-                        list(intersections.values())[r][j][0] + list(intersections.values())[r][j + 1][0]
-                    ) / 2
-                    halfOfShorterPathLatitude = (
-                        list(intersections.values())[r][j][1] + list(intersections.values())[r][j + 1][1]
-                    ) / 2
-
-                    qq = None
-                    for qq in range(len(calc_data)):
-                        if lowestRainValueForShorterPathFirstSide == float(calc_data[qq].R.mean().data):
-                            if list(intersections.values())[r][j][0] in long_coords_intersections:
-                                break
-                            else:
-                                append_operation(
-                                    long_coords_intersections,
-                                    list(intersections.values())[r][j][0],
-                                    lat_coords_intersections,
-                                    list(intersections.values())[r][j][1],
-                                    find_number_of_intersections,
-                                    number,
-                                    cml_references,
-                                    int(calc_data[qq].cml_id.data),
-                                )
-                                break
-                        else:
-                            continue
-
-                    append_operation(
+                    # multiple CMLs => place a midpoint
+                    append_side_midpoint_side(
+                        calc_data,
+                        list(intersections.values())[r][j],      # first side
+                        list(intersections.values())[r][j + 1],  # second side
+                        lowest_rain_first,
+                        lowest_rain_second,
                         long_coords_intersections,
-                        halfOfShorterPathLongitude,
                         lat_coords_intersections,
-                        halfOfShorterPathLatitude,
                         find_number_of_intersections,
                         number,
-                        cml_references,
-                        int(calc_data[qq].cml_id.data),
+                        cml_references
                     )
 
-                    for ww in range(len(calc_data)):
-                        if lowestRainValueForShorterPathSecondSide == float(calc_data[ww].R.mean().data):
-                            append_operation(
-                                long_coords_intersections,
-                                list(intersections.values())[r][j + 1][0],
-                                lat_coords_intersections,
-                                list(intersections.values())[r][j + 1][1],
-                                find_number_of_intersections,
-                                number,
-                                cml_references,
-                                int(calc_data[ww].cml_id.data),
-                            )
-                            break
-                        else:
-                            continue
+        # Assign segment numbers
+        for seg_id in range(1, len(find_number_of_intersections) + 1):
+            segment_points_intersections.append(seg_id)
 
-        # assign segment numbers
-        sections = 1
-        while sections <= len(find_number_of_intersections):
-            segment_points_intersections.append(sections)
-            sections += 1
-
-        # verify that all arrays have the same length
+        # Verify that all arrays have the same length
         lengths = [
             len(segment_points_intersections),
             len(long_coords_intersections),
@@ -529,14 +618,11 @@ def intersection_algorithm(calc_data: list[xr.Dataset], intersections: dict):
                 f"Inconsistent array lengths: {lengths}. All arrays must have the same length."
             )
 
+        # Store the resulting arrays back into the matching dataset
         for spoj in range(len(calc_data)):
-            if (
-                list(intersections.values())[r][0][0] == calc_data[spoj].site_a_longitude.data
-                and list(intersections.values())[r][0][1] == calc_data[spoj].site_a_latitude.data
-                and list(intersections.values())[r][-1][0] == calc_data[spoj].site_b_longitude.data
-                and list(intersections.values())[r][-1][1] == calc_data[spoj].site_b_latitude.data
-            ):
-                # assign data to the current_cml dataset
+            first_coord = list(intersections.values())[r][0]
+            last_coord  = list(intersections.values())[r][-1]
+            if cml_coords_match(calc_data[spoj], first_coord, last_coord):
                 calc_data[spoj]["segment_points"] = ("segment_points", segment_points_intersections)
                 calc_data[spoj]["long_array"] = ("segment_points", long_coords_intersections)
                 calc_data[spoj]["lat_array"] = ("segment_points", lat_coords_intersections)
